@@ -151,15 +151,14 @@ def short_repr(obj, noneAsNA=False):
         return repr(obj)
     if hasattr(obj, "__short_repr__"):
         return obj.__short_repr__()
-    if isinstance(obj, Sequence):  # should be a list or tuple
+    elif isinstance(obj, Sequence):  # should be a list or tuple
         if len(obj) == 0:
             return "[]"
-        elif len(obj) == 1:
+        if len(obj) == 1:
             return f"{short_repr(obj[0])}"
-        elif len(obj) == 2:
+        if len(obj) == 2:
             return f"{short_repr(obj[0])}, {short_repr(obj[1])}"
-        else:
-            return f"{short_repr(obj[0])}, {short_repr(obj[1])}, ... ({len(obj)} items)"
+        return f"{short_repr(obj[0])}, {short_repr(obj[1])}, ... ({len(obj)} items)"
     elif isinstance(obj, dict):
         if not obj:
             return ""
