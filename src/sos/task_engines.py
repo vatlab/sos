@@ -322,7 +322,7 @@ class TaskEngine(threading.Thread):
                             # env.logger.info(f'{tid} ``runnng``')
                             removed_from_pending.add(tid)
                             continue
-                        elif tid in self.canceled_tasks:
+                        if tid in self.canceled_tasks:
                             # the job is canceled while being prepared to run
                             removed_from_pending.add(tid)
                             # env.logger.info(f'{tid} ``canceled``')
