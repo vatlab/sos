@@ -194,20 +194,19 @@ def preview_pdf(filename, kernel=None, style=None):
                             Image(img.sequence[pages[0]])._repr_png_()
                         ).decode("ascii")
                 }, meta
-            else:
-                widths = [img.sequence[p].width for p in pages]
-                heights = [img.sequence[p].height for p in pages]
-                image = Image(width=max(widths), height=sum(heights))
-                for i, p in enumerate(pages):
-                    image.composite(
-                        img.sequence[p], top=sum(heights[:i]), left=0)
-                image.format = "png"
-                with io.BytesIO() as out:
-                    image.save(file=out)
-                    img_data = out.getvalue()
-                return {
-                    "image/png": base64.b64encode(img_data).decode("ascii")
-                }, meta
+            widths = [img.sequence[p].width for p in pages]
+            heights = [img.sequence[p].height for p in pages]
+            image = Image(width=max(widths), height=sum(heights))
+            for i, p in enumerate(pages):
+                image.composite(
+                    img.sequence[p], top=sum(heights[:i]), left=0)
+            image.format = "png"
+            with io.BytesIO() as out:
+                image.save(file=out)
+                img_data = out.getvalue()
+            return {
+                "image/png": base64.b64encode(img_data).decode("ascii")
+            }, meta
         except Exception as e:
             warn(e)
             return {
