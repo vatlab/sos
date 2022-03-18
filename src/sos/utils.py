@@ -1769,14 +1769,14 @@ def format_par(name, par):
                 return f"--{name} VAL VAL ... (as {val.__class__.__name__}, required)"
             return f"--{name} VAL (as {val.__name__}, required)"
         else:
-            if val is True or val is False:
-                return f"--[no-]{name} (default to {val})"
-            if isinstance(val, Sequence) and not isinstance(val, str):
-                return f'--{name} {" ".join(str(x) for x in val)} (as {val.__class__.__name__})'
-            if isinstance(val, str):
-                return f"--{name} {val if val.isalnum() else repr(val)}"
-            else:
-                return f"--{name} {val} (as {val.__class__.__name__})"
+        if val is True or val is False:
+            return f"--[no-]{name} (default to {val})"
+        if isinstance(val, Sequence) and not isinstance(val, str):
+            return f'--{name} {" ".join(str(x) for x in val)} (as {val.__class__.__name__})'
+        if isinstance(val, str):
+            return f"--{name} {val if val.isalnum() else repr(val)}"
+        else:
+            return f"--{name} {val} (as {val.__class__.__name__})"
     except Exception:
         return f"--{name} {par}"
 
