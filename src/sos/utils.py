@@ -1637,14 +1637,13 @@ def load_var(line):
     key, value = line.split("=", 1)
     if key.endswith(":"):
         return key[:-1], pickle.loads(base64.b64decode(eval(value.strip())))
-    else:
-        try:
-            return key, eval(value.strip())
-        except Exception:
-            # use SoS_eval instead of eval because vars can contain sos objects such as R_library
-            from .eval import SoS_eval
+    try:
+        return key, eval(value.strip())
+    except Exception:
+        # use SoS_eval instead of eval because vars can contain sos objects such as R_library
+        from .eval import SoS_eval
 
-            return key, SoS_eval(value.strip())
+        return key, SoS_eval(value.strip())
 
 
 def version_info(module: str):
