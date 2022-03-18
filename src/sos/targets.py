@@ -123,10 +123,9 @@ class BaseTarget(object):
                         f"Failed to set attribute: {value} is or contains unsupported data type."
                     )
                     return self
-                if hasattr(self, name):
-                    raise ValueError(
-                        f"Attribute {name} conflicts with another attribute of {value.__class__.__name__}."
-                    )
+                raise ValueError(
+                    f"Attribute {name} conflicts with another attribute of {value.__class__.__name__}."
+                )
             self._dict.update(kwargs)
         return self
 
