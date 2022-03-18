@@ -1481,12 +1481,11 @@ def load_config_files(filename=None, default_config_files=True):
                     if k not in item:
                         item[k] = v
             return item
-        else:
-            for k, v in item.items():
-                if isinstance(v, dict):
-                    # v should be processed in place
-                    process_based_on(cfg, v)
-            return item
+        for k, v in item.items():
+            if isinstance(v, dict):
+                # v should be processed in place
+                process_based_on(cfg, v)
+        return item
 
     #
     for v in cfg.values():
