@@ -372,7 +372,7 @@ class dynamic(BaseTarget):
         if isinstance(self._target, str):
             return sorted(
                 [x for x in glob.glob(self._target) if os.path.isfile(x)])
-        elif isinstance(self._target, Sequence) and all(
+        if isinstance(self._target, Sequence) and all(
                 isinstance(x, str) for x in self._target):
             return sorted(
                 sum(
