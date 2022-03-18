@@ -2337,11 +2337,10 @@ class RuntimeInfo(InMemorySignature):
                 self.output_files,
                 os.path.join(env.temp_dir, self.sig_id + ".lock"),
             ))
-        else:
-            env.log_to_file(
-                "TARGET",
-                f"Lock acquired for output files {short_repr(self.output_files)}",
-            )
+        env.log_to_file(
+            "TARGET",
+            f"Lock acquired for output files {short_repr(self.output_files)}",
+        )
 
     def release(self, quiet=False):
         if not self.sig_id:
