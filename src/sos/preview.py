@@ -186,7 +186,7 @@ def preview_pdf(filename, kernel=None, style=None):
                     "image/png":
                         base64.b64encode(img._repr_png_()).decode("ascii")
                 }, meta
-            elif len(pages) == 1:
+            if len(pages) == 1:
                 # if only one page
                 return {
                     "image/png":
