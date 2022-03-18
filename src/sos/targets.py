@@ -2054,8 +2054,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def contains(self, target):
         if isinstance(target, str):
             return file_target(target) in self._targets
-        else:
-            return target in self._targets
+        return target in self._targets
 
 
 class InMemorySignature:
