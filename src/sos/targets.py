@@ -389,8 +389,7 @@ class dynamic(BaseTarget):
         # handling special !q conversion flag
         if format_spec and format_spec[0] == "R":
             return sos_targets(self._target).__format__(format_spec[1:])
-        else:
-            return str(self).__format__(format_spec)
+        return str(self).__format__(format_spec)
 
 
 class remote(BaseTarget):
