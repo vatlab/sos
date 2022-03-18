@@ -521,8 +521,7 @@ def collapseuser(path):
         return "~"
     elif path.startswith(home + os.sep):
         return "~" + path[len(home):]
-    else:
-        return path
+    return path
 
 
 class path(type(Path())):
