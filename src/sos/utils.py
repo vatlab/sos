@@ -158,7 +158,7 @@ def short_repr(obj, noneAsNA=False):
             return f"{short_repr(obj[0])}"
         if len(obj) == 2:
             return f"{short_repr(obj[0])}, {short_repr(obj[1])}"
-        return f"{short_repr(obj[0])}, {short_repr(obj[1])}, ... ({len(obj)} items)"
+    return f"{short_repr(obj[0])}, {short_repr(obj[1])}, ... ({len(obj)} items)"
     elif isinstance(obj, dict):
         if not obj:
             return ""
