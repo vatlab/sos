@@ -498,8 +498,7 @@ class executable(BaseTarget):
     def target_name(self):
         if self._version:
             return f"{self._cmd} (version={self._version})"
-        else:
-            return self._cmd
+        return self._cmd
 
     def target_signature(self):
         # we do not care if the target actually exist
