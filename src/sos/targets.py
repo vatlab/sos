@@ -1429,8 +1429,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             if not ret._targets:
                 env.logger.warning(f'No target with label "{i}" is available.')
             return ret
-        else:
-            return self._targets[i]
+        return self._targets[i]
 
     def target_signature(self):
         return tuple((x.target_signature(), y)
