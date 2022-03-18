@@ -1768,7 +1768,6 @@ def format_par(name, par):
                     val, "__iter__"):
                 return f"--{name} VAL VAL ... (as {val.__class__.__name__}, required)"
             return f"--{name} VAL (as {val.__name__}, required)"
-        else:
         if val is True or val is False:
             return f"--[no-]{name} (default to {val})"
         if isinstance(val, Sequence) and not isinstance(val, str):
