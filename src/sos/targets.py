@@ -199,7 +199,8 @@ class sos_variable(BaseTarget):
         # handling special !q conversion flag
         if format_spec and format_spec[0] == "R":
             return self._var.__format__(format_spec[1:])
-        return str(self).__format__(format_spec)
+        else:
+            return str(self).__format__(format_spec)
 
 
 class env_variable(BaseTarget):
@@ -228,7 +229,8 @@ class env_variable(BaseTarget):
         # handling special !q conversion flag
         if format_spec and format_spec[0] == "R":
             return self._var.__format__(format_spec[1:])
-        return str(self).__format__(format_spec)
+        else:
+            return str(self).__format__(format_spec)
 
 
 class invalid_target(BaseTarget):
@@ -388,7 +390,8 @@ class dynamic(BaseTarget):
         # handling special !q conversion flag
         if format_spec and format_spec[0] == "R":
             return sos_targets(self._target).__format__(format_spec[1:])
-        return str(self).__format__(format_spec)
+        else:
+            return str(self).__format__(format_spec)
 
 
 class remote(BaseTarget):
@@ -453,7 +456,8 @@ class remote(BaseTarget):
         # handling special !q conversion flag
         if format_spec and format_spec[0] == "R":
             return sos_targets(self._target).__format__(format_spec[1:])
-        return str(self).__format__(format_spec)
+        else:
+            return str(self).__format__(format_spec)
 
 
 class executable(BaseTarget):
@@ -494,13 +498,15 @@ class executable(BaseTarget):
                     if ver in output:
                         return True
                 return False
-            return True
+            else:
+                return True
         return False
 
     def target_name(self):
         if self._version:
             return f"{self._cmd} (version={self._version})"
-        return self._cmd
+        else:
+            return self._cmd
 
     def target_signature(self):
         # we do not care if the target actually exist
@@ -514,7 +520,8 @@ class executable(BaseTarget):
         # handling special !q conversion flag
         if format_spec and format_spec[0] == "R":
             return self._cmd.__format__(format_spec[1:])
-        return str(self).__format__(format_spec)
+        else:
+            return str(self).__format__(format_spec)
 
 
 def collapseuser(path):
@@ -523,7 +530,8 @@ def collapseuser(path):
         return "~"
     elif path.startswith(home + os.sep):
         return "~" + path[len(home):]
-    return path
+    else:
+        return path
 
 
 class path(type(Path())):
@@ -712,9 +720,10 @@ class path(type(Path())):
     def __add__(self, part):
         if isinstance(part, (str, path)):
             return self.__class__(str(self) + str(part))
-        raise ValueError(
-            f"Cannot concatenate path to {part} of type {type(part).__name__}: expect a string or path"
-        )
+        else:
+            raise ValueError(
+                f"Cannot concatenate path to {part} of type {type(part).__name__}: expect a string or path"
+            )
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
@@ -1431,7 +1440,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             if not ret._targets:
                 env.logger.warning(f'No target with label "{i}" is available.')
             return ret
-        return self._targets[i]
+        else:
+            return self._targets[i]
 
     def target_signature(self):
         return tuple((x.target_signature(), y)
@@ -2032,7 +2042,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 return (" ".join([x.target_name() for x in self._targets[:2]]) +
                         f"... ({len(self._targets)} items{grp_info})")
-        return "Unspecified" if self.unspecified() else self._undetermined
+            else:
+                return "Unspecified" if self.unspecified() else self._undetermined
             
     def __stable_repr__(self):
         return repr(self)
@@ -2062,7 +2073,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def contains(self, target):
         if isinstance(target, str):
             return file_target(target) in self._targets
-        return target in self._targets
+        else:
+            return target in self._targets
 
 
 class InMemorySignature:
@@ -2345,10 +2357,11 @@ class RuntimeInfo(InMemorySignature):
                 self.output_files,
                 os.path.join(env.temp_dir, self.sig_id + ".lock"),
             ))
-        env.log_to_file(
-            "TARGET",
-            f"Lock acquired for output files {short_repr(self.output_files)}",
-        )
+        else:
+            env.log_to_file(
+                "TARGET",
+                f"Lock acquired for output files {short_repr(self.output_files)}",
+            )
 
     def release(self, quiet=False):
         if not self.sig_id:
@@ -2393,12 +2406,13 @@ class RuntimeInfo(InMemorySignature):
             raise ValueError(
                 f"Cannot write signature with undetermined output {self.output_files}"
             )
-        if "TARGET" in env.config["SOS_DEBUG"] or "ALL" in env.config[
-                "SOS_DEBUG"]:
-            env.log_to_file(
-                "TARGET",
-                f"write signature {self.sig_id} with output {self.output_files}",
-            )
+        else:
+            if "TARGET" in env.config["SOS_DEBUG"] or "ALL" in env.config[
+                    "SOS_DEBUG"]:
+                env.log_to_file(
+                    "TARGET",
+                    f"write signature {self.sig_id} with output {self.output_files}",
+                )
         ret = super(RuntimeInfo, self).write()
         if ret is False:
             env.logger.debug(f"Failed to write signature {self.sig_id}")
