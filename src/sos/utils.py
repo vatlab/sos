@@ -151,7 +151,7 @@ def short_repr(obj, noneAsNA=False):
         return repr(obj)
     if hasattr(obj, "__short_repr__"):
         return obj.__short_repr__()
-    elif isinstance(obj, Sequence):  # should be a list or tuple
+    if isinstance(obj, Sequence):  # should be a list or tuple
         if len(obj) == 0:
             return "[]"
         if len(obj) == 1:
