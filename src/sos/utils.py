@@ -1089,7 +1089,7 @@ def find_symbolic_links(item):
         if not item.exists():
             env.logger.warning(f"Non-existent symbolic link {item}")
         return {item: item.resolve()}
-    elif item.is_file():
+    if item.is_file():
         return {}
     else:
         result = {}
