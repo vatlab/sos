@@ -1559,8 +1559,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             return self._dict[name]
         if len(self._targets) == 1:
             return self._targets[0].get(name, default)
-        else:
-            return default
+        return default
 
     def _add_groups(self, grps):
         self._groups = []
