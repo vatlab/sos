@@ -175,12 +175,11 @@ def short_repr(obj, noneAsNA=False):
         return f"{short_repr(next(iter(obj)))}, ... ({len(obj)} items)"
     # elif hasattr(obj, 'target_name'):
     #    return obj.target_name()
+    ret = str(obj)
+    if len(ret) > 40:
+        return f"{repr(obj)[:35]}..."
     else:
-        ret = str(obj)
-        if len(ret) > 40:
-            return f"{repr(obj)[:35]}..."
-        else:
-            return ret
+        return ret
 
 
 #
