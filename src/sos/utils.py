@@ -1980,7 +1980,7 @@ def get_nodelist():
             ]
         env.log_to_file("WORKER", f'Using "-j {args}" on a PBS cluster.')
         return args
-    elif "PE_HOSTFILE" in os.environ:
+    if "PE_HOSTFILE" in os.environ:
         # The pathname of a file containing a  detailed  descrip-
         #  tion  of  the  layout of the parallel environment to be
         #  setup by the start-up procedure. Each line of the  file
