@@ -1715,43 +1715,42 @@ def pexpect_run(cmd, shell=False, win_width=None, stdout_socket=None):
             except pexpect.EOF:
                 break
         return child.wait()
+    import subprocess
+
+    import pexpect
+
+    if win_width:
+        os.environ["COLUMNS"] = str(win_width)
     else:
-        import subprocess
-
-        import pexpect
-
-        if win_width:
-            os.environ["COLUMNS"] = str(win_width)
-        else:
-            os.environ["COLUMNS"] = "80"
-        try:
-            if isinstance(cmd, str):
-                if shell:
-                    child = pexpect.spawn(
-                        "/bin/bash", ["-c", cmd], timeout=None)
-                else:
-                    child = pexpect.spawn(cmd, timeout=None)
+        os.environ["COLUMNS"] = "80"
+    try:
+        if isinstance(cmd, str):
+            if shell:
+                child = pexpect.spawn(
+                    "/bin/bash", ["-c", cmd], timeout=None)
             else:
-                if shell:
-                    child = pexpect.spawn(
-                        "/bin/bash", ["-c", subprocess.list2cmdline(cmd)],
-                        timeout=None)
-                else:
-                    child = pexpect.spawn(
-                        subprocess.list2cmdline(cmd), timeout=None)
-            while True:
-                try:
-                    child.expect("\r\n")
-                    if env.verbosity > 0:
-                        send_output(child.before.decode() + "\n")
-                except pexpect.EOF:
-                    break
-            child.wait()
-            child.close()
-            return child.exitstatus
-        except Exception as e:
-            sys.stderr.write(str(e))
-            return 1
+                child = pexpect.spawn(cmd, timeout=None)
+        else:
+            if shell:
+                child = pexpect.spawn(
+                    "/bin/bash", ["-c", subprocess.list2cmdline(cmd)],
+                    timeout=None)
+            else:
+                child = pexpect.spawn(
+                    subprocess.list2cmdline(cmd), timeout=None)
+        while True:
+            try:
+                child.expect("\r\n")
+                if env.verbosity > 0:
+                    send_output(child.before.decode() + "\n")
+            except pexpect.EOF:
+                break
+        child.wait()
+        child.close()
+        return child.exitstatus
+    except Exception as e:
+        sys.stderr.write(str(e))
+        return 1
 
 
 def format_par(name, par):
