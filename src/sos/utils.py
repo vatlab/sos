@@ -1765,7 +1765,7 @@ def format_par(name, par):
                 return f"--[no-]{name} (required)"
             if val is None:
                 return f"--{name} VAL (required)"
-            elif val not in (str, file_target, path) and hasattr(
+            if val not in (str, file_target, path) and hasattr(
                     val, "__iter__"):
                 return f"--{name} VAL VAL ... (as {val.__class__.__name__}, required)"
             else:
