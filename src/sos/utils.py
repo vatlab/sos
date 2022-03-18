@@ -1594,9 +1594,8 @@ def sample_lines(lines, n):
     """Draw a sample of n lines from filename, largely evenly."""
     if len(lines) <= n:
         return "".join(lines)
-    else:
-        m = len(lines)
-        return "".join([lines[x * m // n + m // (2 * n)] for x in range(n)])
+    m = len(lines)
+    return "".join([lines[x * m // n + m // (2 * n)] for x in range(n)])
 
 
 def linecount_of_file(filename):
