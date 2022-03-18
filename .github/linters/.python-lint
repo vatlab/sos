@@ -254,6 +254,7 @@ disable=print-statement,
 	self-cls-assignment,
 	trailing-whitespace,
 	missing-final-newline,
+	misplaced-comparison-constant,
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
