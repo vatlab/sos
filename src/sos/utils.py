@@ -170,7 +170,7 @@ def short_repr(obj, noneAsNA=False):
     if isinstance(obj, KeysView):
         if not obj:
             return ""
-        elif len(obj) == 1:
+        if len(obj) == 1:
             return short_repr(next(iter(obj)))
         else:
             return f"{short_repr(next(iter(obj)))}, ... ({len(obj)} items)"
