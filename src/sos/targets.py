@@ -1358,7 +1358,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         labels=i,
                     ).set(**grp._dict))
             return ret
-        elif isinstance(i, (tuple, list)):
+        if isinstance(i, (tuple, list)):
             ret = sos_targets()
             ret._undetermined = self._undetermined
             ret._targets = [self._targets[x] for x in i]
