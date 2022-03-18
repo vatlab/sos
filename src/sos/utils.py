@@ -172,8 +172,7 @@ def short_repr(obj, noneAsNA=False):
             return ""
         if len(obj) == 1:
             return short_repr(next(iter(obj)))
-        else:
-            return f"{short_repr(next(iter(obj)))}, ... ({len(obj)} items)"
+        return f"{short_repr(next(iter(obj)))}, ... ({len(obj)} items)"
     # elif hasattr(obj, 'target_name'):
     #    return obj.target_name()
     else:
