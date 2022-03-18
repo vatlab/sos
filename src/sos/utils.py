@@ -838,8 +838,7 @@ def get_output(cmd, show_command=False, prompt="$ ", **kwargs):
         raise RuntimeError(e) from e
     if show_command:
         return f"{prompt}{cmd}\n{output}"
-    else:
-        return output
+    return output
 
 
 #
