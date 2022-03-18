@@ -391,7 +391,7 @@ def get_step_input(section, default_input):
             "sos_step": no_sos_step,
             "sos_variable": no_sos_variable,
         })
-        args, kwargs = SoS_eval(
+        args, _ = SoS_eval(
             f"__null_func__({stmt})", extra_dict=env.sos_dict.dict())
         if not args:
             if default_input is None:
