@@ -2040,8 +2040,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if "," in format_spec:
             fmt_spec = format_spec.replace(",", "")
             return ",".join(x.__format__(fmt_spec) for x in self._targets)
-        else:
-            return " ".join(x.__format__(format_spec) for x in self._targets)
+        return " ".join(x.__format__(format_spec) for x in self._targets)
 
     def __deepcopy__(self, memo):
         ret = sos_targets()
