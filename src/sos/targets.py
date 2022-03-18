@@ -2042,8 +2042,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 return (" ".join([x.target_name() for x in self._targets[:2]]) +
                         f"... ({len(self._targets)} items{grp_info})")
-            else:
-                return "Unspecified" if self.unspecified() else self._undetermined
+        else:
+            return "Unspecified" if self.unspecified() else self._undetermined
             
     def __stable_repr__(self):
         return repr(self)
