@@ -411,8 +411,7 @@ class remote(BaseTarget):
             return file_target(self._target).target_name()
         if isinstance(self._target, BaseTarget):
             return self._target.target_name()
-        else:
-            return repr(self._target)
+        return repr(self._target)
 
     def target_exists(self, mode="any"):
         if not self._host and not env.config["default_queue"]:
