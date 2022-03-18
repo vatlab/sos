@@ -932,7 +932,7 @@ def check_last_piece(text):
         spos = text.find("}", pos)
         if spos == -1:
             return True
-        elif spos == len(text) - 1 or text[spos + 1] != "}":
+        if spos == len(text) - 1 or text[spos + 1] != "}":
             raise SyntaxError("f-string: single '}' is not allowed")
         elif spos == len(text) - 2:
             # }} as the last
