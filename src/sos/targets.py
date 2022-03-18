@@ -199,8 +199,7 @@ class sos_variable(BaseTarget):
         # handling special !q conversion flag
         if format_spec and format_spec[0] == "R":
             return self._var.__format__(format_spec[1:])
-        else:
-            return str(self).__format__(format_spec)
+        return str(self).__format__(format_spec)
 
 
 class env_variable(BaseTarget):
