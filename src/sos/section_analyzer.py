@@ -123,12 +123,11 @@ def find_statement(section, name):
     ]
     if not stmt_idx:
         return None
-    elif len(stmt_idx) == 1:
+    if len(stmt_idx) == 1:
         return stmt_idx[0]
-    else:
-        raise RuntimeError(
-            f"More than one step {name} statement are specified in step {section.step_name()}"
-        )
+    raise RuntimeError(
+        f"More than one step {name} statement are specified in step {section.step_name()}"
+    )
 
 
 def no_output_from(*args, **kwargs):
