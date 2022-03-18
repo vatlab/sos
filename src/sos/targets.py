@@ -710,10 +710,9 @@ class path(type(Path())):
     def __add__(self, part):
         if isinstance(part, (str, path)):
             return self.__class__(str(self) + str(part))
-        else:
-            raise ValueError(
-                f"Cannot concatenate path to {part} of type {type(part).__name__}: expect a string or path"
-            )
+        raise ValueError(
+            f"Cannot concatenate path to {part} of type {type(part).__name__}: expect a string or path"
+        )
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
