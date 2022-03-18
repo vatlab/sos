@@ -920,8 +920,7 @@ def valid_expr_till(text):
             ast.parse("(" + text[:pos].lstrip() + ")")
             if pos == len(text) or text[pos] == "!" or text[pos] == ":":
                 return pos
-            else:
-                return 0
+            return 0
         except Exception:
             pos -= 1
     return 0
