@@ -165,9 +165,8 @@ def short_repr(obj, noneAsNA=False):
         if len(obj) == 1:
             first_key = list(obj.keys())[0]
             return f"{short_repr(first_key)!r}:{short_repr(obj[first_key])!r}"
-        else:
-            first_key = list(obj.keys())[0]
-            return f"{short_repr(first_key)}:{short_repr(obj[first_key])}, ... ({len(obj)} items)"
+        first_key = list(obj.keys())[0]
+        return f"{short_repr(first_key)}:{short_repr(obj[first_key])}, ... ({len(obj)} items)"
     elif isinstance(obj, KeysView):
         if not obj:
             return ""
