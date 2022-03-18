@@ -326,9 +326,8 @@ class TaskEngine(threading.Thread):
                             removed_from_pending.add(tid)
                             # env.logger.info(f'{tid} ``canceled``')
                             continue
-                        else:
-                            slot.append(tid)
-                            n_submitted += 1
+                        slot.append(tid)
+                        n_submitted += 1
 
                         if len(slot) == self.batch_size or idx == len(self.pending_tasks) - 1 \
                             or n_submitted >= self.max_running_jobs - num_active_tasks:
