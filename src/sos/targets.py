@@ -519,7 +519,7 @@ def collapseuser(path):
     home = os.path.expanduser("~")
     if path == home:
         return "~"
-    elif path.startswith(home + os.sep):
+    if path.startswith(home + os.sep):
         return "~" + path[len(home):]
     return path
 
