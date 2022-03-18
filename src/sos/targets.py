@@ -2005,7 +2005,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def __fspath__(self):
         if len(self._targets) == 1:
             return self._targets[0].__fspath__()
-        elif len(self._targets) == 0:
+        if len(self._targets) == 0:
             raise ValueError(
                 "Cannot treat an empty sos_targets as single target")
         else:
