@@ -1365,7 +1365,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             ret._labels = [self._labels[x] for x in i]
             ret._groups = []
             return ret
-        elif callable(i):
+        if callable(i):
             kept = [idx for idx, x in enumerate(self._targets) if i(x)]
             if len(kept) == len(self._targets):
                 return self
