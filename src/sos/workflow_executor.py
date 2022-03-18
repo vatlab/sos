@@ -1634,8 +1634,8 @@ class Base_Executor:
                     time.sleep(0.1)
         except KeyboardInterrupt as e:
             if exec_error.errors:
-                failed_steps, pending_steps = dag.pending()
-                if failed_steps:
+                pending_steps = dag.pending()
+                if pending_steps:
                     sections = [
                         self.workflow.section_by_id(
                             x._step_uuid).step_name(True) for x in pending_steps
@@ -1662,7 +1662,7 @@ class Base_Executor:
         )
 
         if exec_error.errors:
-            failed_steps, pending_steps = dag.pending()
+            pending_steps = dag.pending()
             running_steps = dag.running()
 
             pending_sections = [
@@ -1906,8 +1906,8 @@ class Base_Executor:
                     time.sleep(0.01)
         except KeyboardInterrupt as e:
             if exec_error.errors:
-                failed_steps, pending_steps = dag.pending()
-                if failed_steps:
+                pending_steps = dag.pending()
+                if pending_steps:
                     sections = [
                         self.workflow.section_by_id(
                             x._step_uuid).step_name(True) for x in pending_steps
@@ -1931,13 +1931,13 @@ class Base_Executor:
             ("with" if exec_error.errors else "without") + " error",
         )
         if exec_error.errors:
-            failed_steps, pending_steps = dag.pending()
+            pending_steps = dag.pending()
             # if failed_steps:
             # sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in failed_steps]
             # exec_error.append(self.workflow.name,
             #    RuntimeError('{} failed step{}: {}'.format(len(sections),
             #        's' if len(sections) > 1 else '', ', '.join(sections))))
-            if failed_steps:
+            if pending_steps:
                 sections = [
                     self.workflow.section_by_id(x._step_uuid).step_name(True)
                     for x in pending_steps

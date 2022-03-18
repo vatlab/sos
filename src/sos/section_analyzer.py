@@ -398,7 +398,7 @@ def get_step_input(section, default_input):
                 step_input = sos_targets()
             else:
                 step_input = default_input
-        elif not any(isinstance(x, (dynamic, remote)) for x in kwargs):
+        elif not any(isinstance(x, (dynamic, remote)) for x in args):
             step_input = sos_targets(*args)
     except SyntaxError:
         raise
