@@ -98,10 +98,11 @@ def emphasize(msg: str, color: Optional[str] = None):
     # display text within `` and `` in green
     if sys.platform == "win32":
         return str(msg).replace("``", "")
-    if level_color == 0:
+    elif level_color == 0:
         return re.sub(r"``([^`]*)``", "\033[32m\\1\033[0m", str(msg))
-    return re.sub(r"``([^`]*)``",
-                    f"\033[0m\033[32m\\1\033[0m\033[{level_color}m", str(msg))
+    else:
+        return re.sub(r"``([^`]*)``",
+                      f"\033[0m\033[32m\\1\033[0m\033[{level_color}m", str(msg))
 
 
 class ColoredFormatter(logging.Formatter):
