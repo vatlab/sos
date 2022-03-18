@@ -1176,8 +1176,7 @@ def sos_get_param(key, defvalue):
         if isinstance(defvalue, type):
             raise ArgumentError(
                 f"Argument {key} of type {defvalue.__name__} is required")
-        else:
-            return defvalue
+        return defvalue
     #
     if env.config["workflow_vars"]:
         if key in env.config["workflow_vars"]:
