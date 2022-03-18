@@ -381,8 +381,7 @@ class dynamic(BaseTarget):
                      for t in self._target],
                     [],
                 ))
-        else:
-            return self._target
+        return self._target
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
@@ -410,7 +409,7 @@ class remote(BaseTarget):
     def target_name(self):
         if isinstance(self._target, str):
             return file_target(self._target).target_name()
-        elif isinstance(self._target, BaseTarget):
+        if isinstance(self._target, BaseTarget):
             return self._target.target_name()
         else:
             return repr(self._target)
