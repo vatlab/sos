@@ -1091,11 +1091,10 @@ def find_symbolic_links(item):
         return {item: item.resolve()}
     if item.is_file():
         return {}
-    else:
-        result = {}
-        for x in item.iterdir():
-            result.update(find_symbolic_links(x))
-        return result
+    result = {}
+    for x in item.iterdir():
+        result.update(find_symbolic_links(x))
+    return result
 
 
 class ActivityNotifier(threading.Thread):
