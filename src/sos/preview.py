@@ -88,16 +88,15 @@ def preview_img(filename, kernel=None, style=None):
         try:
             if image_type == "gif":
                 return {"image/png": image_data}, meta
-            else:
-                from wand.image import Image
+            from wand.image import Image
 
-                img = Image(filename=filename)
-                return {
-                    "image/" + image_type:
-                        image_data,
-                    "image/png":
-                        base64.b64encode(img._repr_png_()).decode("ascii"),
-                }, meta
+            img = Image(filename=filename)
+            return {
+                "image/" + image_type:
+                    image_data,
+                "image/png":
+                    base64.b64encode(img._repr_png_()).decode("ascii"),
+            }, meta
         except Exception:
             return {"image/" + image_type: image_data}, meta
     else:
