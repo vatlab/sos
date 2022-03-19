@@ -65,8 +65,7 @@ def __null_func__(*args, **kwargs) -> Any:
             return sum((_flatten(k) for k in x), [])
         if hasattr(x, "__flattenable__"):
             return _flatten(x.flatten())
-        else:
-            return [x]
+        return [x]
 
     return _flatten(args), kwargs
 
