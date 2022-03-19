@@ -512,7 +512,7 @@ def setup_remote_access(cfg, hosts=[], password="", verbosity=1):
                         f"Public key access is already enabled for host ``{host}`` with address ``{host_agent.address}``"
                     )
                     continue
-                elif "Could not resolve hostname" in response:
+                if "Could not resolve hostname" in response:
                     env.logger.error(response)
                     sys.exit(1)
             else:
