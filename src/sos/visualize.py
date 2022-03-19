@@ -38,7 +38,7 @@ class Visualizer:
     def preview(self, df):
         if self.style == "table":
             return self._handle_table(df)
-        elif self.style == "scatterplot":
+        if self.style == "scatterplot":
             return self._handle_scatterplot(df)
         else:
             raise ValueError(f"Unknown style {self.style}")
