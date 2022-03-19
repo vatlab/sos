@@ -307,8 +307,7 @@ class SoS_DAG(nx.DiGraph):
                             f'Re-running {node._node_id} to generate {target}')
                         node._status = None
             return True
-        else:
-            return False
+        return False
 
     # def subgraph_from(self, targets: sos_targets):
     #     '''Trim DAG to keep only nodes that produce targets'''
