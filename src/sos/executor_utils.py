@@ -429,7 +429,7 @@ def validate_step_sig(sig):
             f'Substep ``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` with matching signature'
         )
         return matched
-    elif env.config["sig_mode"] == "build":
+    if env.config["sig_mode"] == "build":
         # build signature require existence of files
         if sig.write():
             env.logger.info(
