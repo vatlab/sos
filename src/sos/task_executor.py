@@ -588,7 +588,7 @@ class BaseTaskExecutor(object):
             return 1, None if n_workers <= 0 else n_workers
         if isinstance(num_workers, int) and num_workers >= 1:
             return 1, num_workers
-        elif num_workers is None:
+        if num_workers is None:
             return None, None
         else:
             raise RuntimeError(
