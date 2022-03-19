@@ -1990,7 +1990,7 @@ def get_nodelist():
             args = [":".join(host.split()[:2]) for host in hosts]
         env.log_to_file("WORKER", f'Using "-j {args}" on a SGE cluster.')
         return args
-    elif "LSB_MCPU_HOSTS" in os.environ:
+    if "LSB_MCPU_HOSTS" in os.environ:
         # IBM LSF https://www.ibm.com/support/knowledgecenter/en/SSETD4_9.1.3/lsf_config_ref/lsf_envars_ref.html
         # LSB_MCPU_HOSTS="hostA 3 hostB 3"
         hostlist = os.environ["LSB_MCPU_HOSTS"].strip().split()
