@@ -289,8 +289,7 @@ class SoS_SingularityClient:
         if not path(image_file).exists():
             raise ValueError(
                 f'Image {image_file} does not exist after pulling {image}.')
-        else:
-            print(f'HINT: Singularity image {image} is now up to date')
+        print(f'HINT: Singularity image {image} is now up to date')
         send_message_to_controller(
             ['resource', 'singularity_image', 'available', image])
 
