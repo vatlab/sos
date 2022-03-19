@@ -235,7 +235,7 @@ class SoS_SingularityClient:
             return os.path.join(
                 lib_path,
                 cname.replace('/', '-').replace(':', '-') + '.sif')
-        elif os.path.isfile(image):
+        if os.path.isfile(image):
             # if image is a filename, ok
             return image
         else:
