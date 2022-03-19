@@ -185,8 +185,7 @@ def get_traceback_msg(e):
 {error_class:42}Traceback (most recent call last)
 {msg}
 {error_class}: {detail}"""
-    else:
-        return f"{error_class}: {detail}"
+    return f"{error_class}: {detail}"
 
 
 def prepare_env(gdef="", gvars={}, extra_vars={}, host="localhost"):
