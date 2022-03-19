@@ -238,9 +238,8 @@ class SoS_SingularityClient:
         if os.path.isfile(image):
             # if image is a filename, ok
             return image
-        else:
-            # otherwise assuming it is an image in SoS Singulariry Library
-            return os.path.join(lib_path, image)
+        # otherwise assuming it is an image in SoS Singulariry Library
+        return os.path.join(lib_path, image)
 
     def pull(self, image):
         self._ensure_singularity()
