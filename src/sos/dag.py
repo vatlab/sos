@@ -301,10 +301,9 @@ class SoS_DAG(nx.DiGraph):
                         raise RuntimeError(
                             f'Completed target {target} is being re-executed. Please report this bug to SoS developers.'
                         )
-                    else:
-                        env.logger.info(
-                            f'Re-running {node._node_id} to generate {target}')
-                        node._status = None
+                    env.logger.info(
+                        f'Re-running {node._node_id} to generate {target}')
+                    node._status = None
             return True
         return False
 
