@@ -232,10 +232,9 @@ class SoS_SingularityClient:
             ctx, cname = image.split('://', 1)
             if ctx == 'file':
                 return image
-            else:
-                return os.path.join(
-                    lib_path,
-                    cname.replace('/', '-').replace(':', '-') + '.sif')
+            return os.path.join(
+                lib_path,
+                cname.replace('/', '-').replace(':', '-') + '.sif')
         elif os.path.isfile(image):
             # if image is a filename, ok
             return image
