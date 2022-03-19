@@ -1187,7 +1187,7 @@ class Base_Executor:
                     if isinstance(res, list):
                         if res[0] == "tasks":
                             env.log_to_file(
-:                               "TASK", f"Master receives task request {res}")
+                                "TASK", f"Master receives task request {res}")
                             host = res[1]
                             if host == "__default__":
                                 if "default_queue" in env.config:
