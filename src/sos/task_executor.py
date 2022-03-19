@@ -581,12 +581,12 @@ class BaseTaskExecutor(object):
                 n_workers = int(val.rsplit(":", 1)[-1])
                 return len(num_workers), None if n_workers <= 0 else n_workers
             return None, None
-        elif isinstance(num_workers, str):
+        if isinstance(num_workers, str):
             if ":" in num_workers:
                 num_workers = num_workers.rsplit(":", 1)[-1]
             n_workers = int(num_workers.rsplit(":", 1)[-1])
             return 1, None if n_workers <= 0 else n_workers
-        elif isinstance(num_workers, int) and num_workers >= 1:
+        if isinstance(num_workers, int) and num_workers >= 1:
             return 1, num_workers
         elif num_workers is None:
             return None, None
