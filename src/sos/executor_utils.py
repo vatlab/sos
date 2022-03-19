@@ -419,9 +419,8 @@ def validate_step_sig(sig):
                 f'``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` due to saved signature'
             )
             return matched
-        else:
-            env.logger.debug(f"Signature mismatch: {matched}")
-            return {}
+        env.logger.debug(f"Signature mismatch: {matched}")
+        return {}
     elif env.config["sig_mode"] == "assert":
         matched = sig.validate()
         if isinstance(matched, str):
