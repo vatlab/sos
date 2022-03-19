@@ -590,9 +590,8 @@ class BaseTaskExecutor(object):
             return 1, num_workers
         if num_workers is None:
             return None, None
-        else:
-            raise RuntimeError(
-                f"Unacceptable value for parameter trunk_workers {num_workers}")
+        raise RuntimeError(
+            f"Unacceptable value for parameter trunk_workers {num_workers}")
 
     def _append_subtask_outputs(self, result):
         """
