@@ -1964,7 +1964,7 @@ def get_nodelist():
         ]
         env.log_to_file("WORKER", f'Using "-j {args}" on a SLURM cluster.')
         return args
-    elif "PBS_ENVIRONMENT" in os.environ:
+    if "PBS_ENVIRONMENT" in os.environ:
         with open(os.environ["PBS_NODEFILE"], "r") as hosts:
             hostlist = hosts.read().split()
             from collections import Counter, OrderedDict
