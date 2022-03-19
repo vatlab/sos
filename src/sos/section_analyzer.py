@@ -314,7 +314,7 @@ def get_step_depends(section):
                 else:
                     if par[0] in SOS_TARGETS_OPTIONS:
                         continue
-                    elif par[0] == "name":
+                    if par[0] == "name":
                         if not isinstance(par[1], str):
                             raise ValueError(
                                 f"Value for named_output can only be a name (str): {par[1]} provided"
@@ -571,7 +571,7 @@ def get_output_from_steps(stmt, last_step):
     def step_name(val):
         if isinstance(val, str):
             return val
-        elif isinstance(val, int):
+        if isinstance(val, int):
             if val == -1:
                 if last_step is None:
                     # there is a case where a regular step is checked as auxiliary step.
