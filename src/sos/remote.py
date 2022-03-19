@@ -545,10 +545,9 @@ def setup_remote_access(cfg, hosts=[], password="", verbosity=1):
                 f"Public key access is successfully set up for host ``{host}`` with address ``{host_agent.address}``"
             )
             continue
-        else:
-            env.logger.error(
-                f"Failed to connect to {host} after passing public key. Possible problems include permission of .ssh and home directories."
-            )
+        env.logger.error(
+            f"Failed to connect to {host} after passing public key. Possible problems include permission of .ssh and home directories."
+        )
 
 
 def login_host(cfg, host):
