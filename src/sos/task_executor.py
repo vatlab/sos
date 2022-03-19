@@ -580,8 +580,7 @@ class BaseTaskExecutor(object):
                     val = val.rsplit(":", 1)[-1]
                 n_workers = int(val.rsplit(":", 1)[-1])
                 return len(num_workers), None if n_workers <= 0 else n_workers
-            else:
-                return None, None
+            return None, None
         elif isinstance(num_workers, str):
             if ":" in num_workers:
                 num_workers = num_workers.rsplit(":", 1)[-1]
