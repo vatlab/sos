@@ -40,8 +40,7 @@ class Visualizer:
             return self._handle_table(df)
         if self.style == "scatterplot":
             return self._handle_scatterplot(df)
-        else:
-            raise ValueError(f"Unknown style {self.style}")
+        raise ValueError(f"Unknown style {self.style}")
 
     def get_tid(self, vis_type):
         alphabet = string.ascii_lowercase + string.digits
