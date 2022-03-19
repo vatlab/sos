@@ -59,7 +59,7 @@ def __null_func__(*args, **kwargs) -> Any:
     def _flatten(x):
         if isinstance(x, str):
             return [x]
-        elif isinstance(x, sos_targets):
+        if isinstance(x, sos_targets):
             return [x]
         elif isinstance(x, Sequence):
             return sum((_flatten(k) for k in x), [])
