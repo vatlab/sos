@@ -181,8 +181,7 @@ def test_cmd(host, cmd):
             cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if ret == 0:
             return "OK"
-        else:
-            return "sos not installed or not accessible on host."
+        return "sos not installed or not accessible on host."
     except Exception as e:
         return str(e)
 
