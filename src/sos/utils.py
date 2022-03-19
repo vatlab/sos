@@ -1774,8 +1774,7 @@ def format_par(name, par):
             return f'--{name} {" ".join(str(x) for x in val)} (as {val.__class__.__name__})'
         if isinstance(val, str):
             return f"--{name} {val if val.isalnum() else repr(val)}"
-        else:
-            return f"--{name} {val} (as {val.__class__.__name__})"
+        return f"--{name} {val} (as {val.__class__.__name__})"
     except Exception:
         return f"--{name} {par}"
 
