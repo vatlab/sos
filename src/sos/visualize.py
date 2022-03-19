@@ -179,8 +179,7 @@ class Visualizer:
     def _to_list(self, arr):
         if "int" in arr.dtype.name:
             return [int(x) for x in arr]
-        else:
-            return [float(x) for x in arr]
+        return [float(x) for x in arr]
 
     def _natural_ticks(self, rg):
         # given a range, get natural ticks such as 0.1, 1, 10, 100, ...
