@@ -421,7 +421,7 @@ def validate_step_sig(sig):
             return matched
         env.logger.debug(f"Signature mismatch: {matched}")
         return {}
-    elif env.config["sig_mode"] == "assert":
+    if env.config["sig_mode"] == "assert":
         matched = sig.validate()
         if isinstance(matched, str):
             raise RuntimeError(f"Signature mismatch: {matched}")
