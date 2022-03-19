@@ -411,8 +411,7 @@ class SoS_DAG(nx.DiGraph):
 
         if self.last_dag == out:
             return
-        else:
-            self.last_dag = out
+        self.last_dag = out
         # output file name
         if hasattr(dest, 'write'):
             dest.write(out)
