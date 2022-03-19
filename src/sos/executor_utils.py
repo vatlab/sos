@@ -61,7 +61,7 @@ def __null_func__(*args, **kwargs) -> Any:
             return [x]
         if isinstance(x, sos_targets):
             return [x]
-        elif isinstance(x, Sequence):
+        if isinstance(x, Sequence):
             return sum((_flatten(k) for k in x), [])
         elif hasattr(x, "__flattenable__"):
             return _flatten(x.flatten())
