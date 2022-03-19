@@ -581,10 +581,8 @@ def get_output_from_steps(stmt, last_step):
                 return last_step
             if "_" in env.sos_dict["step_name"]:
                 return f"{env.sos_dict['step_name'].rsplit('_',1)[0]}_{val}"
-            else:
-                return str(val)
-        else:
-            raise ValueError(f"Invalid value {val} for output_from() function")
+            return str(val)
+        raise ValueError(f"Invalid value {val} for output_from() function")
 
     res = []
     for value in opt_values:
