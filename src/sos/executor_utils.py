@@ -63,7 +63,7 @@ def __null_func__(*args, **kwargs) -> Any:
             return [x]
         if isinstance(x, Sequence):
             return sum((_flatten(k) for k in x), [])
-        elif hasattr(x, "__flattenable__"):
+        if hasattr(x, "__flattenable__"):
             return _flatten(x.flatten())
         else:
             return [x]
