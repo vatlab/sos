@@ -895,8 +895,7 @@ class Base_Executor:
             return ", ".join(res[:-1]) + " and " + res[-1]
         if len(res) == 1:
             return res[0]
-        else:
-            return "no step executed"
+        return "no step executed"
 
     def step_completed(self, res, dag, runnable):
         # this function can be called by both master step and nested step
