@@ -261,10 +261,9 @@ def SoS_Action(
                     matched = sig.validate()
                     if isinstance(matched, str):
                         raise RuntimeError(f"Signature mismatch: {matched}")
-                    else:
-                        env.logger.info(
-                            f"Action ``{func.__name__}`` is ``ignored`` with matching signature"
-                        )
+                    env.logger.info(
+                        f"Action ``{func.__name__}`` is ``ignored`` with matching signature"
+                    )
                         return None
                 elif env.config["sig_mode"] == "build":
                     # build signature require existence of files
