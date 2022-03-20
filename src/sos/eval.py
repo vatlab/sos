@@ -35,8 +35,7 @@ def cfg_interpolate(text, local_dict={}):
         res = interpolate(text, cfg_dict, local_dict)
         if res == text:
             break
-        else:
-            text = res
+        text = res
     return res
 
 
@@ -127,7 +126,7 @@ def get_config(*args, **kwargs):
             keys.pop(0)
             val = val[key]
             continue
-        elif "." in key:
+        if "." in key:
             found = False
             subkeys = key.split(".")
             for j in range(len(subkeys)):
