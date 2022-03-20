@@ -208,7 +208,7 @@ def expand_input_files(*args, **kwargs):
     if not args and not kwargs:
         return env.sos_dict["step_input"]
     # if only group_by ...
-    elif not args and all(x in SOS_TARGETS_OPTIONS for x in kwargs.keys()):
+    if not args and all(x in SOS_TARGETS_OPTIONS for x in kwargs.keys()):
         return sos_targets(
             env.sos_dict["step_input"],
             _verify_existence=env.config["error_mode"] != "ignore",
