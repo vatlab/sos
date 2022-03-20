@@ -208,7 +208,7 @@ def get_accessed(node):
     """
     if isinstance(node, ast.Assign):
         return get_accessed(node.value)
-    elif isinstance(node, ast.Name):
+    if isinstance(node, ast.Name):
         return {node.id}
     names = set()
     if isinstance(node, list):
