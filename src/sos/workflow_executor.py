@@ -893,7 +893,7 @@ class Base_Executor:
             )
         if len(res) > 1:
             return ", ".join(res[:-1]) + " and " + res[-1]
-        elif len(res) == 1:
+        if len(res) == 1:
             return res[0]
         else:
             return "no step executed"
