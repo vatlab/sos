@@ -335,7 +335,7 @@ class SoS_Worker(mp.Process):
     def _type_of_work(self, work):
         if "section" in work:
             return "step"
-        elif "wf" in work:
+        if "wf" in work:
             return "workflow"
         elif "task_id" in work:
             return "task"
