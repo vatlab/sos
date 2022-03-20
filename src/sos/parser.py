@@ -586,7 +586,7 @@ class SoS_Step:
                         raise ValueError(
                             f"{self.step_name()}: Step task should be defined as the last item in a SoS step"
                         )
-                    elif statement[1] == "task":
+                    if statement[1] == "task":
                         raise ValueError(
                             f"{self.step_name()}: Only one task is allowed for a step"
                         )
