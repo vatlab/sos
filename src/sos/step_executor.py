@@ -631,7 +631,7 @@ class Base_Step_Executor:
             raise RuntimeError(
                 f'Task {task_id} generated for (_index={env.sos_dict["_index"]}) is identical to a previous one (_index={self.task_manager.index_of(task_id)}).'
             )
-        elif self.task_manager.has_output(task_vars["_output"]):
+        if self.task_manager.has_output(task_vars["_output"]):
             raise RuntimeError(
                 f'Task produces output files {", ".join(task_vars["_output"])} that are output of other tasks.'
             )
