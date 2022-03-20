@@ -175,7 +175,7 @@ def SoS_Action(
             if "active" in kwargs:
                 if kwargs["active"] is False:
                     return None
-                elif kwargs["active"] is True:
+                if kwargs["active"] is True:
                     pass
                 elif isinstance(kwargs["active"], int):
                     if (kwargs["active"] >= 0 and
