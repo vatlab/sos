@@ -828,7 +828,7 @@ class Base_Step_Executor:
             if "exception" in res:
                 if isinstance(res["exception"], ProcessKilled):
                     raise res["exception"]
-                elif isinstance(res["exception"], RemovedTarget):
+                if isinstance(res["exception"], RemovedTarget):
                     pass
                 elif env.config["error_mode"] == "ignore":
                     idx_msg = (
