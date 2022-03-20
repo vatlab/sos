@@ -1044,7 +1044,7 @@ class SoS_Script:
                         if not cursect.isValid():
                             cursect.extend(line)
                 continue
-            elif not line.strip():
+            if not line.strip():
                 # a blank line start a new comment block if we are still
                 # in the front of the script
                 self.clear_comment()
