@@ -264,7 +264,7 @@ def SoS_Action(
                     env.logger.info(
                         f"Action ``{func.__name__}`` is ``ignored`` with matching signature"
                     )
-                        return None
+                    return None
                 elif env.config["sig_mode"] == "build":
                     # build signature require existence of files
                     if sig.write():
