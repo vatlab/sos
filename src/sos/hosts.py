@@ -351,8 +351,7 @@ class RemoteHost(object):
         if msg.startswith("error:"):
             env.logger.debug(msg)
             return textMD5(targets.target_name())
-        else:
-            return msg
+        return msg
 
     def _get_shared_dirs(self) -> List[Any]:
         value = self.config.get("shared", [])
