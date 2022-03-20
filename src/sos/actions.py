@@ -925,11 +925,10 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     prog.update()
                     prog.close()
                     return True
-                else:
-                    prog.set_description(message +
-                                         ":\033[91m Signature mismatch\033[0m")
-                    target.write_sig()
-                    prog.update()
+                prog.set_description(message +
+                                    ":\033[91m Signature mismatch\033[0m")
+                target.write_sig()
+                prog.update()
         #
         prog = ProgressBar(
             desc=message,
