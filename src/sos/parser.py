@@ -823,9 +823,8 @@ class SoS_ScriptContent:
     def text(self) -> str:
         if self.content:
             return self.content
-        else:
-            with open(self.filename) as script:
-                return script.read()
+        with open(self.filename) as script:
+            return script.read()
 
     def __repr__(self):
         return f"{self.md5}: filename: {self.filename}, content: {self.content}"
