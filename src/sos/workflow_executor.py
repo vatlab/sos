@@ -627,8 +627,7 @@ class Base_Executor:
             if not env.config["trace_existing"] and not traced:
                 if added_node == 0:
                     break
-                else:
-                    continue
+                continue
 
             existing_targets = (
                 dag.dangling(targets)[1]
