@@ -912,7 +912,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 target.write_sig()
                 prog.close()
                 return True
-            elif env.config["sig_mode"] == "ignore":
+            if env.config["sig_mode"] == "ignore":
                 prog.set_description(message + ": \033[32m use existing\033[0m")
                 prog.update()
                 prog.close()
