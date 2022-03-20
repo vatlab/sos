@@ -607,9 +607,8 @@ class RemoteHost(object):
         if isinstance(dest, (Sequence, set, sos_targets)):
             ret = [self._reverse_map_var(x) for x in dest]
             return [x for x in ret if x is not None]
-        else:
-            env.logger.debug(f"Ignore unmappable source {dest}")
-            return dest
+        env.logger.debug(f"Ignore unmappable source {dest}")
+        return dest
 
     def _remote_abs(self, path):
         # return an absolute path relative to remote host
