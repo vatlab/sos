@@ -100,8 +100,7 @@ class TaskManager:
     def index_of(self, task_id):
         if task_id in self._all_ids:
             return self._all_ids.index(task_id)
-        else:
-            return -1
+        return -1
 
     def has_output(self, output):
         if not isinstance(output, Sequence) or not self._unsubmitted_slots:
