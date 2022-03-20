@@ -882,8 +882,7 @@ class TaskFile(object):
                         while True:
                             if os.path.isfile(pulse_file):
                                 break
-                            else:
-                                time.sleep(0.01)
+                            time.sleep(0.01)
                     # if completed, we make sure that the duration will not
                     # be zero even if the task is completed very rapidly
                     now = time.time() + (0.01 if status == "completed" else 0)
