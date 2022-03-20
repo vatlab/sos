@@ -1271,14 +1271,13 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             if (hint and hint["status"] in ("new", "pending") and
                     hint["files"][task_file] == os.stat(task_file).st_mtime):
                 return {}
-            else:
-                return dict(
-                    status=status,
-                    files={
-                        task_file: os.stat(task_file).st_mtime,
-                        job_file: 0
-                    },
-                )
+            return dict(
+                status=status,
+                files={
+                    task_file: os.stat(task_file).st_mtime,
+                    job_file: 0
+                },
+            )
         except Exception:
             # the pulse file could disappear when the job is completed.
             if task_changed():
