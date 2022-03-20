@@ -1264,8 +1264,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             # the pulse file could disappear when the job is completed.
             if task_changed():
                 return check_task(task)
-            else:
-                raise
+            raise
     else:
         # status not changed
         try:
