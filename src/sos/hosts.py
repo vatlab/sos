@@ -972,7 +972,7 @@ class RemoteHost(object):
             from .utils import pexpect_run
 
             return pexpect_run(cmd)
-        elif wait_for_task or sys.platform == "win32":
+        if wait_for_task or sys.platform == "win32":
             # keep proc persistent to avoid a subprocess is still running warning.
             p = subprocess.Popen(cmd, shell=True, **kwargs)
             p.wait()
