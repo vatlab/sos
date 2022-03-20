@@ -1018,8 +1018,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                         continue
                     if not os.path.isfile(os.path.join(dest_dir, name)):
                         return False
-                    else:
-                        decompressed += 1
+                    decompressed += 1
             elif tarfile.is_tarfile(dest):
                 prog.set_description(message + ":\033[91m Decompressing\033[0m")
                 prog.update()
@@ -1031,8 +1030,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     for name in files:
                         if not os.path.isfile(os.path.join(dest_dir, name)):
                             return False
-                        else:
-                            decompressed += 1
+                        decompressed += 1
             elif dest.endswith(".gz"):
                 prog.set_description(message + ":\033[91m Decompressing\033[0m")
                 prog.update()
