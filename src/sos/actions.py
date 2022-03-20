@@ -1161,10 +1161,9 @@ def download(URLs, dest_dir=".", dest_file=None, decompress=False, max_jobs=5):
     if failed:
         if len(urls) == 1:
             raise RuntimeError("Failed to download {urls[0]}")
-        else:
-            raise RuntimeError(
-                f"Failed to download {failed[0]} ({len(failed)} out of {len(urls)})"
-            )
+        raise RuntimeError(
+            f"Failed to download {failed[0]} ({len(failed)} out of {len(urls)})"
+        )
     return 0
 
 
