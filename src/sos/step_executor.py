@@ -1828,7 +1828,7 @@ class Base_Step_Executor:
                             clear_output()
                             if env.config["error_mode"] == "abort":
                                 raise
-                            elif env.config["error_mode"] == "ignore":
+                            if env.config["error_mode"] == "ignore":
                                 idx_msg = (
                                     f'(id={env.sos_dict["step_id"]}, index={idx})'
                                     if len(self._substeps) > 1 else
