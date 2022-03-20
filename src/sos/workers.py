@@ -339,8 +339,7 @@ class SoS_Worker(mp.Process):
             return "workflow"
         if "task_id" in work:
             return "task"
-        else:
-            return "substep"
+        return "substep"
 
     def _name_of_work(self, work):
         if "section" in work:
