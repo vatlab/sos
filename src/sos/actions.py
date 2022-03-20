@@ -917,7 +917,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 prog.update()
                 prog.close()
                 return True
-            elif env.config["sig_mode"] in ("default", "skip", "distributed"):
+            if env.config["sig_mode"] in ("default", "skip", "distributed"):
                 prog.update()
                 if sig.validate():
                     prog.set_description(message +
