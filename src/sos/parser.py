@@ -590,7 +590,7 @@ class SoS_Step:
                         raise ValueError(
                             f"{self.step_name()}: Only one task is allowed for a step"
                         )
-                    elif statement[1] == "parameter":
+                    if statement[1] == "parameter":
                         raise ValueError(
                             f"{self.step_name()}: Parameters should be defined before step task"
                         )
