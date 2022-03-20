@@ -1016,7 +1016,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 for name in names:
                     if os.path.isdir(os.path.join(dest_dir, name)):
                         continue
-                    elif not os.path.isfile(os.path.join(dest_dir, name)):
+                    if not os.path.isfile(os.path.join(dest_dir, name)):
                         return False
                     else:
                         decompressed += 1
