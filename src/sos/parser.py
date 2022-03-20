@@ -290,8 +290,7 @@ class SoS_Step:
             return self.alias
         if self.name and self.index is not None:
             return f"{self.name}_{self.index}"
-        else:
-            return self.name if self.name else str(self.index)
+        return self.name if self.name else str(self.index)
 
     def match(self, step_name: str) -> bool:
         # if this step provides name...
