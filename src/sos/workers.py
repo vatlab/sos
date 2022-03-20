@@ -276,7 +276,7 @@ class SoS_Worker(mp.Process):
                     )
                     self._runners[new_idx] = True
                     continue
-                elif "task_id" in reply:
+                if "task_id" in reply:
                     self.run_task(reply)
                     env.log_to_file(
                         "WORKER",
