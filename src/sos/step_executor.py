@@ -214,14 +214,13 @@ def expand_input_files(*args, **kwargs):
             _verify_existence=env.config["error_mode"] != "ignore",
             **kwargs,
         )
-    else:
-        return sos_targets(
-            *args,
-            **kwargs,
-            _verify_existence=env.config["error_mode"] != "ignore",
-            _undetermined=False,
-            _source=env.sos_dict["step_name"],
-        )
+    return sos_targets(
+        *args,
+        **kwargs,
+        _verify_existence=env.config["error_mode"] != "ignore",
+        _undetermined=False,
+        _source=env.sos_dict["step_name"],
+    )
 
 
 def expand_depends_files(*args, **kwargs):
@@ -245,12 +244,11 @@ def expand_output_files(value, *args, **kwargs):
     if any(isinstance(x, dynamic) for x in args) or any(
             isinstance(y, dynamic) for y in kwargs.values()):
         return sos_targets(_undetermined=value)
-    else:
-        return sos_targets(
-            *args,
-            **kwargs,
-            _undetermined=False,
-            _source=env.sos_dict["step_name"])
+    return sos_targets(
+        *args,
+        **kwargs,
+        _undetermined=False,
+        _source=env.sos_dict["step_name"])
 
 
 def parse_shared_vars(option):
