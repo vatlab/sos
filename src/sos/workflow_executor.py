@@ -587,10 +587,9 @@ class Base_Executor:
                         resolved += 1
                         # dag.show_nodes()
                         continue
-                    else:
-                        raise RuntimeError(
-                            f'Multiple steps {", ".join(x.step_name() for x in mo)} to generate target {target}'
-                        )
+                    raise RuntimeError(
+                        f'Multiple steps {", ".join(x.step_name() for x in mo)} to generate target {target}'
+                    )
                 #
                 # m0[0] can be a tuple
                 #   section, context
