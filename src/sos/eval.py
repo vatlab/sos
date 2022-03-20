@@ -153,7 +153,7 @@ def get_config(*args, **kwargs):
     if isinstance(val, str):
         local_dict.update(custom_dict)
         return cfg_interpolate(val, local_dict)
-    elif isinstance(val, dict):
+    if isinstance(val, dict):
 
         def interpolate_dict(
             item,
