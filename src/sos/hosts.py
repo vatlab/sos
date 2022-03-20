@@ -578,7 +578,7 @@ class RemoteHost(object):
                     p.close()
                     if p.exitstatus == 0:
                         return "OK"
-                    elif p.before:
+                    if p.before:
                         return p.before.decode()
                     else:
                         return f'Command "{cmd}" exits with code {p.exitstatus}'
