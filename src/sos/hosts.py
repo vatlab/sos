@@ -1176,9 +1176,8 @@ class Host:
                     f"Undefined localhost {env.sos_dict['CONFIG']['localhost']}"
                 )
             return env.sos_dict["CONFIG"]["localhost"]
-        else:
-            env.sos_dict["CONFIG"]["localhost"] = "localhost"
-            return "localhost"
+        env.sos_dict["CONFIG"]["localhost"] = "localhost"
+        return "localhost"
 
     def _get_remote_host(self, alias: Optional[str]) -> str:
         # get a remote host specified by Alias
