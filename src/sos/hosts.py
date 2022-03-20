@@ -604,7 +604,7 @@ class RemoteHost(object):
                     f"Path {dest} is not under any specified paths of localhost and is mapped to {dest} on local host."
                 )
             return dest.replace("\\", "/")
-        elif isinstance(dest, (Sequence, set, sos_targets)):
+        if isinstance(dest, (Sequence, set, sos_targets)):
             ret = [self._reverse_map_var(x) for x in dest]
             return [x for x in ret if x is not None]
         else:
