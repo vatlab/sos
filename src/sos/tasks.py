@@ -600,14 +600,13 @@ class TaskFile(object):
                 if not results:
                     # if there is no result at all, do not save result
                     return
-                else:
-                    # now, if we have some results, we need to fill the rest of the aborted ones
-                    results.extend([{
-                        "task": t,
-                        "ret_code": 2,
-                        "shared": {},
-                        "exception": RuntimeError(f"Subtask {t} is aborted"),
-                    } for t in missing_tasks])
+                # now, if we have some results, we need to fill the rest of the aborted ones
+                results.extend([{
+                    "task": t,
+                    "ret_code": 2,
+                    "shared": {},
+                    "exception": RuntimeError(f"Subtask {t} is aborted"),
+                } for t in missing_tasks])
                 result = combine_results(self.task_id, results)
             else:
                 # single task, no result, do not save
