@@ -439,10 +439,9 @@ class on_demand_options(object):
                 raise ValueError(
                     f"Failed to evaluate option {key} with value {self._expressions[key]}: Only constant values are allowed for section option skip"
                 ) from e
-            else:
-                raise ValueError(
-                    f"Failed to evaluate option {key} with value {self._expressions[key]}: {e}"
-                ) from e
+            raise ValueError(
+                f"Failed to evaluate option {key} with value {self._expressions[key]}: {e}"
+            ) from e
 
     def __repr__(self):
         return repr(self._expressions)
