@@ -541,9 +541,8 @@ class RemoteHost(object):
         if isinstance(source, (Sequence, set, sos_targets)):
             ret = [self._map_var(x) for x in source]
             return [x for x in ret if x is not None]
-        else:
-            env.logger.debug(f"Ignore unmappable source {source}")
-            return source
+        env.logger.debug(f"Ignore unmappable source {source}")
+        return source
 
     def test_connection(self):
         try:
@@ -580,8 +579,7 @@ class RemoteHost(object):
                         return "OK"
                     if p.before:
                         return p.before.decode()
-                    else:
-                        return f'Command "{cmd}" exits with code {p.exitstatus}'
+                    return f'Command "{cmd}" exits with code {p.exitstatus}'
         except pexpect.TIMEOUT:
             return f"ssh connection to {self.address} time out with prompt: {str(p.before)}"
         except Exception as e:
