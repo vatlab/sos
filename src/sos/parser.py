@@ -288,7 +288,7 @@ class SoS_Step:
             return ", ".join(names)
         if alias and self.alias:
             return self.alias
-        elif self.name and self.index is not None:
+        if self.name and self.index is not None:
             return f"{self.name}_{self.index}"
         else:
             return self.name if self.name else str(self.index)
