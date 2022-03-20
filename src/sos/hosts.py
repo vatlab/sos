@@ -445,11 +445,10 @@ class RemoteHost(object):
                 """ -q {host} -p {port} <<'HEREDOC!!'\nbash --login -c '""" +
                 (" [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && "
                  if under_workdir else " ") + """ {cmd} '\nHEREDOC!!\n""")
-        else:
-            return ("ssh " + self.cm_opts + self.pem_opts +
-                    """ -q {host} -p {port} "bash --login -c '""" +
-                    (" [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && "
-                     if under_workdir else " ") + """ {cmd}'" """)
+        return ("ssh " + self.cm_opts + self.pem_opts +
+                """ -q {host} -p {port} "bash --login -c '""" +
+                (" [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && "
+                if under_workdir else " ") + """ {cmd}'" """)
 
     def _get_query_cmd(self):
         return self.config.get(
