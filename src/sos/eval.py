@@ -197,8 +197,7 @@ def get_config(*args, **kwargs):
             raw_keys=raw_keys,
             expand_keys=expand_keys,
         )
-    else:
-        return val
+    return val
 
 
 def get_accessed(node):
