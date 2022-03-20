@@ -256,8 +256,7 @@ def SoS_Action(
                             f"Action ``{func.__name__}`` is ``ignored`` due to saved signature"
                         )
                         return None
-                    else:
-                        env.logger.debug(f"Signature mismatch: {matched}")
+                    env.logger.debug(f"Signature mismatch: {matched}")
                 elif env.config["sig_mode"] == "assert":
                     matched = sig.validate()
                     if isinstance(matched, str):
