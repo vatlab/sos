@@ -183,16 +183,15 @@ def replace_sigil(text: str, sigil: str) -> str:
             # cannot split
             final_text += text.replace("{", "{{").replace("}", "}}")
             break
-        else:
-            rhs = pieces[1]
-            # now if there is {, we need to find matching number of }
-            # basically we need to find syntaxly valid expression before
-            # ending bracket... or !
-            rhs_pieces = rp.split(rhs)
-            if len(rhs_pieces) == 1:
-                raise ValueError(
-                    f"Invalid f-string {text}: missing right sigil at {rhs[:20]}"
-                )
+        rhs = pieces[1]
+        # now if there is {, we need to find matching number of }
+        # basically we need to find syntaxly valid expression before
+        # ending bracket... or !
+        rhs_pieces = rp.split(rhs)
+        if len(rhs_pieces) == 1:
+            raise ValueError(
+                f"Invalid f-string {text}: missing right sigil at {rhs[:20]}"
+            )
 
             # say we have sigil = [ ]
             #
