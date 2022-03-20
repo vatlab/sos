@@ -316,8 +316,7 @@ def evaluate_shared(vars, option):
                     try:
                         if var == val:
                             continue
-                        else:
-                            shared_vars[var] = SoS_eval(val)
+                        shared_vars[var] = SoS_eval(val)
                     except Exception as e:
                         raise RuntimeError(
                             f"Failed to evaluate shared variable {var} from expression {val}: {e}"
