@@ -377,7 +377,7 @@ class RemoteHost(object):
                     raise ValueError(
                         f"Path map should be separated as from -> to, {v} specified"
                     )
-                elif v.count(" -> ") > 1:
+                if v.count(" -> ") > 1:
                     raise ValueError(
                         f"Path map should be separated as from -> to, {v} specified"
                     )
