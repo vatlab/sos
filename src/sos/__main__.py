@@ -1507,7 +1507,7 @@ def cmd_execute(args, workflow_args):
                     "{} does not match any existing task".format(task))
                 exit_code.append(1)
                 continue
-            elif len(matched) > 1:
+            if len(matched) > 1:
                 env.logger.error('"{}" matches more than one task ID {}'.format(
                     task, ", ".join(matched)))
                 exit_code.append(1)
