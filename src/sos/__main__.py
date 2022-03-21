@@ -1512,8 +1512,7 @@ def cmd_execute(args, workflow_args):
                     task, ", ".join(matched)))
                 exit_code.append(1)
                 continue
-            else:
-                task = matched[0]
+            task = matched[0]
             # this is for local execution, perhaps on a remote host, and
             # there is no daemon process etc. It also does not handle job
             # preparation.
