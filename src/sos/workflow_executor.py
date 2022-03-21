@@ -1897,8 +1897,7 @@ class Base_Executor:
                     break
                 # elif dag.degraded() and manager.all_pending():
                 #     break
-                else:
-                    time.sleep(0.01)
+                time.sleep(0.01)
         except KeyboardInterrupt as e:
             if exec_error.errors:
                 pending_steps = dag.pending()[1]
