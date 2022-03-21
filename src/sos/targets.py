@@ -2414,7 +2414,7 @@ class RuntimeInfo(InMemorySignature):
                     "TARGET",
                     f"write signature {self.sig_id} with output {self.output_files}",
                 )
-        ret = super(RuntimeInfo, self).write()
+        ret = super().write()
         if ret is False:
             env.logger.debug(f"Failed to write signature {self.sig_id}")
             return ret
