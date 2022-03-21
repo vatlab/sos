@@ -1684,7 +1684,7 @@ class Base_Executor:
                     self.workflow.name,
                     RuntimeError("Exits with " + " and ".join(msg)))
             raise exec_error
-        elif "pending_tasks" not in wf_result or not wf_result["pending_tasks"]:
+        if "pending_tasks" not in wf_result or not wf_result["pending_tasks"]:
             self.finalize_and_report()
         else:
             # exit with pending tasks
