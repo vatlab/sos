@@ -253,7 +253,7 @@ class system_resource(BaseTarget):
     """A target for required computing resource."""
 
     def __init__(self, mem=None, disk=None):
-        super(system_resource, self).__init__()
+        super().__init__()
         self._mem = mem
         self._disk = disk
 
