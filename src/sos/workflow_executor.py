@@ -1659,6 +1659,7 @@ class Base_Executor:
 
         if exec_error.errors:
             pending_steps = dag.pending()
+
             running_steps = dag.running()
 
             pending_sections = [
