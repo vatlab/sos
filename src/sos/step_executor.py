@@ -2034,7 +2034,7 @@ class Step_Executor(Base_Step_Executor):
     def __init__(self, step, socket, mode="run"):
         self.run_mode = mode
         env.config["run_mode"] = mode
-        super(Step_Executor, self).__init__(step)
+        super().__init__(step)
         self.socket = socket
         # because step is executed in a separate SoS_Worker process, this
         # __socket__ is available to all the actions that will be executed
