@@ -609,7 +609,7 @@ class path(type(Path())):
         return super(path, self.expandname().expanduser()).__str__()
 
     def __repr__(self):
-        raw_str = super(path, self).__str__()
+        raw_str = super().__str__()
         return "{}({!r})".format(self.__class__.__name__,
                                  raw_str.replace(self._flavour.sep, "/"))
 
