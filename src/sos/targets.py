@@ -237,7 +237,7 @@ class invalid_target(BaseTarget):
     """A target for an environmental variable."""
 
     def __init__(self):
-        super(invalid_target, self).__init__()
+        super().__init__()
 
     def target_exists(self, mode="any"):
         return False
