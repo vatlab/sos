@@ -1621,7 +1621,7 @@ class Base_Executor:
 
                 if manager.all_done():
                     break
-                elif dag.degraded() and manager.all_pending():
+                if dag.degraded() and manager.all_pending():
                     env.log_to_file(
                         "EXECUTOR",
                         f'Master terminate because {"degration" if dag.degraded() else "" } {" all pending" if manager.all_pending() else ""}',
