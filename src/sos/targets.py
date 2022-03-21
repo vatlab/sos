@@ -329,7 +329,7 @@ class named_output(BaseTarget):
     """A target for a named output"""
 
     def __init__(self, output_name):
-        super(named_output, self).__init__()
+        super().__init__()
         if not isinstance(output_name, str):
             raise ValueError("named_output() only accept one output name")
         self._output_name = output_name
