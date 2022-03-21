@@ -464,7 +464,7 @@ class executable(BaseTarget):
     """A target for an executable command."""
 
     def __init__(self, cmd, version=None):
-        super(executable, self).__init__()
+        super().__init__()
         self._cmd = cmd
         self._md5 = None
         if version is None:
