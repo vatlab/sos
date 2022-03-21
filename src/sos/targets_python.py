@@ -13,7 +13,7 @@ class Py_Module(BaseTarget):
     LIB_STATUS_CACHE = {}
 
     def __init__(self, module, version=None, autoinstall=False):
-        super(Py_Module, self).__init__()
+        super().__init__()
         if not isinstance(module, str):
             raise ValueError('A string is expected for module name.')
         self._module = module.strip()
