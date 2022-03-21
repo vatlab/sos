@@ -63,7 +63,7 @@ from .workflow_engines import BackgroundProcess_WorkflowEngine
 class DaemonizedProcess(mp.Process):
 
     def __init__(self, cmd, *args, **kwargs):
-        super(DaemonizedProcess, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.cmd = cmd
 
     def run(self):
