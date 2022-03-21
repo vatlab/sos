@@ -2462,4 +2462,4 @@ class RuntimeInfo(InMemorySignature):
         sig = request_answer_from_controller(["step_sig", "get", self.sig_id])
         if not sig:
             return f"No signature found for {self.sig_id}"
-        return super(RuntimeInfo, self).validate(sig)
+        return super().validate(sig)
