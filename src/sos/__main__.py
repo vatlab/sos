@@ -1562,7 +1562,7 @@ def cmd_execute(args, workflow_args):
             return
         if all(x != "pending" for x in res) and not args.wait:
             return
-        elif any(x in ("pending", "running", "submitted") for x in res):
+        if any(x in ("pending", "running", "submitted") for x in res):
             continue
         else:
             raise RuntimeError("Job returned with status {}".format(res))
