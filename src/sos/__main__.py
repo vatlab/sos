@@ -2137,7 +2137,7 @@ class AnswerMachine:
             if res == "a":
                 self._confirmed = True
                 return True
-            elif res == "y":
+            if res == "y":
                 return True
             elif res == "n":
                 return False
