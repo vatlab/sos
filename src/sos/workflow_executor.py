@@ -1627,8 +1627,7 @@ class Base_Executor:
                         f'Master terminate because {"degration" if dag.degraded() else "" } {" all pending" if manager.all_pending() else ""}',
                     )
                     break
-                else:
-                    time.sleep(0.1)
+                time.sleep(0.1)
         except KeyboardInterrupt as e:
             if exec_error.errors:
                 pending_steps = dag.pending()[1]
