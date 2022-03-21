@@ -2138,7 +2138,7 @@ class AnswerMachine:
                 return True
             if res == "y":
                 return True
-            elif res == "n":
+            if res == "n":
                 return False
 
 
