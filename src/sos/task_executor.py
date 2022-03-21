@@ -401,7 +401,8 @@ class BaseTaskExecutor(object):
         # node. The "n_procs" is the "number of cpus per job per node", which,
         # is "cores" (per task) * "n_workers" (per node). Therefore,
         # "n_procs" should not be used.
-        n_nodes, n_procs = self._parse_num_workers(env.config["worker_procs"])
+        
+        n_nodes, _ = self._parse_num_workers(env.config["worker_procs"])
 
         # regular trunk_workers = ?? (0 was used as default)
         # a previous version of master task file has params.num_workers
@@ -543,7 +544,7 @@ class BaseTaskExecutor(object):
                     ),
                 ])
 
-            for idx in range(len(params.task_stack)):
+            for _ in range(len(params.task_stack)):
                 res = decode_msg(self.result_pull_socket.recv())
                 try:
                     self._append_subtask_outputs(res)
