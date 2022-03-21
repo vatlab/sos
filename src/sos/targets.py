@@ -1005,7 +1005,7 @@ class _sos_group(BaseTarget):
     """A type that is similar to sos_targets but saves index of objects """
 
     def __init__(self, indexes, labels=None, parent=None):
-        super(_sos_group, self).__init__()
+        super().__init__()
         self._indexes = list(indexes)
         if labels is not None:
             if isinstance(labels, str):
