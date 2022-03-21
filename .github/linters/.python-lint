@@ -129,6 +129,7 @@ disable=print-statement,
         intern-builtin,
         input-builtin,
         indexing-exception,
+	inconsistent-return-statement,s
         import-star-module-level,
         import-self,
         import-outside-toplevel,
