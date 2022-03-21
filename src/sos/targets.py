@@ -878,7 +878,7 @@ class file_target(path, BaseTarget):
     def __reduce__(self):
         return tuple([
             self.__class__,
-            super(file_target, self).__reduce__()[1],
+            super().__reduce__()[1],
             {
                 "_md5": self._md5,
                 "_dict": self._dict
