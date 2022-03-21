@@ -1778,7 +1778,7 @@ class Base_Executor:
                                 # target so the workflow should stop
                                 proc.socket.send(encode_msg(False))
                             continue
-                        elif res[0] == "dependent_target":
+                        if res[0] == "dependent_target":
                             reply = self.handle_dependent_target(
                                 dag, sos_targets(res[1:]), runnable)
                             proc.socket.send(encode_msg(reply))
