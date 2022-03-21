@@ -344,12 +344,11 @@ class SoS_Worker(mp.Process):
     def _name_of_work(self, work):
         if "section" in work:
             return work["section"].step_name()
-        if "wf" in work:
+        elif "wf" in work:
             return work["workflow_id"]
         elif "task_id" in work:
             return work["task_id"]
-        else:
-            return "substep"
+        return "substep"
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config,
                      **kwargs):
