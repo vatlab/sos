@@ -177,7 +177,7 @@ class sos_variable(BaseTarget):
     """A target for a SoS variable."""
 
     def __init__(self, var):
-        super(sos_variable, self).__init__()
+        super().__init__()
         self._var = var
 
     def target_exists(self, mode="any"):
@@ -207,7 +207,7 @@ class env_variable(BaseTarget):
     """A target for an environmental variable."""
 
     def __init__(self, var):
-        super(env_variable, self).__init__()
+        super().__init__()
         self._var = var
 
     def target_exists(self, mode="any"):
