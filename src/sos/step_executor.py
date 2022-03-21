@@ -38,7 +38,7 @@ __all__: List = []
 class TaskManager:
     # manage tasks created by the step
     def __init__(self, num_tasks, trunk_size, trunk_workers):
-        super(TaskManager, self).__init__()
+        super().__init__()
         self.num_tasks = num_tasks
         import math
 
