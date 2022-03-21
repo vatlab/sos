@@ -244,7 +244,7 @@ def cmd_convert(args, unknown_args):
                 converter.convert(args.from_file, args.to_file, args,
                                   unknown_args)
                 return
-            elif entrypoint.name == args.converter_name + ".func":
+            if entrypoint.name == args.converter_name + ".func":
                 func = entrypoint.load()
                 func(args.from_file, args.to_file, args, unknown_args)
                 return
