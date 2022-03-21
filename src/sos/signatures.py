@@ -59,7 +59,7 @@ class StepSignatures(SignatureDB):
     _write_query = "INSERT OR REPLACE INTO steps VALUES (?, ?)"
 
     def __init__(self):
-        super(StepSignatures, self).__init__()
+        super().__init__()
 
     def get(self, step_id: str):
         try:
