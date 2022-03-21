@@ -1217,7 +1217,7 @@ class Base_Executor:
                                 proc.set_status("failed")
                                 if env.config["error_mode"] == "abort":
                                     manager.stop_dag(dag)
-                        if res[0] == "missing_target":
+                        elif res[0] == "missing_target":
                             # the target that is missing from the running step
                             missed = res[1]
                             if hasattr(runnable, "_from_nested"):
@@ -1381,7 +1381,7 @@ class Base_Executor:
                             raise RuntimeError(
                                 f"Unexpected value from step {short_repr(res)}")
                         continue
-                    elif isinstance(res, str):
+                    if isinstance(res, str):
                         raise RuntimeError(
                             f"Unexpected value from step {short_repr(res)}")
 
