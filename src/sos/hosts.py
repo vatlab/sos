@@ -136,7 +136,7 @@ class LocalHost(object):
         config: Dict[str, Union[str, int, List[str]]],
         test_connection: bool = True,
     ) -> None:
-        super(LocalHost, self).__init__()
+        super().__init__()
 
         # even if the config has an alias, we use localhost to make it clear that the host is localhost
         self.alias = config.get("alias", "localhost")
