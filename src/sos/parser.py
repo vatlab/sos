@@ -199,17 +199,17 @@ def replace_sigil(text: str, sigil: str) -> str:
             #
             # we need to include ] in expression
             #
-            for n in range(1, len(rhs_pieces) + 1):
-                if valid_expr_till(r.join(rhs_pieces[:n])) > 0:
-                    final_text += (
-                        pieces[0].replace("{", "{{").replace("}", "}}") + "{" +
-                        r.join(rhs_pieces[:n]) + "}")
-                    text = r.join(rhs_pieces[n:])
-                    break
-                # the last one, still not valid
-                if n == len(rhs_pieces):
-                    raise ValueError(
-                        f"Invalid f-string {text}: invalid expression")
+        for n in range(1, len(rhs_pieces) + 1):
+            if valid_expr_till(r.join(rhs_pieces[:n])) > 0:
+                final_text += (
+                    pieces[0].replace("{", "{{").replace("}", "}}") + "{" +
+                    r.join(rhs_pieces[:n]) + "}")
+                text = r.join(rhs_pieces[n:])
+                break
+            # the last one, still not valid
+            if n == len(rhs_pieces):
+                raise ValueError(
+                    f"Invalid f-string {text}: invalid expression")
     # finally, replace LSIGIL etc
     return final_text
 
