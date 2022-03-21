@@ -346,7 +346,7 @@ class SoS_Worker(mp.Process):
             return work["section"].step_name()
         if "wf" in work:
             return work["workflow_id"]
-        elif "task_id" in work:
+        if "task_id" in work:
             return work["task_id"]
         return "substep"
 
