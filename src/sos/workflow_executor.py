@@ -1790,9 +1790,8 @@ class Base_Executor:
                                 # the target is resolved and the step can continue
                                 runnable._socket = proc.socket
                             continue
-                        else:
-                            raise RuntimeError(
-                                f"Unexpected value from step {short_repr(res)}")
+                        raise RuntimeError(
+                            f"Unexpected value from step {short_repr(res)}")
 
                     # in a nested workflow, the manager manages all dummy nodes with a fake
                     # process but real socket. When the step is done. The socket needs to be
