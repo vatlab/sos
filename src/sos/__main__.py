@@ -1560,7 +1560,7 @@ def cmd_execute(args, workflow_args):
                 env.log_to_file("TASK", f"Put results for {args.tasks}")
             res = host.retrieve_results(args.tasks)
             return
-        elif all(x != "pending" for x in res) and not args.wait:
+        if all(x != "pending" for x in res) and not args.wait:
             return
         elif any(x in ("pending", "running", "submitted") for x in res):
             continue
