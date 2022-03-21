@@ -297,7 +297,7 @@ class sos_step(BaseTarget):
     """A target for a step of sos."""
 
     def __init__(self, step_name, **kwargs):
-        super(sos_step, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._step_name = str(step_name)
 
     def target_exists(self, mode="any"):
