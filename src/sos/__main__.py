@@ -1560,11 +1560,12 @@ def cmd_execute(args, workflow_args):
                 env.log_to_file("TASK", f"Put results for {args.tasks}")
             res = host.retrieve_results(args.tasks)
             return
-        if all(x != "pending" for x in res) and not args.wait:
+        elif all(x != "pending" for x in res) and not args.wait:
             return
-        if any(x in ("pending", "running", "submitted") for x in res):
+        elif any(x in ("pending", "running", "submitted") for x in res):
             continue
-        raise RuntimeError("Job returned with status {}".format(res))
+        else:
+            raise RuntimeError("Job returned with status {}".format(res))
         time.sleep(0.01)
 
 
@@ -2697,16 +2698,15 @@ def add_sub_parser(subparsers, parser, name=None, hidden=False):
             parents=[parser],
             add_help=False,
         )
-    else:
-        return subparsers.add_parser(
-            parser.prog if name is None else name,
-            description=parser.description,
-            epilog=parser.epilog,
-            help=parser.short_description
-            if hasattr(parser, "short_description") else parser.description,
-            parents=[parser],
-            add_help=False,
-        )
+    return subparsers.add_parser(
+        parser.prog if name is None else name,
+        description=parser.description,
+        epilog=parser.epilog,
+        help=parser.short_description
+        if hasattr(parser, "short_description") else parser.description,
+        parents=[parser],
+        add_help=False,
+    )
 
 
 def main():
