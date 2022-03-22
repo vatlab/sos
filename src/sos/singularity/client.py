@@ -232,16 +232,14 @@ class SoS_SingularityClient:
             ctx, cname = image.split('://', 1)
             if ctx == 'file':
                 return image
-            else:
-                return os.path.join(
-                    lib_path,
-                    cname.replace('/', '-').replace(':', '-') + '.sif')
-        elif os.path.isfile(image):
+            return os.path.join(
+                lib_path,
+                cname.replace('/', '-').replace(':', '-') + '.sif')
+        if os.path.isfile(image):
             # if image is a filename, ok
             return image
-        else:
-            # otherwise assuming it is an image in SoS Singulariry Library
-            return os.path.join(lib_path, image)
+        # otherwise assuming it is an image in SoS Singulariry Library
+        return os.path.join(lib_path, image)
 
     def pull(self, image):
         self._ensure_singularity()
@@ -291,8 +289,7 @@ class SoS_SingularityClient:
         if not path(image_file).exists():
             raise ValueError(
                 f'Image {image_file} does not exist after pulling {image}.')
-        else:
-            print(f'HINT: Singularity image {image} is now up to date')
+        print(f'HINT: Singularity image {image} is now up to date')
         send_message_to_controller(
             ['resource', 'singularity_image', 'available', image])
 

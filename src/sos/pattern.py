@@ -110,10 +110,9 @@ def apply_wildcards(
         except KeyError as ex:
             if keep_dynamic:
                 return f"{{{name}}}"
-            elif fill_missing:
+            if fill_missing:
                 return dynamic_fill
-            else:
-                raise RuntimeError(f"Wildcard apply error: {ex} ({wildcards})") from ex
+            raise RuntimeError(f"Wildcard apply error: {ex} ({wildcards})") from ex
 
     return SOS_WILDCARD.sub(format_match, pattern)
 

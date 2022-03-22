@@ -401,7 +401,6 @@ class BaseTaskExecutor(object):
         # node. The "n_procs" is the "number of cpus per job per node", which,
         # is "cores" (per task) * "n_workers" (per node). Therefore,
         # "n_procs" should not be used.
-        
         n_nodes, _ = self._parse_num_workers(env.config["worker_procs"])
 
         # regular trunk_workers = ?? (0 was used as default)
@@ -581,20 +580,18 @@ class BaseTaskExecutor(object):
                     val = val.rsplit(":", 1)[-1]
                 n_workers = int(val.rsplit(":", 1)[-1])
                 return len(num_workers), None if n_workers <= 0 else n_workers
-            else:
-                return None, None
-        elif isinstance(num_workers, str):
+            return None, None
+        if isinstance(num_workers, str):
             if ":" in num_workers:
                 num_workers = num_workers.rsplit(":", 1)[-1]
             n_workers = int(num_workers.rsplit(":", 1)[-1])
             return 1, None if n_workers <= 0 else n_workers
-        elif isinstance(num_workers, int) and num_workers >= 1:
+        if isinstance(num_workers, int) and num_workers >= 1:
             return 1, num_workers
-        elif num_workers is None:
+        if num_workers is None:
             return None, None
-        else:
-            raise RuntimeError(
-                f"Unacceptable value for parameter trunk_workers {num_workers}")
+        raise RuntimeError(
+            f"Unacceptable value for parameter trunk_workers {num_workers}")
 
     def _append_subtask_outputs(self, result):
         """

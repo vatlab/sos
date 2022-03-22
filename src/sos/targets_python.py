@@ -121,15 +121,14 @@ class Py_Module(BaseTarget):
     def target_exists(self, mode='any'):
         if (self._module, self._version) in self.LIB_STATUS_CACHE:
             return self.LIB_STATUS_CACHE[(self._module, self._version)]
-        else:
-            ret = self._install(self._module, self._autoinstall)
-            self.LIB_STATUS_CACHE = {
-                x: y
-                for x, y in self.LIB_STATUS_CACHE.items()
-                if x[0] != self._module
-            }
-            self.LIB_STATUS_CACHE[(self._module, self._version)] = ret
-            return ret
+        ret = self._install(self._module, self._autoinstall)
+        self.LIB_STATUS_CACHE = {
+            x: y
+            for x, y in self.LIB_STATUS_CACHE.items()
+            if x[0] != self._module
+        }
+        self.LIB_STATUS_CACHE[(self._module, self._version)] = ret
+        return ret
 
     def target_name(self):
         return self._module
