@@ -1939,7 +1939,7 @@ class Base_Executor:
                 exec_error.append(
                     self.workflow.name,
                     RuntimeError(
-                        f'{len(sections)} failed step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
+                        f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
                     ),
                 )
             parent_socket.send(encode_msg(exec_error))
