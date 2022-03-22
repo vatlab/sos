@@ -47,7 +47,7 @@ class SoS_DockerClient:
             # some system does not have cat or grep
             self.tot_mem = None
         return self.tot_mem
- 
+
 def _is_image_avail(self, image):
         # the command will return ID of the image if it exists
         try:

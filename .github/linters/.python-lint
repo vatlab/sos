@@ -71,13 +71,13 @@ disable=
 	arguments-renamed,
 	attribute-defined-outside-init,
 	backtick,
+	bad-indentation,
 	bad-inline-option,
 	bad-python3-import,
 	bare-except,
 	basestring-builtin,
 	broad-except,
 	buffer-builtin,
-	chained-comparison
 	chained-comparison,
 	cmp-builtin,
 	cmp-method,
@@ -87,16 +87,10 @@ disable=
 	consider-iterating-dictionary,
 	consider-using-dict-items,
 	consider-using-f-string,
-	consider-using-generator
 	consider-using-generator,
-	consider-using-get
 	consider-using-get,
-	consider-using-in
 	consider-using-in,
 	consider-using-set-comprehension,
-	consider-using-set-comprehension,
-	consider-using-with,
-	consider-using-with,
 	consider-using-with,
 	cyclic-import,
 	dangerous-default-value,
@@ -136,7 +130,6 @@ disable=
 	import-outside-toplevel,
 	import-self,
 	import-star-module-level,
-	inconsistent-return-statements
 	inconsistent-return-statements,
 	indexing-exception,
 	input-builtin,
@@ -162,13 +155,8 @@ disable=
 	next-method-defined,
 	no-absolute-import,
 	no-else-break,
-	no-else-break,
 	no-else-continue,
-	no-else-continue,
-	no-else-raise
-	no-else-raise
 	no-else-raise,
-	no-else-return,
 	no-else-return,
 	no-member,
 	no-name-in-module,
@@ -190,8 +178,6 @@ disable=
 	raw_input-builtin,
 	raw-checker-failed,
 	rdiv-method,
-	redefined-argument-from-local
-	redefined-argument-from-local
 	redefined-argument-from-local,
 	redefined-builtin,
 	redefined-outer-name,
@@ -203,23 +189,19 @@ disable=
 	self-cls-assignment,
 	setslice-method,
 	signature-differs,
-	simplifiable-if-expression
 	simplifiable-if-expression,
 	standarderror-builtin,
 	super-init-not-called,
-	super-with-arguments,
 	super-with-arguments,
 	suppressed-message,
 	sys-max-int,
 	too-few-public-methods,
 	too-many-ancestors,
 	too-many-arguments,
-	too-many-boolean-expressions
 	too-many-boolean-expressions,
 	too-many-branches,
 	too-many-lines,
 	too-many-locals,
-	too-many-nested-blocks,
 	too-many-nested-blocks,
 	too-many-public-methods,
 	too-many-return-statements,
@@ -229,7 +211,6 @@ disable=
 	undefined-variable,
 	unichr-builtin,
 	unicode-builtin,
-	unnecessary-comprehension
 	unnecessary-comprehension,
 	unnecessary-lambda,
 	unneeded-not,
@@ -238,11 +219,9 @@ disable=
 	unsubscriptable-object,
 	unused-argument,
 	unused-import,
-	use-a-generator
 	use-a-generator,
 	use-symbolic-message-instead,
 	useless-object-inheritance,
-	useless-return
 	useless-return,
 	useless-super-delegation,
 	useless-suppression,
