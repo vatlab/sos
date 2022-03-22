@@ -400,8 +400,7 @@ class BaseTaskExecutor(object):
         # From the point of cluster system, this is only one "job" on each
         # node. The "n_procs" is the "number of cpus per job per node", which,
         # is "cores" (per task) * "n_workers" (per node). Therefore,
-        # "n_procs" should not be used.
-        
+        # "n_procs" should not be used.      
         n_nodes, _ = self._parse_num_workers(env.config["worker_procs"])
 
         # regular trunk_workers = ?? (0 was used as default)
