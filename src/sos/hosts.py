@@ -538,8 +538,8 @@ class RemoteHost(object):
                 dest = self.path_map[k] + dest[len(k):]
             else:
                 env.logger.debug(
-                    f"Path {source} is not under any specified paths of localhost and is mapped to {dest} on remote host."
-                )
+                f"Path {source} is not under any specified paths of localhost and is mapped to {dest} on remote host."
+            )
             return dest.replace("\\", "/")
         elif isinstance(source, (Sequence, set, sos_targets)):
             ret = [self._map_var(x) for x in source]
