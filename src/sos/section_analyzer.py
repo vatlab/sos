@@ -357,7 +357,7 @@ def get_step_depends(section):
                     "STEP",
                     f"Args {value} in depends cannot be determined: {e}")
         finally:
-            [env.sos_dict.dict().pop(x) for x in svars]
+            old_values = [env.sos_dict.dict().pop(x) for x in svars]
             env.sos_dict.quick_update(old_values)
     return step_depends, dynamic_depends
 
