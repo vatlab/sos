@@ -230,11 +230,34 @@ disable=print-statement,
 	chained-comparison,
 	arguments-renamed,
 	abstract-method,
+	no-else-continue,
+	no-else-return,
+	inconsistent-return-statements
+	super-with-arguments,
+	consider-using-with,
+	too-many-nested-blocks,
+	no-else-break,
+	consider-using-with,
+	consider-using-set-comprehension,
+	no-else-raise
+	redefined-argument-from-local
+	consider-using-in
+	no-else-raise
+	consider-using-generator
+	consider-using-get
+	use-a-generator
+	useless-return	
+	unnecessary-comprehension
+	simplifiable-if-expression
+	too-many-boolean-expressions
+	chained-comparison
+	redefined-argument-from-local
+ 
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
 # multiple time (only on the command line, not in the configuration file where
-# it should appear only once). See also the "--disable" option for examples.
+# it should appear only once). See also the "--disable" option for example.
 enable=c-extension-no-member
 
 [REPORTS]
