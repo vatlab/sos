@@ -202,7 +202,7 @@ class WorkflowEngine:
 class BackgroundProcess_WorkflowEngine(WorkflowEngine):
 
     def __init__(self, agent):
-        super(BackgroundProcess_WorkflowEngine, self).__init__(agent)
+        super().__init__(agent)
         if "workflow_template" in self.config:
             self.workflow_template = self.config["workflow_template"].replace(
                 "\r\n", "\n")
