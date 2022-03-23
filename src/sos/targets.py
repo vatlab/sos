@@ -2385,7 +2385,6 @@ class RuntimeInfo(InMemorySignature):
             raise ValueError(
                 f"Cannot write signature with undetermined output {self.output_files}"
             )
-<<<<<<< HEAD
         if "TARGET" in env.config["SOS_DEBUG"] or "ALL" in env.config[
                 "SOS_DEBUG"]:
             env.log_to_file(
@@ -2393,16 +2392,6 @@ class RuntimeInfo(InMemorySignature):
                 f"write signature {self.sig_id} with output {self.output_files}",
             )
         ret = super(RuntimeInfo, self).write()
-=======
-        else:
-            if "TARGET" in env.config["SOS_DEBUG"] or "ALL" in env.config[
-                    "SOS_DEBUG"]:
-                env.log_to_file(
-                    "TARGET",
-                    f"write signature {self.sig_id} with output {self.output_files}",
-                )
-        ret = super().write()
->>>>>>> c124ac4ddf96e5d56c982d5b6de160ef66d35b38
         if ret is False:
             env.logger.debug(f"Failed to write signature {self.sig_id}")
             return ret
