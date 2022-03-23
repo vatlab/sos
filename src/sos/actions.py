@@ -551,14 +551,14 @@ class SoS_ExecuteScript:
                         )
                         out, err = child.communicate()
                         if "stdout" in kwargs:
-                            if kwargs["stdout"] is not False and len(out):
+                            if kwargs["stdout"] is not False and len(out) != 0:
                                 with open(kwargs["stdout"], "ab") as so:
                                     so.write(out)
                         else:
                             sys.stdout.write(out.decode())
 
                         if "stderr" in kwargs:
-                            if kwargs["stderr"] is not False and len(err):
+                            if kwargs["stderr"] is not False and len(err) != 0:
                                 with open(kwargs["stderr"], "ab") as se:
                                     se.write(err)
                         else:

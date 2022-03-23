@@ -96,7 +96,7 @@ class R_library(BaseTarget):
                 for x, y in zip(version, operators)
             ])
         #
-        if len(glob_wildcards("{repo}@{pkg}", [name])["repo"]):
+        if len(glob_wildcards("{repo}@{pkg}", [name])["repo"]) > 0:
             # package is from github
             self._install("remotes>=2.0.0", None, repos)
             install_script = f"""
