@@ -190,12 +190,11 @@ class TaskEngine(threading.Thread):
                         verbosity=3,
                         numeric_times=True)
                     continue
-                elif self._status_checker.running():
+                if self._status_checker.running():
                     time.sleep(0.01)
                     continue
-                else:
-                    status_output = self._status_checker.result()
-                    self._status_checker = None
+                status_output = self._status_checker.result()
+                self._status_checker = None
                 #
                 for line in status_output.splitlines():
                     if not line.strip():
@@ -322,14 +321,13 @@ class TaskEngine(threading.Thread):
                             # env.logger.info(f'{tid} ``runnng``')
                             removed_from_pending.add(tid)
                             continue
-                        elif tid in self.canceled_tasks:
+                        if tid in self.canceled_tasks:
                             # the job is canceled while being prepared to run
                             removed_from_pending.add(tid)
                             # env.logger.info(f'{tid} ``canceled``')
                             continue
-                        else:
-                            slot.append(tid)
-                            n_submitted += 1
+                        slot.append(tid)
+                        n_submitted += 1
 
                         if len(slot) == self.batch_size or idx == len(self.pending_tasks) - 1 \
                             or n_submitted >= self.max_running_jobs - num_active_tasks:
@@ -412,7 +410,7 @@ class TaskEngine(threading.Thread):
                 # because we do not know if the user asks to rerun (-s force), we have to
                 # resubmit the job. In the case of not-rerun, the task would be marked
                 # completed very soon.
-                elif self.task_status[task_id] == 'completed':
+                if self.task_status[task_id] == 'completed':
                     if task_id in self.running_pending_tasks:
                         self.running_pending_tasks.pop(task_id)
                     if task_id in env.config.get('resumed_tasks', []):
@@ -423,8 +421,7 @@ class TaskEngine(threading.Thread):
                         # self.notify_controller(['new-status', task_id, 'completed'])
                         env.logger.info(f'{task_id} ``resume with completed``')
                         return 'completed'
-                    else:
-                        env.logger.info(f'{task_id} ``re-execute completed``')
+                    env.logger.info(f'{task_id} ``re-execute completed``')
                 elif self.task_status[task_id] != 'new':
                     env.logger.info(
                         f'{task_id} ``restart`` from status ``{self.task_status[task_id]}``'

@@ -175,7 +175,7 @@ def SoS_Action(
             if "active" in kwargs:
                 if kwargs["active"] is False:
                     return None
-                elif kwargs["active"] is True:
+                if kwargs["active"] is True:
                     pass
                 elif isinstance(kwargs["active"], int):
                     if (kwargs["active"] >= 0 and
@@ -256,17 +256,15 @@ def SoS_Action(
                             f"Action ``{func.__name__}`` is ``ignored`` due to saved signature"
                         )
                         return None
-                    else:
-                        env.logger.debug(f"Signature mismatch: {matched}")
+                    env.logger.debug(f"Signature mismatch: {matched}")
                 elif env.config["sig_mode"] == "assert":
                     matched = sig.validate()
                     if isinstance(matched, str):
                         raise RuntimeError(f"Signature mismatch: {matched}")
-                    else:
-                        env.logger.info(
-                            f"Action ``{func.__name__}`` is ``ignored`` with matching signature"
-                        )
-                        return None
+                    env.logger.info(
+                        f"Action ``{func.__name__}`` is ``ignored`` with matching signature"
+                    )
+                    return None
                 elif env.config["sig_mode"] == "build":
                     # build signature require existence of files
                     if sig.write():
@@ -914,12 +912,12 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 target.write_sig()
                 prog.close()
                 return True
-            elif env.config["sig_mode"] == "ignore":
+            if env.config["sig_mode"] == "ignore":
                 prog.set_description(message + ": \033[32m use existing\033[0m")
                 prog.update()
                 prog.close()
                 return True
-            elif env.config["sig_mode"] in ("default", "skip", "distributed"):
+            if env.config["sig_mode"] in ("default", "skip", "distributed"):
                 prog.update()
                 if sig.validate():
                     prog.set_description(message +
@@ -927,11 +925,10 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     prog.update()
                     prog.close()
                     return True
-                else:
-                    prog.set_description(message +
-                                         ":\033[91m Signature mismatch\033[0m")
-                    target.write_sig()
-                    prog.update()
+                prog.set_description(message +
+                                    ":\033[91m Signature mismatch\033[0m")
+                target.write_sig()
+                prog.update()
         #
         prog = ProgressBar(
             desc=message,
@@ -1019,10 +1016,9 @@ def downloadURL(URL, dest, decompress=False, index=None):
                 for name in names:
                     if os.path.isdir(os.path.join(dest_dir, name)):
                         continue
-                    elif not os.path.isfile(os.path.join(dest_dir, name)):
+                    if not os.path.isfile(os.path.join(dest_dir, name)):
                         return False
-                    else:
-                        decompressed += 1
+                    decompressed += 1
             elif tarfile.is_tarfile(dest):
                 prog.set_description(message + ":\033[91m Decompressing\033[0m")
                 prog.update()
@@ -1034,8 +1030,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
                     for name in files:
                         if not os.path.isfile(os.path.join(dest_dir, name)):
                             return False
-                        else:
-                            decompressed += 1
+                        decompressed += 1
             elif dest.endswith(".gz"):
                 prog.set_description(message + ":\033[91m Decompressing\033[0m")
                 prog.update()
@@ -1166,10 +1161,9 @@ def download(URLs, dest_dir=".", dest_file=None, decompress=False, max_jobs=5):
     if failed:
         if len(urls) == 1:
             raise RuntimeError("Failed to download {urls[0]}")
-        else:
-            raise RuntimeError(
-                f"Failed to download {failed[0]} ({len(failed)} out of {len(urls)})"
-            )
+        raise RuntimeError(
+            f"Failed to download {failed[0]} ({len(failed)} out of {len(urls)})"
+        )
     return 0
 
 
