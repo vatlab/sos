@@ -587,10 +587,9 @@ class Base_Executor:
                         resolved += 1
                         # dag.show_nodes()
                         continue
-                    else:
-                        raise RuntimeError(
-                            f'Multiple steps {", ".join(x.step_name() for x in mo)} to generate target {target}'
-                        )
+                    raise RuntimeError(
+                        f'Multiple steps {", ".join(x.step_name() for x in mo)} to generate target {target}'
+                    )
                 #
                 # m0[0] can be a tuple
                 #   section, context
@@ -628,8 +627,7 @@ class Base_Executor:
             if not env.config["trace_existing"] and not traced:
                 if added_node == 0:
                     break
-                else:
-                    continue
+                continue
 
             existing_targets = (
                 dag.dangling(targets)[1]
@@ -895,10 +893,9 @@ class Base_Executor:
             )
         if len(res) > 1:
             return ", ".join(res[:-1]) + " and " + res[-1]
-        elif len(res) == 1:
+        if len(res) == 1:
             return res[0]
-        else:
-            return "no step executed"
+        return "no step executed"
 
     def step_completed(self, res, dag, runnable):
         # this function can be called by both master step and nested step
@@ -1384,7 +1381,7 @@ class Base_Executor:
                             raise RuntimeError(
                                 f"Unexpected value from step {short_repr(res)}")
                         continue
-                    elif isinstance(res, str):
+                    if isinstance(res, str):
                         raise RuntimeError(
                             f"Unexpected value from step {short_repr(res)}")
 
@@ -1624,14 +1621,13 @@ class Base_Executor:
 
                 if manager.all_done():
                     break
-                elif dag.degraded() and manager.all_pending():
+                if dag.degraded() and manager.all_pending():
                     env.log_to_file(
                         "EXECUTOR",
                         f'Master terminate because {"degration" if dag.degraded() else "" } {" all pending" if manager.all_pending() else ""}',
                     )
                     break
-                else:
-                    time.sleep(0.1)
+                time.sleep(0.1)
         except KeyboardInterrupt as e:
             if exec_error.errors:
                 pending_steps = dag.pending()[1]
@@ -1688,7 +1684,7 @@ class Base_Executor:
                     self.workflow.name,
                     RuntimeError("Exits with " + " and ".join(msg)))
             raise exec_error
-        elif "pending_tasks" not in wf_result or not wf_result["pending_tasks"]:
+        if "pending_tasks" not in wf_result or not wf_result["pending_tasks"]:
             self.finalize_and_report()
         else:
             # exit with pending tasks
@@ -1782,7 +1778,7 @@ class Base_Executor:
                                 # target so the workflow should stop
                                 proc.socket.send(encode_msg(False))
                             continue
-                        elif res[0] == "dependent_target":
+                        if res[0] == "dependent_target":
                             reply = self.handle_dependent_target(
                                 dag, sos_targets(res[1:]), runnable)
                             proc.socket.send(encode_msg(reply))
@@ -1794,9 +1790,8 @@ class Base_Executor:
                                 # the target is resolved and the step can continue
                                 runnable._socket = proc.socket
                             continue
-                        else:
-                            raise RuntimeError(
-                                f"Unexpected value from step {short_repr(res)}")
+                        raise RuntimeError(
+                            f"Unexpected value from step {short_repr(res)}")
 
                     # in a nested workflow, the manager manages all dummy nodes with a fake
                     # process but real socket. When the step is done. The socket needs to be
@@ -1902,8 +1897,7 @@ class Base_Executor:
                     break
                 # elif dag.degraded() and manager.all_pending():
                 #     break
-                else:
-                    time.sleep(0.01)
+                time.sleep(0.01)
         except KeyboardInterrupt as e:
             if exec_error.errors:
                 pending_steps = dag.pending()[1]

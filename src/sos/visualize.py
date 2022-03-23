@@ -38,10 +38,9 @@ class Visualizer:
     def preview(self, df):
         if self.style == "table":
             return self._handle_table(df)
-        elif self.style == "scatterplot":
+        if self.style == "scatterplot":
             return self._handle_scatterplot(df)
-        else:
-            raise ValueError(f"Unknown style {self.style}")
+        raise ValueError(f"Unknown style {self.style}")
 
     def get_tid(self, vis_type):
         alphabet = string.ascii_lowercase + string.digits
@@ -179,8 +178,7 @@ class Visualizer:
     def _to_list(self, arr):
         if "int" in arr.dtype.name:
             return [int(x) for x in arr]
-        else:
-            return [float(x) for x in arr]
+        return [float(x) for x in arr]
 
     def _natural_ticks(self, rg):
         # given a range, get natural ticks such as 0.1, 1, 10, 100, ...

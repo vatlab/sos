@@ -165,8 +165,7 @@ class SoS_DockerClient:
                 ['resource', 'docker_image', 'unavailable', image])
             raise RuntimeError(
                 f'Failed to pull docker image {image}:\n {err_msg}')
-        else:
-            print(f'HINT: Docker image {image} is now up to date')
+        print(f'HINT: Docker image {image} is now up to date')
         send_message_to_controller(
             ['resource', 'docker_image', 'available', image])
         self.pulled_images.add(image)
