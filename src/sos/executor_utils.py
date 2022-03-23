@@ -59,14 +59,13 @@ def __null_func__(*args, **kwargs) -> Any:
     def _flatten(x):
         if isinstance(x, str):
             return [x]
-        elif isinstance(x, sos_targets):
+        if isinstance(x, sos_targets):
             return [x]
-        elif isinstance(x, Sequence):
+        if isinstance(x, Sequence):
             return sum((_flatten(k) for k in x), [])
-        elif hasattr(x, "__flattenable__"):
+        if hasattr(x, "__flattenable__"):
             return _flatten(x.flatten())
-        else:
-            return [x]
+        return [x]
 
     return _flatten(args), kwargs
 
@@ -186,8 +185,7 @@ def get_traceback_msg(e):
 {error_class:42}Traceback (most recent call last)
 {msg}
 {error_class}: {detail}"""
-    else:
-        return f"{error_class}: {detail}"
+    return f"{error_class}: {detail}"
 
 
 def prepare_env(gdef="", gvars={}, extra_vars={}, host="localhost"):
@@ -421,10 +419,9 @@ def validate_step_sig(sig):
                 f'``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` due to saved signature'
             )
             return matched
-        else:
-            env.logger.debug(f"Signature mismatch: {matched}")
-            return {}
-    elif env.config["sig_mode"] == "assert":
+        env.logger.debug(f"Signature mismatch: {matched}")
+        return {}
+    if env.config["sig_mode"] == "assert":
         matched = sig.validate()
         if isinstance(matched, str):
             raise RuntimeError(f"Signature mismatch: {matched}")
@@ -432,7 +429,7 @@ def validate_step_sig(sig):
             f'Substep ``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` with matching signature'
         )
         return matched
-    elif env.config["sig_mode"] == "build":
+    if env.config["sig_mode"] == "build":
         # build signature require existence of files
         if sig.write():
             env.logger.info(

@@ -100,8 +100,7 @@ class TaskManager:
     def index_of(self, task_id):
         if task_id in self._all_ids:
             return self._all_ids.index(task_id)
-        else:
-            return -1
+        return -1
 
     def has_output(self, output):
         if not isinstance(output, Sequence) or not self._unsubmitted_slots:
@@ -209,20 +208,19 @@ def expand_input_files(*args, **kwargs):
     if not args and not kwargs:
         return env.sos_dict["step_input"]
     # if only group_by ...
-    elif not args and all(x in SOS_TARGETS_OPTIONS for x in kwargs.keys()):
+    if not args and all(x in SOS_TARGETS_OPTIONS for x in kwargs.keys()):
         return sos_targets(
             env.sos_dict["step_input"],
             _verify_existence=env.config["error_mode"] != "ignore",
             **kwargs,
         )
-    else:
-        return sos_targets(
-            *args,
-            **kwargs,
-            _verify_existence=env.config["error_mode"] != "ignore",
-            _undetermined=False,
-            _source=env.sos_dict["step_name"],
-        )
+    return sos_targets(
+        *args,
+        **kwargs,
+        _verify_existence=env.config["error_mode"] != "ignore",
+        _undetermined=False,
+        _source=env.sos_dict["step_name"],
+    )
 
 
 def expand_depends_files(*args, **kwargs):
@@ -246,12 +244,11 @@ def expand_output_files(value, *args, **kwargs):
     if any(isinstance(x, dynamic) for x in args) or any(
             isinstance(y, dynamic) for y in kwargs.values()):
         return sos_targets(_undetermined=value)
-    else:
-        return sos_targets(
-            *args,
-            **kwargs,
-            _undetermined=False,
-            _source=env.sos_dict["step_name"])
+    return sos_targets(
+        *args,
+        **kwargs,
+        _undetermined=False,
+        _source=env.sos_dict["step_name"])
 
 
 def parse_shared_vars(option):
@@ -319,8 +316,7 @@ def evaluate_shared(vars, option):
                     try:
                         if var == val:
                             continue
-                        else:
-                            shared_vars[var] = SoS_eval(val)
+                        shared_vars[var] = SoS_eval(val)
                     except Exception as e:
                         raise RuntimeError(
                             f"Failed to evaluate shared variable {var} from expression {val}: {e}"
@@ -635,7 +631,7 @@ class Base_Step_Executor:
             raise RuntimeError(
                 f'Task {task_id} generated for (_index={env.sos_dict["_index"]}) is identical to a previous one (_index={self.task_manager.index_of(task_id)}).'
             )
-        elif self.task_manager.has_output(task_vars["_output"]):
+        if self.task_manager.has_output(task_vars["_output"]):
             raise RuntimeError(
                 f'Task produces output files {", ".join(task_vars["_output"])} that are output of other tasks.'
             )
@@ -832,7 +828,7 @@ class Base_Step_Executor:
             if "exception" in res:
                 if isinstance(res["exception"], ProcessKilled):
                     raise res["exception"]
-                elif isinstance(res["exception"], RemovedTarget):
+                if isinstance(res["exception"], RemovedTarget):
                     pass
                 elif env.config["error_mode"] == "ignore":
                     idx_msg = (
@@ -1832,7 +1828,7 @@ class Base_Step_Executor:
                             clear_output()
                             if env.config["error_mode"] == "abort":
                                 raise
-                            elif env.config["error_mode"] == "ignore":
+                            if env.config["error_mode"] == "ignore":
                                 idx_msg = (
                                     f'(id={env.sos_dict["step_id"]}, index={idx})'
                                     if len(self._substeps) > 1 else

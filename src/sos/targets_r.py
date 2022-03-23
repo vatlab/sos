@@ -201,17 +201,16 @@ class R_library(BaseTarget):
                 self._autoinstall) in self.LIB_STATUS_CACHE:
             return self.LIB_STATUS_CACHE[(self._library, self._version,
                                           self._autoinstall)]
-        else:
-            # check if R is installed
-            if not shutil.which("Rscript"):
-                env.logger.debug(
-                    f'Target R_Library("{self._library}") does not exist because command Rscript is not found.'
-                )
-                return False
-            ret = self._install(self._library, self._version, self._repos)
-            self.LIB_STATUS_CACHE[(self._library, self._version,
-                                   self._autoinstall)] = ret
-            return ret
+        # check if R is installed
+        if not shutil.which("Rscript"):
+            env.logger.debug(
+                f'Target R_Library("{self._library}") does not exist because command Rscript is not found.'
+            )
+            return False
+        ret = self._install(self._library, self._version, self._repos)
+        self.LIB_STATUS_CACHE[(self._library, self._version,
+                                self._autoinstall)] = ret
+        return ret
 
     def target_name(self):
         return self._library
@@ -221,8 +220,7 @@ class R_library(BaseTarget):
             return (
                 f'{self.__class__.__name__}("{self.target_name()}", {self._version!r})'
             )
-        else:
-            return super(R_library, self).__repr__()
+        return super(R_library, self).__repr__()
 
     def target_signature(self, mode="any"):
         # we are supposed to get signature of the library, but we cannot
