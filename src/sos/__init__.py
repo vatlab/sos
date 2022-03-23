@@ -68,7 +68,7 @@ def execute_workflow(script: str,
         script = SoS_Script(textwrap.dedent(script))
     except Exception as e:
         # show script with error
-        raise ValueError(f'Failed to parse script {script}: {e}')
+        raise ValueError(f'Failed to parse script {script}: {e}') from e
     #
     if workflow and targets:
         raise ValueError(

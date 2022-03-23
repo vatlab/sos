@@ -148,7 +148,7 @@ class LazyRegex(object):
         except re.error as e:
             # raise ValueError instead of re.error as this gives a
             # cleaner message to the user.
-            raise ValueError('"' + args[0] + '" ' + str(e))
+            raise ValueError('"' + args[0] + '" ' + str(e)) from e
 
     def __getstate__(self):
         """Return the state to use when pickling."""

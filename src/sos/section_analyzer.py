@@ -221,7 +221,7 @@ def get_all_used_vars(section):
                     all_used_vars |= set(pws)
                 except Exception as e:
                     raise ValueError(
-                        f"Failed to parse parameter paired_with: {e}")
+                        f"Failed to parse parameter paired_with: {e}") from e
             if "group_with" in statement[2]:
                 try:
                     pws = get_names_of_param(
@@ -231,7 +231,7 @@ def get_all_used_vars(section):
                     all_used_vars |= set(pws)
                 except Exception as e:
                     raise ValueError(
-                        f"Failed to parse parameter group_with: {e}")
+                        f"Failed to parse parameter group_with: {e}") from e
             if "for_each" in statement[2]:
                 try:
                     pws = get_names_of_param(
@@ -241,7 +241,7 @@ def get_all_used_vars(section):
                     for pw in pws:
                         all_used_vars |= set(pw.split(","))
                 except Exception as e:
-                    raise ValueError(f"Failed to parse parameter for_each: {e}")
+                    raise ValueError(f"Failed to parse parameter for_each: {e}") from e
     if section.task:
         all_used_vars |= accessed_vars(section.task)
         all_used_vars |= accessed_vars(section.task_params, mode='eval')
@@ -391,7 +391,7 @@ def get_step_input(section, default_input):
             "sos_step": no_sos_step,
             "sos_variable": no_sos_variable,
         })
-        args, kwargs = SoS_eval(
+        args, _ = SoS_eval(
             f"__null_func__({stmt})", extra_dict=env.sos_dict.dict())
         if not args:
             if default_input is None:
@@ -534,7 +534,7 @@ def get_step_output(section, default_output, analysis_type):
                     isinstance(x, named_output) for x in default_output)):
                 raise RuntimeError(
                     f'Failed to determine input "{value}" of an auxiliary step: {e}'
-                )
+                ) from e
         finally:
             [env.sos_dict.dict().pop(x) for x in svars]
             env.sos_dict.quick_update(old_values)

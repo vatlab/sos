@@ -538,8 +538,8 @@ class RemoteHost(object):
                 dest = self.path_map[k] + dest[len(k):]
             else:
                 env.logger.debug(
-                f"Path {source} is not under any specified paths of localhost and is mapped to {dest} on remote host."
-            )
+                    f"Path {source} is not under any specified paths of localhost and is mapped to {dest} on remote host."
+                )
             return dest.replace("\\", "/")
         elif isinstance(source, (Sequence, set, sos_targets)):
             ret = [self._map_var(x) for x in source]
@@ -761,7 +761,7 @@ class RemoteHost(object):
                 except Exception as e:
                     raise RuntimeError(
                         f'Failed to copy {source} from {self.alias} using command "{cmd}": {e}'
-                    )
+                    ) from e
         return received
 
     #
@@ -859,7 +859,7 @@ class RemoteHost(object):
             except Exception as e:
                 raise ValueError(
                     f'Working directory {runtime["_runtime"]["workdir"]} does not exist on remote host {self.alias}: {e}'
-                )
+                ) from e
         elif path(runtime["_runtime"]["workdir"]).is_absolute():
             env.logger.debug(
                 f'Absolute path {path(runtime["_runtime"]["workdir"])} used as workdir.'
@@ -902,7 +902,7 @@ class RemoteHost(object):
         except subprocess.CalledProcessError as e:
             raise RuntimeError(
                 f"Failed to copy job {job_file} to {self.alias} using command {send_cmd}: {e}"
-            )
+            ) from e
 
     def check_output(self,
                      cmd: object,
@@ -923,7 +923,7 @@ class RemoteHost(object):
             )
         except Exception as e:
             raise ValueError(
-                f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})')
+                f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})') from e
         if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
             env.log_to_file("TASK", f"Executing command ``{cmd}``")
         try:
@@ -947,7 +947,7 @@ class RemoteHost(object):
                 },
             )
         except Exception as e:
-            raise ValueError(f"Failed to run command {cmd}: {e}")
+            raise ValueError(f"Failed to run command {cmd}: {e}") from e
         if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
             env.log_to_file("TASK", f"Executing command ``{cmd}``")
         try:
@@ -971,7 +971,7 @@ class RemoteHost(object):
                 },
             )
         except Exception as e:
-            raise ValueError(f"Failed to run command {cmd}: {e}")
+            raise ValueError(f"Failed to run command {cmd}: {e}") from e
         if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
             env.log_to_file("TASK", f"Executing command ``{cmd}``")
         if realtime:

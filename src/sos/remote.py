@@ -481,7 +481,7 @@ def create_public_key():
                 break
     except Exception as e:
         p.close()
-        raise RuntimeError(f"Failed to create a public key: {e}")
+        raise RuntimeError(f"Failed to create a public key: {e}") from e
 
 
 def setup_remote_access(cfg, hosts=[], password="", verbosity=1):
@@ -556,14 +556,14 @@ def login_host(cfg, host):
     try:
         h = Host(host, start_engine=False)
     except Exception as e:
-        raise ValueError(f"Unrecognized or invalid host {host}: {e}")
+        raise ValueError(f"Unrecognized or invalid host {host}: {e}") from e
 
     address, port = h._host_agent.address, h._host_agent.port
     try:
         env.logger.info(f"Running ``ssh {address} -p {port}``")
         os.execvp("ssh", ["ssh", address, "-p", str(port)])
     except Exception as e:
-        raise RuntimeError(f"Failed to log in to {host}: {e}")
+        raise RuntimeError(f"Failed to log in to {host}: {e}") from e
 
 
 def run_command_on_hosts(cfg, hosts, cmd, verbosity):

@@ -998,7 +998,7 @@ class Base_Executor:
         if total_added:
             if runnable._depends_targets.valid():
                 runnable._depends_targets.extend(targets)
-            for taget in targets:
+            for target in targets:
                 if runnable not in dag._all_depends_files[target]:
                     dag._all_depends_files[target].append(runnable)
             dag.build()
@@ -1162,8 +1162,8 @@ class Base_Executor:
             try:
                 named_targets = [named_output(x) for x in targets]
                 dag = self.initialize_dag(targets=named_targets)
-            except UnknownTarget:
-                raise RuntimeError(f"No step to generate target {targets}")
+            except UnknownTarget as e:
+                raise RuntimeError(f"No step to generate target {targets}") from e
 
         # manager of processes
         manager = ExecutionManager(name=self.workflow.name)
@@ -1632,9 +1632,9 @@ class Base_Executor:
                     break
                 else:
                     time.sleep(0.1)
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as e:
             if exec_error.errors:
-                failed_steps, pending_steps = dag.pending()
+                pending_steps = dag.pending()[1]
                 if pending_steps:
                     sections = [
                         self.workflow.section_by_id(
@@ -1646,7 +1646,7 @@ class Base_Executor:
                             f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
                         ),
                     )
-                    raise exec_error
+                    raise exec_error from e
             else:
                 raise
         # close all processes
@@ -1662,7 +1662,7 @@ class Base_Executor:
         )
 
         if exec_error.errors:
-            failed_steps, pending_steps = dag.pending()
+            pending_steps = dag.pending()[1]
             running_steps = dag.running()
 
             pending_sections = [
@@ -1904,9 +1904,9 @@ class Base_Executor:
                 #     break
                 else:
                     time.sleep(0.01)
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as e:
             if exec_error.errors:
-                failed_steps, pending_steps = dag.pending()
+                pending_steps = dag.pending()[1]
                 if pending_steps:
                     sections = [
                         self.workflow.section_by_id(
@@ -1918,7 +1918,7 @@ class Base_Executor:
                             f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'
                         ),
                     )
-                    raise exec_error
+                    raise exec_error from e
             else:
                 raise
         except Exception as e:
@@ -1931,7 +1931,7 @@ class Base_Executor:
             ("with" if exec_error.errors else "without") + " error",
         )
         if exec_error.errors:
-            failed_steps, pending_steps = dag.pending()
+            pending_steps = dag.pending()[1]
             # if failed_steps:
             # sections = [self.workflow.section_by_id(x._step_uuid).step_name() for x in failed_steps]
             # exec_error.append(self.workflow.name,

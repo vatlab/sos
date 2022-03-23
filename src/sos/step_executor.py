@@ -303,7 +303,7 @@ def evaluate_shared(vars, option):
             except Exception as e:
                 raise RuntimeError(
                     f"Failed to evaluate shared variable {var} from expression {val}: {e}"
-                )
+                ) from e
     # if there are dictionaries in the sequence, e.g.
     # shared=['A', 'B', {'C':'D"}]
     elif isinstance(option, Sequence):
@@ -324,7 +324,7 @@ def evaluate_shared(vars, option):
                     except Exception as e:
                         raise RuntimeError(
                             f"Failed to evaluate shared variable {var} from expression {val}: {e}"
-                        )
+                        ) from e
             else:
                 raise RuntimeError(
                     f"Unacceptable shared option. Only str or mapping are accepted in sequence: {option}"
@@ -785,15 +785,15 @@ class Base_Step_Executor:
         except (StopInputGroup, TerminateExecution, UnavailableLock):
             raise
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(e.stderr)
+            raise RuntimeError(e.stderr) from e
         except ArgumentError:
             raise
         except ProcessKilled:
             raise
         except KeyboardInterrupt as e:
-            raise RuntimeError(get_traceback_msg(e))
+            raise RuntimeError(get_traceback_msg(e)) from e
         except Exception as e:
-            raise RuntimeError(get_traceback_msg(e))
+            raise RuntimeError(get_traceback_msg(e)) from e
 
     def prepare_substep(self):
         # socket to collect result
@@ -856,7 +856,7 @@ class Base_Step_Executor:
                     env.logger.warning(
                         f'``{self.step.step_name(True)}`` {idx_msg} returns an error.{f" Terminating step after completing {waiting} submitted substeps." if waiting else " Terminating now."}'
                     )
-                    for i in range(waiting):
+                    for _ in range(waiting):
                         yield self.result_pull_socket
                         res = decode_msg(self.result_pull_socket.recv())
                         if "exception" in res:
@@ -943,7 +943,7 @@ class Base_Step_Executor:
             except Exception as e:
                 raise ValueError(
                     f"Failed to determine value of parameter queue of {self.step.task_params}: {e}"
-                )
+                ) from e
             # # check concurrent #1134
             # try:
             #     task_concurrency = get_value_of_param(
@@ -1006,7 +1006,7 @@ class Base_Step_Executor:
                     if x in env.sos_dict
                 })
             except Exception as e:
-                raise ValueError(f"Missing shared variable {e}.")
+                raise ValueError(f"Missing shared variable {e}.") from e
 
     def local_exec_with_signature(self, statement, sig):
         idx = env.sos_dict["_index"]
@@ -1057,7 +1057,7 @@ class Base_Step_Executor:
                         if x in env.sos_dict
                     })
                 except Exception as e:
-                    raise ValueError(f"Missing shared variable {e}.")
+                    raise ValueError(f"Missing shared variable {e}.") from e
         finally:
             # if this is the end of substep, save the signature
             # otherwise we need to wait for the completion
@@ -1388,7 +1388,7 @@ class Base_Step_Executor:
                         except Exception as e:
                             raise RuntimeError(
                                 f"Failed to process step {key} ({value.strip()}): {e}"
-                            )
+                            ) from e
                         break
                 else:
                     try:
@@ -1469,7 +1469,7 @@ class Base_Step_Executor:
                     raise
                 except Exception as e:
                     raise ValueError(
-                        f"Failed to process input statement {stmt}: {e}")
+                        f"Failed to process input statement {stmt}: {e}") from e
                 break
 
             input_statement_idx += 1
@@ -1753,7 +1753,7 @@ class Base_Step_Executor:
                                     return self.collect_result()
                                 raise RuntimeError(
                                     f"Failed to process step {key} ({value.strip()}): {e}"
-                                )
+                                ) from e
                     elif is_last_runblock:
                         if (env.config["sig_mode"] == "skip" and
                                 not self.vars_to_be_shared and
@@ -1922,7 +1922,7 @@ class Base_Step_Executor:
                         sys.stderr.write(get_traceback())
                     raise RuntimeError(
                         f'Failed to execute process\n"{short_repr(self.step.task)}"\n{e}'
-                    )
+                    ) from e
 
                 #
                 # # if not concurrent, we have to wait for the completion of the task

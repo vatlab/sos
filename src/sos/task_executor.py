@@ -101,9 +101,9 @@ class BaseTaskExecutor(object):
         except KeyboardInterrupt:
             tf.status = "aborted"
             raise
-        except ProcessKilled:
+        except ProcessKilled as e:
             tf.status = "aborted"
-            raise ProcessKilled("task interrupted")
+            raise ProcessKilled("task interrupted") from e
         finally:
             signal.signal(signal.SIGTERM, signal.SIG_DFL)
 
@@ -312,7 +312,7 @@ class BaseTaskExecutor(object):
                     except Exception as e:
                         raise ValueError(
                             f"Failed to collect logfile {logfile} after the completion of task: {e}"
-                        )
+                        ) from e
 
             if quiet or env.config["run_mode"] != "run":
                 env.logger.debug(f"{task_id} ``completed``")
@@ -543,7 +543,7 @@ class BaseTaskExecutor(object):
                     ),
                 ])
 
-            for idx in range(len(params.task_stack)):
+            for _ in range(len(params.task_stack)):
                 res = decode_msg(self.result_pull_socket.recv())
                 try:
                     self._append_subtask_outputs(res)
@@ -580,20 +580,18 @@ class BaseTaskExecutor(object):
                     val = val.rsplit(":", 1)[-1]
                 n_workers = int(val.rsplit(":", 1)[-1])
                 return len(num_workers), None if n_workers <= 0 else n_workers
-            else:
-                return None, None
-        elif isinstance(num_workers, str):
+            return None, None
+        if isinstance(num_workers, str):
             if ":" in num_workers:
                 num_workers = num_workers.rsplit(":", 1)[-1]
             n_workers = int(num_workers.rsplit(":", 1)[-1])
             return 1, None if n_workers <= 0 else n_workers
-        elif isinstance(num_workers, int) and num_workers >= 1:
+        if isinstance(num_workers, int) and num_workers >= 1:
             return 1, num_workers
-        elif num_workers is None:
+        if num_workers is None:
             return None, None
-        else:
-            raise RuntimeError(
-                f"Unacceptable value for parameter trunk_workers {num_workers}")
+        raise RuntimeError(
+            f"Unacceptable value for parameter trunk_workers {num_workers}")
 
     def _append_subtask_outputs(self, result):
         """

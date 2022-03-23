@@ -235,7 +235,7 @@ class SoS_DockerClient:
         try:
             subprocess.call(f'''docker load -i {image} --quiet''', shell=True)
         except Exception as e:
-            raise RuntimeError(f'Failed to load image {image}: {e}')
+            raise RuntimeError(f'Failed to load image {image}: {e}') from e
 
     def pull(self, image):
         if not self.client:
@@ -275,8 +275,7 @@ class SoS_DockerClient:
                 ['resource', 'docker_image', 'unavailable', image])
             raise RuntimeError(
                 f'Failed to pull docker image {image}:\n {err_msg}')
-        else:
-            print(f'HINT: Docker image {image} is now up to date')
+        print(f'HINT: Docker image {image} is now up to date')
         send_message_to_controller(
             ['resource', 'docker_image', 'available', image])
         self.pulled_images.add(image)

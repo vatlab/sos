@@ -223,10 +223,10 @@ class SoS_SingularityClient:
         if not os.path.isdir(lib_path):
             try:
                 os.makedirs(lib_path, exist_ok=True)
-            except:
+            except Exception as e:
                 raise RuntimeError(
                     f'Failed to create singularity library directory {lib_path}'
-                )
+                ) from e
 
         if '://' in image:
             ctx, cname = image.split('://', 1)

@@ -222,7 +222,6 @@ def preview_pdf(filename, kernel=None, style=None):
                 f'<embed src="{filename}" {embed_options} type="application/pdf" />'
         }
 
-
 def preview_html(filename, kernel=None, style=None):
     with open(filename) as html:
         content = html.read()
