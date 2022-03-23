@@ -509,7 +509,6 @@ class Controller(threading.Thread):
         except Exception as e:
             env.logger.warning(f"Failed to respond controller {msg}: {e}")
             self.master_request_socket.send(encode_msg(None))
-    
 
     def handle_worker_backend_msg(self, msg):
         # msg should be a port number from the worker

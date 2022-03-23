@@ -1257,7 +1257,7 @@ class SoS_Script:
                         else:
                             prev_names = [prev_name[0]]
                         if len(set(prev_names)
-                               & set(names)) and "global" not in names:
+                               & set(names)) > 0 and "global" not in names:
                             parsing_errors.append(
                                 lineno, line, f"Duplicate section name {names}")
                 all_step_names.extend(step_names)
