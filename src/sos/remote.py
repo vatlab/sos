@@ -181,8 +181,7 @@ def test_cmd(host, cmd):
             cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if ret == 0:
             return "OK"
-        else:
-            return "sos not installed or not accessible on host."
+        return "sos not installed or not accessible on host."
     except Exception as e:
         return str(e)
 
@@ -513,7 +512,7 @@ def setup_remote_access(cfg, hosts=[], password="", verbosity=1):
                         f"Public key access is already enabled for host ``{host}`` with address ``{host_agent.address}``"
                     )
                     continue
-                elif "Could not resolve hostname" in response:
+                if "Could not resolve hostname" in response:
                     env.logger.error(response)
                     sys.exit(1)
             else:
@@ -546,10 +545,9 @@ def setup_remote_access(cfg, hosts=[], password="", verbosity=1):
                 f"Public key access is successfully set up for host ``{host}`` with address ``{host_agent.address}``"
             )
             continue
-        else:
-            env.logger.error(
-                f"Failed to connect to {host} after passing public key. Possible problems include permission of .ssh and home directories."
-            )
+        env.logger.error(
+            f"Failed to connect to {host} after passing public key. Possible problems include permission of .ssh and home directories."
+        )
 
 
 def login_host(cfg, host):

@@ -600,14 +600,13 @@ class TaskFile(object):
                 if not results:
                     # if there is no result at all, do not save result
                     return
-                else:
-                    # now, if we have some results, we need to fill the rest of the aborted ones
-                    results.extend([{
-                        "task": t,
-                        "ret_code": 2,
-                        "shared": {},
-                        "exception": RuntimeError(f"Subtask {t} is aborted"),
-                    } for t in missing_tasks])
+                # now, if we have some results, we need to fill the rest of the aborted ones
+                results.extend([{
+                    "task": t,
+                    "ret_code": 2,
+                    "shared": {},
+                    "exception": RuntimeError(f"Subtask {t} is aborted"),
+                } for t in missing_tasks])
                 result = combine_results(self.task_id, results)
             else:
                 # single task, no result, do not save
@@ -672,6 +671,7 @@ class TaskFile(object):
             fh.seek(self.header_size, 0)
             if header.params_size == 0:
                 return {}
+<<<<<<< HEAD
             else:
                 try:
                     return pickle.loads(
@@ -679,6 +679,14 @@ class TaskFile(object):
                 except Exception as e:
                     raise RuntimeError(
                         f"Failed to obtain params of task {self.task_id}: {e}") from e
+=======
+            try:
+                return pickle.loads(
+                    lzma.decompress(fh.read(header.params_size)))
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to obtain params of task {self.task_id}: {e}") from e
+>>>>>>> 4eedd20bd02a9e514b9a9936e6e0d64b763f0dc8
 
     def _set_params(self, params):
         params_block = lzma.compress(pickle.dumps(params))
@@ -884,8 +892,7 @@ class TaskFile(object):
                         while True:
                             if os.path.isfile(pulse_file):
                                 break
-                            else:
-                                time.sleep(0.01)
+                            time.sleep(0.01)
                     # if completed, we make sure that the duration will not
                     # be zero even if the task is completed very rapidly
                     now = time.time() + (0.01 if status == "completed" else 0)
@@ -1267,28 +1274,25 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             # the pulse file could disappear when the job is completed.
             if task_changed():
                 return check_task(task)
-            else:
-                raise
+            raise
     else:
         # status not changed
         try:
             if (hint and hint["status"] in ("new", "pending") and
                     hint["files"][task_file] == os.stat(task_file).st_mtime):
                 return {}
-            else:
-                return dict(
-                    status=status,
-                    files={
-                        task_file: os.stat(task_file).st_mtime,
-                        job_file: 0
-                    },
-                )
+            return dict(
+                status=status,
+                files={
+                    task_file: os.stat(task_file).st_mtime,
+                    job_file: 0
+                },
+            )
         except Exception:
             # the pulse file could disappear when the job is completed.
             if task_changed():
                 return check_task(task)
-            else:
-                raise
+            raise
 
 
 def check_tasks(tasks, is_all: bool):

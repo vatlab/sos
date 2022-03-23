@@ -244,7 +244,7 @@ def cmd_convert(args, unknown_args):
                 converter.convert(args.from_file, args.to_file, args,
                                   unknown_args)
                 return
-            elif entrypoint.name == args.converter_name + ".func":
+            if entrypoint.name == args.converter_name + ".func":
                 func = entrypoint.load()
                 func(args.from_file, args.to_file, args, unknown_args)
                 return
@@ -1507,13 +1507,12 @@ def cmd_execute(args, workflow_args):
                     "{} does not match any existing task".format(task))
                 exit_code.append(1)
                 continue
-            elif len(matched) > 1:
+            if len(matched) > 1:
                 env.logger.error('"{}" matches more than one task ID {}'.format(
                     task, ", ".join(matched)))
                 exit_code.append(1)
                 continue
-            else:
-                task = matched[0]
+            task = matched[0]
             # this is for local execution, perhaps on a remote host, and
             # there is no daemon process etc. It also does not handle job
             # preparation.
@@ -1561,12 +1560,11 @@ def cmd_execute(args, workflow_args):
                 env.log_to_file("TASK", f"Put results for {args.tasks}")
             res = host.retrieve_results(args.tasks)
             return
-        elif all(x != "pending" for x in res) and not args.wait:
+        if all(x != "pending" for x in res) and not args.wait:
             return
-        elif any(x in ("pending", "running", "submitted") for x in res):
+        if any(x in ("pending", "running", "submitted") for x in res):
             continue
-        else:
-            raise RuntimeError("Job returned with status {}".format(res))
+        raise RuntimeError("Job returned with status {}".format(res))
         time.sleep(0.01)
 
 
@@ -2138,9 +2136,9 @@ class AnswerMachine:
             if res == "a":
                 self._confirmed = True
                 return True
-            elif res == "y":
+            if res == "y":
                 return True
-            elif res == "n":
+            if res == "n":
                 return False
 
 
@@ -2699,16 +2697,15 @@ def add_sub_parser(subparsers, parser, name=None, hidden=False):
             parents=[parser],
             add_help=False,
         )
-    else:
-        return subparsers.add_parser(
-            parser.prog if name is None else name,
-            description=parser.description,
-            epilog=parser.epilog,
-            help=parser.short_description
-            if hasattr(parser, "short_description") else parser.description,
-            parents=[parser],
-            add_help=False,
-        )
+    return subparsers.add_parser(
+        parser.prog if name is None else name,
+        description=parser.description,
+        epilog=parser.epilog,
+        help=parser.short_description
+        if hasattr(parser, "short_description") else parser.description,
+        parents=[parser],
+        add_help=False,
+    )
 
 
 def main():
