@@ -212,7 +212,7 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
         #
         # calling super execute_workflow would set cleaned versions
         # of self.filename, self.command, and self.template_args
-        if not super(BackgroundProcess_WorkflowEngine, self).execute_workflow(
+        if not super().execute_workflow(
                 filename, command, **template_args):
             env.log_to_file(
                 "WORKFLOW",
