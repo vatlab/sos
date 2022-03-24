@@ -852,7 +852,7 @@ class file_target(path, BaseTarget):
 
     # this is the most important function that treats ~ and #
     def __fspath__(self):
-        return super(file_target, self).__fspath__()
+        return super().__fspath__()
 
     def __eq__(self, obj):
         return isinstance(
