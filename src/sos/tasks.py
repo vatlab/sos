@@ -671,7 +671,6 @@ class TaskFile(object):
             fh.seek(self.header_size, 0)
             if header.params_size == 0:
                 return {}
-<<<<<<< HEAD
             else:
                 try:
                     return pickle.loads(
@@ -679,15 +678,8 @@ class TaskFile(object):
                 except Exception as e:
                     raise RuntimeError(
                         f"Failed to obtain params of task {self.task_id}: {e}") from e
-=======
-            try:
-                return pickle.loads(
-                    lzma.decompress(fh.read(header.params_size)))
-            except Exception as e:
-                raise RuntimeError(
-                    f"Failed to obtain params of task {self.task_id}: {e}") from e
->>>>>>> 4eedd20bd02a9e514b9a9936e6e0d64b763f0dc8
 
+                        
     def _set_params(self, params):
         params_block = lzma.compress(pickle.dumps(params))
         # env.logger.error(f'updating {self.task_id} params of size {len(params_block)}')
