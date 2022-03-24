@@ -226,18 +226,11 @@ def accessed_vars(statement: str, mode: str = "exec") -> Set[str]:
     try:
         if mode == "exec":
             return get_accessed(ast.parse(statement, "<string>", "exec"))
-<<<<<<< HEAD
         else:
             res = get_accessed(
                 ast.parse("__NULL__(" + statement + ")", "<string>", "eval"))
             res.remove("__NULL__")
             return res
-=======
-        res = get_accessed(
-            ast.parse("__NULL__(" + statement + ")", "<string>", "eval"))
-        res.remove("__NULL__")
-        return res
->>>>>>> 4eedd20bd02a9e514b9a9936e6e0d64b763f0dc8
     except Exception as e:
         raise RuntimeError(
             f"Failed to parse statement: {statement} in {mode} mode") from e
@@ -447,16 +440,10 @@ class on_demand_options(object):
                 raise ValueError(
                     f"Failed to evaluate option {key} with value {self._expressions[key]}: Only constant values are allowed for section option skip"
                 ) from e
-<<<<<<< HEAD
             else:
                 raise ValueError(
                     f"Failed to evaluate option {key} with value {self._expressions[key]}: {e}"
                 ) from e
-=======
-            raise ValueError(
-                f"Failed to evaluate option {key} with value {self._expressions[key]}: {e}"
-            ) from e
->>>>>>> 4eedd20bd02a9e514b9a9936e6e0d64b763f0dc8
 
     def __repr__(self):
         return repr(self._expressions)
