@@ -200,7 +200,7 @@ class WorkflowEngine:
 
 class BackgroundProcess_WorkflowEngine(WorkflowEngine):
 
-    def __init__(self, agent):
+    def __init__():
         super(BackgroundProcess_WorkflowEngine, self).__init__(agent)
         if "workflow_template" in self.config:
             self.workflow_template = self.config["workflow_template"].replace(
