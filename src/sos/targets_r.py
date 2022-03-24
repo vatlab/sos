@@ -220,12 +220,8 @@ class R_library(BaseTarget):
             return (
                 f'{self.__class__.__name__}("{self.target_name()}", {self._version!r})'
             )
-<<<<<<< HEAD
         return super(R_library, self).__repr__()
-=======
-        else:
-            return super().__repr__()
->>>>>>> c124ac4ddf96e5d56c982d5b6de160ef66d35b38
+
 
     def target_signature(self, mode="any"):
         # we are supposed to get signature of the library, but we cannot
