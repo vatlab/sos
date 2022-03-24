@@ -756,7 +756,7 @@ class file_target(path, BaseTarget):
             self._md5 = None
 
     def _init(self, template=None):
-        super(file_target, self)._init(template)
+        super()._init(template)
         self._md5 = None
 
     def create_placeholder(self):
