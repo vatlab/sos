@@ -117,7 +117,7 @@ class SoS_Worker(mp.Process):
             immediately available.
         """
         # the worker process knows configuration file, command line argument etc
-        super(SoS_Worker, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         #
         self.config = config
         self.local_ip = get_localhost_ip()
