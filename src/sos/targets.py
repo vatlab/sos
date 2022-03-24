@@ -2287,7 +2287,7 @@ class RuntimeInfo(InMemorySignature):
         if not sdict:
             sdict = env.sos_dict
         self.step_md5 = step_md5
-        super(RuntimeInfo, self).__init__(
+        super().__init__(
             input_files,
             output_files,
             dependent_files,
