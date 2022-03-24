@@ -22,7 +22,7 @@ class R_library(BaseTarget):
         repos="http://cran.us.r-project.org",
         autoinstall=False,
     ):
-        super(R_library, self).__init__()
+        super().__init__()
         self._library = library
         if version is not None:
             version = (version,) if isinstance(version, str) else tuple(version)
@@ -220,7 +220,8 @@ class R_library(BaseTarget):
             return (
                 f'{self.__class__.__name__}("{self.target_name()}", {self._version!r})'
             )
-        return super(R_library, self).__repr__()
+        return super().__repr__()
+
 
     def target_signature(self, mode="any"):
         # we are supposed to get signature of the library, but we cannot
