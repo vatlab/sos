@@ -251,7 +251,7 @@ class system_resource(BaseTarget):
     """A target for required computing resource."""
 
     def __init__(self, mem=None, disk=None):
-        super(system_resource, self).__init__()
+        super().__init__()
         self._mem = mem
         self._disk = disk
 
@@ -295,7 +295,7 @@ class sos_step(BaseTarget):
     """A target for a step of sos."""
 
     def __init__(self, step_name, **kwargs):
-        super(sos_step, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._step_name = str(step_name)
 
     def target_exists(self, mode="any"):
