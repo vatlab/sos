@@ -394,7 +394,7 @@ class remote(BaseTarget):
     """A remote target is not tracked and not translated during task execution"""
 
     def __init__(self, *targets, host=None):
-        super(remote, self).__init__()
+        super().__init__()
         self.__unresolvable_object__ = True
         self._host = host
         if len(targets) == 1:
