@@ -400,9 +400,7 @@ class SoS_Worker(mp.Process):
         # Execute global namespace. The reason why this is executed outside of
         # step is that the content of the dictioary might be overridden by context
         # variables.
-        prepare_env(section.global_def, section.global_vars, 
-                env.config["workflow_vars"])
-
+        prepare_env(section.global_def, section.global_vars, env.config["workflow_vars"])
         # clear existing keys, otherwise the results from some random result
         # might mess with the execution of another step that does not define input
         for k in ["__step_input__", "__default_output__", "__step_output__"]:

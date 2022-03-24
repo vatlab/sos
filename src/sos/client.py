@@ -507,3 +507,4 @@ class SoS_DockerClient:
                     cmd=cmd.replace(tempdir, debug_script_dir),
                     stderr=msg)
         return 0
+        
