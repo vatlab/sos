@@ -38,7 +38,7 @@ __all__: List = []
 class TaskManager:
     # manage tasks created by the step
     def __init__(self, num_tasks, trunk_size, trunk_workers):
-        super(TaskManager, self).__init__()
+        super().__init__()
         self.num_tasks = num_tasks
         import math
 
@@ -2030,7 +2030,7 @@ class Step_Executor(Base_Step_Executor):
     def __init__(self, step, socket, mode="run"):
         self.run_mode = mode
         env.config["run_mode"] = mode
-        super(Step_Executor, self).__init__(step)
+        super().__init__(step)
         self.socket = socket
         # because step is executed in a separate SoS_Worker process, this
         # __socket__ is available to all the actions that will be executed
