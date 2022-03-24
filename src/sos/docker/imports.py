@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
- #
+#
 # Copyright (C) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 import os
@@ -20,7 +20,7 @@ from sos.utils import env, pexpect_run
  #
 
 
- class SoS_DockerClient:
+class SoS_DockerClient:
      '''A singleton class to ensure there is only one client'''
      _instance = None
 
