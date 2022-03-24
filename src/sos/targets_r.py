@@ -22,7 +22,7 @@ class R_library(BaseTarget):
         repos="http://cran.us.r-project.org",
         autoinstall=False,
     ):
-        super().__init__()
+        super(R_library, self).__init__()
         self._library = library
         if version is not None:
             version = (version,) if isinstance(version, str) else tuple(version)

@@ -460,7 +460,7 @@ class KeepOnlyImportAndDefine(ast.NodeTransformer):
             # print(f'remove {node}')
             ret = None
         else:
-            ret = super().generic_visit(node)
+            ret = super(KeepOnlyImportAndDefine, self).generic_visit(node)
         self.level -= 1
         return ret
 

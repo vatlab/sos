@@ -1339,7 +1339,7 @@ class TimeoutInterProcessLock(fasteners.InterProcessLock):
     # lock file.
     #
     def __init__(self, path, timeout=5, sleep_func=time.sleep, logger=None):
-        super().__init__(
+        super(TimeoutInterProcessLock, self).__init__(
             path, sleep_func=sleep_func, logger=logger)
         self.timeout = timeout
 

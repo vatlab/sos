@@ -177,7 +177,7 @@ class sos_variable(BaseTarget):
     """A target for a SoS variable."""
 
     def __init__(self, var):
-        super().__init__()
+        super(sos_variable, self).__init__()
         self._var = var
 
     def target_exists(self, mode="any"):
@@ -206,7 +206,7 @@ class env_variable(BaseTarget):
     """A target for an environmental variable."""
 
     def __init__(self, var):
-        super().__init__()
+        super(env_variable, self).__init__()
         self._var = var
 
     def target_exists(self, mode="any"):
@@ -235,7 +235,7 @@ class invalid_target(BaseTarget):
     """A target for an environmental variable."""
 
     def __init__(self):
-        super().__init__()
+        super(invalid_target, self).__init__()
 
     def target_exists(self, mode="any"):
         return False
@@ -251,7 +251,7 @@ class system_resource(BaseTarget):
     """A target for required computing resource."""
 
     def __init__(self, mem=None, disk=None):
-        super().__init__()
+        super(system_resource, self).__init__()
         self._mem = mem
         self._disk = disk
 
@@ -295,7 +295,7 @@ class sos_step(BaseTarget):
     """A target for a step of sos."""
 
     def __init__(self, step_name, **kwargs):
-        super().__init__(**kwargs)
+        super(sos_step, self).__init__(**kwargs)
         self._step_name = str(step_name)
 
     def target_exists(self, mode="any"):
@@ -327,7 +327,7 @@ class named_output(BaseTarget):
     """A target for a named output"""
 
     def __init__(self, output_name):
-        super().__init__()
+        super(named_output, self).__init__()
         if not isinstance(output_name, str):
             raise ValueError("named_output() only accept one output name")
         self._output_name = output_name
@@ -394,7 +394,7 @@ class remote(BaseTarget):
     """A remote target is not tracked and not translated during task execution"""
 
     def __init__(self, *targets, host=None):
-        super().__init__()
+        super(remote, self).__init__()
         self.__unresolvable_object__ = True
         self._host = host
         if len(targets) == 1:
@@ -458,7 +458,7 @@ class executable(BaseTarget):
     """A target for an executable command."""
 
     def __init__(self, cmd, version=None):
-        super().__init__()
+        super(executable, self).__init__()
         self._cmd = cmd
         self._md5 = None
         if version is None:
@@ -598,7 +598,7 @@ class path(type(Path())):
         return super(path, self.expandname().expanduser()).__str__()
 
     def __repr__(self):
-        raw_str = super().__str__()
+        raw_str = super(path, self).__str__()
         return "{}({!r})".format(self.__class__.__name__,
                                  raw_str.replace(self._flavour.sep, "/"))
 
@@ -749,14 +749,14 @@ class file_target(path, BaseTarget):
 
     def __init__(self, *args, **kwargs):
         # this is path segments
-        super().__init__(*args, **kwargs)
+        super(file_target, self).__init__(*args, **kwargs)
         if len(args) == 1 and isinstance(args[0], file_target):
             self._md5 = args[0]._md5
         else:
             self._md5 = None
 
     def _init(self, template=None):
-        super()._init(template)
+        super(file_target, self)._init(template)
         self._md5 = None
 
     def create_placeholder(self):
@@ -852,7 +852,7 @@ class file_target(path, BaseTarget):
 
     # this is the most important function that treats ~ and #
     def __fspath__(self):
-        return super().__fspath__()
+        return super(file_target, self).__fspath__()
 
     def __eq__(self, obj):
         return isinstance(
@@ -866,7 +866,7 @@ class file_target(path, BaseTarget):
     def __reduce__(self):
         return tuple([
             self.__class__,
-            super().__reduce__()[1],
+            super(file_target, self).__reduce__()[1],
             {
                 "_md5": self._md5,
                 "_dict": self._dict
@@ -993,7 +993,7 @@ class _sos_group(BaseTarget):
     """A type that is similar to sos_targets but saves index of objects """
 
     def __init__(self, indexes, labels=None, parent=None):
-        super().__init__()
+        super(_sos_group, self).__init__()
         self._indexes = list(indexes)
         if labels is not None:
             if isinstance(labels, str):
@@ -1064,7 +1064,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         _verify_existence=False,
         **kwargs,
     ):
-        super().__init__()
+        super(sos_targets, self).__init__()
         self._targets: List = []
         self._labels: List = []
         self._groups: List = []
@@ -2287,7 +2287,7 @@ class RuntimeInfo(InMemorySignature):
         if not sdict:
             sdict = env.sos_dict
         self.step_md5 = step_md5
-        super().__init__(
+        super(RuntimeInfo, self).__init__(
             input_files,
             output_files,
             dependent_files,
@@ -2439,4 +2439,4 @@ class RuntimeInfo(InMemorySignature):
         sig = request_answer_from_controller(["step_sig", "get", self.sig_id])
         if not sig:
             return f"No signature found for {self.sig_id}"
-        return super().validate(sig)
+        return super(RuntimeInfo, self).validate(sig)

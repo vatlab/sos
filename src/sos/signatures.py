@@ -130,7 +130,7 @@ class WorkflowSignatures(SignatureDB):
     _write_query = "INSERT INTO workflows VALUES (?, ?, ?, ?)"
 
     def __init__(self):
-        super().__init__()
+        super(WorkflowSignatures, self).__init__()
 
     def write(self, entry_type: str, id: str, item: str):
         try:

@@ -720,7 +720,7 @@ class TaskEngine(threading.Thread):
 class BackgroundProcess_TaskEngine(TaskEngine):
 
     def __init__(self, agent):
-        super().__init__(agent)
+        super(BackgroundProcess_TaskEngine, self).__init__(agent)
         self.wait_for_task = False
         if 'task_template' in self.config:
             self.task_template = self.config['task_template'].replace(
@@ -741,7 +741,7 @@ class BackgroundProcess_TaskEngine(TaskEngine):
             self.batch_size = 1000
 
     def execute_tasks(self, task_ids):
-        if not super().execute_tasks(task_ids):
+        if not super(BackgroundProcess_TaskEngine, self).execute_tasks(task_ids):
             env.log_to_file('TASK', f'Failed to prepare task {task_ids}')
             return False
         if self.task_template:

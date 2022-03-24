@@ -201,7 +201,7 @@ class WorkflowEngine:
 class BackgroundProcess_WorkflowEngine(WorkflowEngine):
 
     def __init__(self, agent):
-        super().__init__(agent)
+        super(BackgroundProcess_WorkflowEngine, self).__init__(agent)
         if "workflow_template" in self.config:
             self.workflow_template = self.config["workflow_template"].replace(
                 "\r\n", "\n")
@@ -212,7 +212,7 @@ class BackgroundProcess_WorkflowEngine(WorkflowEngine):
         #
         # calling super execute_workflow would set cleaned versions
         # of self.filename, self.command, and self.template_args
-        if not super().execute_workflow(
+        if not super(BackgroundProcess_WorkflowEngine, self).execute_workflow(
                 filename, command, **template_args):
             env.log_to_file(
                 "WORKFLOW",
