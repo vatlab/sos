@@ -679,7 +679,6 @@ class TaskFile(object):
                     raise RuntimeError(
                         f"Failed to obtain params of task {self.task_id}: {e}") from e
 
-                        
     def _set_params(self, params):
         params_block = lzma.compress(pickle.dumps(params))
         # env.logger.error(f'updating {self.task_id} params of size {len(params_block)}')
