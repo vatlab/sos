@@ -1064,7 +1064,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         _verify_existence=False,
         **kwargs,
     ):
-        super(sos_targets, self).__init__()
+        super().__init__()
         self._targets: List = []
         self._labels: List = []
         self._groups: List = []
