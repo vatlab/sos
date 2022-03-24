@@ -46,7 +46,7 @@ class SoS_DockerClient:
              self.tot_mem = None
          return self.tot_mem
 
- def _is_image_avail(self, image):
+def _is_image_avail(self, image):
          # the command will return ID of the image if it exists
          try:
              return bool(
