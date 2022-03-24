@@ -59,7 +59,7 @@ class StepSignatures(SignatureDB):
     _write_query = "INSERT OR REPLACE INTO steps VALUES (?, ?)"
 
     def __init__(self):
-        super(StepSignatures, self).__init__()
+        super().__init__()
 
     def get(self, step_id: str):
         try:
@@ -130,7 +130,7 @@ class WorkflowSignatures(SignatureDB):
     _write_query = "INSERT INTO workflows VALUES (?, ?, ?, ?)"
 
     def __init__(self):
-        super(WorkflowSignatures, self).__init__()
+        super().__init__()
 
     def write(self, entry_type: str, id: str, item: str):
         try:
