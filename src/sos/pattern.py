@@ -112,7 +112,12 @@ def apply_wildcards(
                 return f"{{{name}}}"
             if fill_missing:
                 return dynamic_fill
+<<<<<<< HEAD
+            else:
+                raise RuntimeError(f"Wildcard apply error: {ex} ({wildcards})") from ex
+=======
             raise RuntimeError(f"Wildcard apply error: {ex} ({wildcards})") from ex
+>>>>>>> 4eedd20bd02a9e514b9a9936e6e0d64b763f0dc8
 
     return SOS_WILDCARD.sub(format_match, pattern)
 

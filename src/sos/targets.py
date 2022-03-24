@@ -681,7 +681,11 @@ class path(type(Path())):
             if host is not None and host not in env.sos_dict["CONFIG"]["hosts"]:
                 raise RuntimeError(
                     f"Incomplete sos environment: undefined host {host}") from e
+<<<<<<< HEAD
+            elif (env.sos_dict.get("__host__", "localhost")
+=======
             if (env.sos_dict.get("__host__", "localhost")
+>>>>>>> 4eedd20bd02a9e514b9a9936e6e0d64b763f0dc8
                   not in env.sos_dict["CONFIG"]["hosts"]):
                 raise RuntimeError(
                     f'Incomplete sos environment: undefined host {env.sos_dict.get("__host__", "locahost")}'
