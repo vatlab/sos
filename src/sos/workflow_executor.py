@@ -1627,8 +1627,7 @@ class Base_Executor:
                         f'Master terminate because {"degration" if dag.degraded() else "" } {" all pending" if manager.all_pending() else ""}',
                     )
                     break
-                else:
-                    time.sleep(0.1)
+                time.sleep(0.1)
         except KeyboardInterrupt as e:
             if exec_error.errors:
                 pending_steps = dag.pending()[1]
@@ -1893,12 +1892,12 @@ class Base_Executor:
                         ]))
                     # the nested workflow also needs a step to receive result
                     manager.add_placeholder_worker(runnable, socket)
+
                 if manager.all_done():
                     break
                 # elif dag.degraded() and manager.all_pending():
                 #     break
-                else:
-                    time.sleep(0.01)
+                time.sleep(0.01)
         except KeyboardInterrupt as e:
             if exec_error.errors:
                 pending_steps = dag.pending()[1]
