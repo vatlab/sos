@@ -243,6 +243,7 @@ disable=abstract-method,
       unused-argument,
       unused-import,
       use-a-generator,
+      used-before-assignment
       use-symbolic-message-instead,
       useless-object-inheritance,
       useless-super-delegation,
