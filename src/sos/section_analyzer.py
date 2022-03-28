@@ -11,8 +11,7 @@ from .eval import SoS_eval, SoS_exec, accessed_vars, used_in_func
 from .executor_utils import __null_func__, prepare_env, strip_param_defs
 from .parser import SoS_Step
 from .syntax import SOS_TARGETS_OPTIONS
-from .targets import (dynamic, file_target, named_output, remote, sos_step,
-                      sos_targets)
+from .targets import (dynamic, file_target, named_output, remote, sos_step, sos_targets)
 from .utils import env
 
 # imported for eval, assert to reduce warning
@@ -409,7 +408,7 @@ def get_step_input(section, default_input):
         # expression ...
         step_input = sos_targets(_undetermined=stmt)
     finally:
-        [env.sos_dict.dict().pop(x) for x in svars]
+        old_values = [env.sos_dict.dict().pop(x) for x in svars]
         env.sos_dict.quick_update(old_values)
     return step_input, dynamic_input
 
@@ -535,7 +534,7 @@ def get_step_output(section, default_output, analysis_type):
                     f'Failed to determine input "{value}" of an auxiliary step: {e}'
                 ) from e
         finally:
-            [env.sos_dict.dict().pop(x) for x in svars]
+            old_values = [env.sos_dict.dict().pop(x) for x in svars]
             env.sos_dict.quick_update(old_values)
 
     if "provides" in section.options and default_output is not None:
