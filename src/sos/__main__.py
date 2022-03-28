@@ -912,7 +912,6 @@ def cmd_worker(args, workflow_args):
         from .workers import SoS_Worker
 
         procs = [SoS_Worker(env.config) for i in range(args.workers)]
-        [p.start() for p in procs]
         env.logger.info(
             f"{args.workers} workers started on {get_localhost_ip()}")
         while True:
