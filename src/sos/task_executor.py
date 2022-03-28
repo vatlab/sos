@@ -217,8 +217,8 @@ class BaseTaskExecutor(object):
         if os.path.exists(env.sos_dict["__std_err__"]):
             open(env.sos_dict["__std_err__"], "w").close()
 
+        orig_dir = os.getcwd()
         try:
-            orig_dir = os.getcwd()
             # go to 'workdir'
             if "workdir" in sos_dict["_runtime"]:
                 workdir = path(sos_dict["_runtime"]["workdir"])
@@ -509,8 +509,8 @@ class BaseTaskExecutor(object):
 
         connect_controllers(env.zmq_context)
 
+        succ = True
         try:
-
             # start a result receving socket
             self.result_pull_socket = create_socket(env.zmq_context, zmq.PULL,
                                                     "substep result collector")
@@ -551,7 +551,6 @@ class BaseTaskExecutor(object):
                     env.logger.warning(f"Failed to copy result of subtask: {e}")
                 self._cache_subresult(params.ID, res)
                 results.append(res)
-            succ = True
         except Exception as e:
             env.logger.error(f"Failed to execute task {params.ID}: {e}")
             succ = False
