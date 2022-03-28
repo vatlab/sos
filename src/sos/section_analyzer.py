@@ -410,7 +410,8 @@ def get_step_input(section, default_input):
         # expression ...
         step_input = sos_targets(_undetermined=stmt)
     finally:
-        old_values = [env.sos_dict.dict().pop(x) for x in svars]
+        for x in svars:
+            env.sos_dict.dict().pop(x)
         env.sos_dict.quick_update(old_values)
     return step_input, dynamic_input
 
