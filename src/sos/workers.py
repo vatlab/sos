@@ -757,4 +757,4 @@ class WorkerManager(object):
             total_num_workers -= 1
             self.report(f"Kill {msg[1:]}")
         # join all local processes
-        [worker.join() for worker in self._local_workers]
+        
