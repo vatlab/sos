@@ -327,13 +327,13 @@ def get_step_depends(section):
 
     if depends_idx is not None:
         value = section.statements[depends_idx][2]
+        svars = ["output_from", "named_output"]
+        old_values = {
+            x: env.sos_dict.dict()[x]
+            for x in svars
+            if x in env.sos_dict.dict()
+        }
         try:
-            svars = ["output_from", "named_output"]
-            old_values = {
-                x: env.sos_dict.dict()[x]
-                for x in svars
-                if x in env.sos_dict.dict()
-            }
             # output_from and named_output has been processed
             env.sos_dict.quick_update({
                 "output_from": lambda *args, **kwargs: None,
@@ -376,13 +376,13 @@ def get_step_input(section, default_input):
 
     # input statement
     stmt = section.statements[input_idx][2]
+    svars = ["output_from", "named_output", "sos_step", "sos_variable"]
+    old_values = {
+        x: env.sos_dict.dict()[x]
+        for x in svars
+        if x in env.sos_dict.dict()
+    }
     try:
-        svars = ["output_from", "named_output", "sos_step", "sos_variable"]
-        old_values = {
-            x: env.sos_dict.dict()[x]
-            for x in svars
-            if x in env.sos_dict.dict()
-        }
         env.sos_dict.quick_update({
             "output_from": lambda *args, **kwargs: None,
             "named_output": lambda *args, **kwargs: None,
@@ -478,13 +478,13 @@ def get_step_output(section, default_output, analysis_type):
             continue
 
         value = statement[2]
+        svars = ["output_from", "named_output", "sos_step", "sos_variable"]
+        old_values = {
+            x: env.sos_dict.dict()[x]
+            for x in svars
+            if x in env.sos_dict.dict()
+        }
         try:
-            svars = ["output_from", "named_output", "sos_step", "sos_variable"]
-            old_values = {
-                x: env.sos_dict.dict()[x]
-                for x in svars
-                if x in env.sos_dict.dict()
-            }
             env.sos_dict.quick_update({
                 "output_from": no_output_from,
                 "named_output": no_named_output,
