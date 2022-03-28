@@ -104,7 +104,6 @@ class DaemonizedProcess(mp.Process):
 
         # fork a new process
         subprocess.Popen(self.cmd, shell=True, close_fds=True)
-        return
 
 
 def _show_err_and_out(task_id, res) -> None:
