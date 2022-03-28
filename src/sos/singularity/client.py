@@ -367,4 +367,3 @@ class SoS_SingularityClient:
                     cmd=cmd.replace(tempdir, debug_script_dir),
                     stderr=msg)
         return 0
-        
