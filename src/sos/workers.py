@@ -737,7 +737,7 @@ class WorkerManager(object):
             self._local_worker_alive_time = time.time()
             # join processes if they are now gone, it should not do anything bad
             # if the process is still running
-            [
+            self._num_workers = [
                 worker.join()
                 for worker in self._local_workers
                 if not worker.is_alive()
