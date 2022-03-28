@@ -348,8 +348,8 @@ class Base_Executor:
 
         connect_controllers(env.zmq_context)
 
+        succ = True
         try:
-            succ = True
             return self.run_as_master(targets=targets, mode=mode)
         except Exception:
             succ = False

@@ -672,6 +672,7 @@ class Base_Step_Executor:
             self.submit_tasks(tasks)
 
         # waiting for results of specified IDs
+        results = None
         try:
             # 1218
             runner = self.wait_for_tasks(self.task_manager._submitted_tasks,
@@ -682,6 +683,9 @@ class Base_Step_Executor:
                 yreq = runner.send(yres)
         except StopIteration as e:
             results = e.value
+
+        if results is None:
+            raise RuntimeError('This should not happen since results should be a dictionary returned from runner.')
 
         for id, result in results.items():
             # turn to string to avoid naming lookup issue
@@ -2137,6 +2141,7 @@ class Step_Executor(Base_Step_Executor):
 
     def run(self):
         try:
+            res = None
             try:
                 # 1218
                 runner = Base_Step_Executor.run(self)

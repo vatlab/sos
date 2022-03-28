@@ -299,8 +299,8 @@ def SoS_Action(
                 workdir = path(kwargs["workdir"])
                 if not os.path.isdir(workdir):
                     os.makedirs(workdir, exist_ok=True)
+                olddir = os.getcwd()
                 try:
-                    olddir = os.getcwd()
                     os.chdir(workdir)
                     try:
                         res = func(*args, **kwargs)
@@ -767,8 +767,8 @@ def sos_run(workflow=None,
     env.sos_dict.set("__step_output__",
                      copy.deepcopy(env.sos_dict.get("_input", None)))
     shared.append("__step_output__")
+    my_name = env.sos_dict["step_name"]
     try:
-        my_name = env.sos_dict["step_name"]
         args_output = ", ".join(f"{x}={short_repr(y)}" for x, y in args.items()
                                 if not x.startswith("__"))
         if "ACTION" in env.config["SOS_DEBUG"] or "ALL" in env.config[
