@@ -217,8 +217,8 @@ class BaseTaskExecutor(object):
         if os.path.exists(env.sos_dict["__std_err__"]):
             open(env.sos_dict["__std_err__"], "w").close()
 
+        orig_dir = os.getcwd()
         try:
-            orig_dir = os.getcwd()
             # go to 'workdir'
             if "workdir" in sos_dict["_runtime"]:
                 workdir = path(sos_dict["_runtime"]["workdir"])
@@ -402,9 +402,12 @@ class BaseTaskExecutor(object):
         # is "cores" (per task) * "n_workers" (per node). Therefore,
         # "n_procs" should not be used.
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
         
 >>>>>>> 6b8991269e8f286209973277bb9c0f7bcd7a5c64
+=======
+>>>>>>> master
         n_nodes, _ = self._parse_num_workers(env.config["worker_procs"])
 
         # regular trunk_workers = ?? (0 was used as default)
@@ -513,8 +516,8 @@ class BaseTaskExecutor(object):
 
         connect_controllers(env.zmq_context)
 
+        succ = True
         try:
-
             # start a result receving socket
             self.result_pull_socket = create_socket(env.zmq_context, zmq.PULL,
                                                     "substep result collector")
@@ -555,7 +558,6 @@ class BaseTaskExecutor(object):
                     env.logger.warning(f"Failed to copy result of subtask: {e}")
                 self._cache_subresult(params.ID, res)
                 results.append(res)
-            succ = True
         except Exception as e:
             env.logger.error(f"Failed to execute task {params.ID}: {e}")
             succ = False
@@ -584,20 +586,18 @@ class BaseTaskExecutor(object):
                     val = val.rsplit(":", 1)[-1]
                 n_workers = int(val.rsplit(":", 1)[-1])
                 return len(num_workers), None if n_workers <= 0 else n_workers
-            else:
-                return None, None
-        elif isinstance(num_workers, str):
+            return None, None
+        if isinstance(num_workers, str):
             if ":" in num_workers:
                 num_workers = num_workers.rsplit(":", 1)[-1]
             n_workers = int(num_workers.rsplit(":", 1)[-1])
             return 1, None if n_workers <= 0 else n_workers
-        elif isinstance(num_workers, int) and num_workers >= 1:
+        if isinstance(num_workers, int) and num_workers >= 1:
             return 1, num_workers
-        elif num_workers is None:
+        if num_workers is None:
             return None, None
-        else:
-            raise RuntimeError(
-                f"Unacceptable value for parameter trunk_workers {num_workers}")
+        raise RuntimeError(
+            f"Unacceptable value for parameter trunk_workers {num_workers}")
 
     def _append_subtask_outputs(self, result):
         """

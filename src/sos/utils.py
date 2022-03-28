@@ -90,8 +90,7 @@ def colorstr(astr: str, color: Optional[str] = None) -> str:
     color_code = 0 if color is None else COLOR_CODE[color]
     if sys.platform == "win32":
         return astr
-    else:
-        return f"\033[{color_code}m{astr}\033[0m"
+    return f"\033[{color_code}m{astr}\033[0m"
 
 
 def emphasize(msg: str, color: Optional[str] = None):
@@ -99,10 +98,9 @@ def emphasize(msg: str, color: Optional[str] = None):
     # display text within `` and `` in green
     if sys.platform == "win32":
         return str(msg).replace("``", "")
-    elif level_color == 0:
+    if level_color == 0:
         return re.sub(r"``([^`]*)``", "\033[32m\\1\033[0m", str(msg))
-    else:
-        return re.sub(r"``([^`]*)``",
+    return re.sub(r"``([^`]*)``",
                       f"\033[0m\033[32m\\1\033[0m\033[{level_color}m", str(msg))
 
 
@@ -146,46 +144,41 @@ def short_repr(obj, noneAsNA=False):
     """Return a short representation of obj for clarity."""
     if obj is None:
         return "unspecified" if noneAsNA else "None"
-    elif isinstance(obj, str) and len(obj) > 80:
+    if isinstance(obj, str) and len(obj) > 80:
         return "{}...{}".format(obj[:60].replace("\n", "\\n"),
                                 obj[-20:].replace("\n", "\\n"))
-    elif isinstance(obj, (str, int, float, bool)):
+    if isinstance(obj, (str, int, float, bool)):
         return repr(obj)
-    elif hasattr(obj, "__short_repr__"):
+    if hasattr(obj, "__short_repr__"):
         return obj.__short_repr__()
-    elif isinstance(obj, Sequence):  # should be a list or tuple
+    if isinstance(obj, Sequence):  # should be a list or tuple
         if len(obj) == 0:
             return "[]"
-        elif len(obj) == 1:
+        if len(obj) == 1:
             return f"{short_repr(obj[0])}"
-        elif len(obj) == 2:
+        if len(obj) == 2:
             return f"{short_repr(obj[0])}, {short_repr(obj[1])}"
-        else:
-            return f"{short_repr(obj[0])}, {short_repr(obj[1])}, ... ({len(obj)} items)"
-    elif isinstance(obj, dict):
+        return f"{short_repr(obj[0])}, {short_repr(obj[1])}, ... ({len(obj)} items)"
+    if isinstance(obj, dict):
         if not obj:
             return ""
-        elif len(obj) == 1:
+        if len(obj) == 1:
             first_key = list(obj.keys())[0]
             return f"{short_repr(first_key)!r}:{short_repr(obj[first_key])!r}"
-        else:
-            first_key = list(obj.keys())[0]
-            return f"{short_repr(first_key)}:{short_repr(obj[first_key])}, ... ({len(obj)} items)"
-    elif isinstance(obj, KeysView):
+        first_key = list(obj.keys())[0]
+        return f"{short_repr(first_key)}:{short_repr(obj[first_key])}, ... ({len(obj)} items)"
+    if isinstance(obj, KeysView):
         if not obj:
             return ""
-        elif len(obj) == 1:
+        if len(obj) == 1:
             return short_repr(next(iter(obj)))
-        else:
-            return f"{short_repr(next(iter(obj)))}, ... ({len(obj)} items)"
+        return f"{short_repr(next(iter(obj)))}, ... ({len(obj)} items)"
     # elif hasattr(obj, 'target_name'):
     #    return obj.target_name()
-    else:
-        ret = str(obj)
-        if len(ret) > 40:
-            return f"{repr(obj)[:35]}..."
-        else:
-            return ret
+    ret = str(obj)
+    if len(ret) > 40:
+        return f"{repr(obj)[:35]}..."
+    return ret
 
 
 #
@@ -845,8 +838,7 @@ def get_output(cmd, show_command=False, prompt="$ ", **kwargs):
         raise RuntimeError(e) from e
     if show_command:
         return f"{prompt}{cmd}\n{output}"
-    else:
-        return output
+    return output
 
 
 #
@@ -928,8 +920,7 @@ def valid_expr_till(text):
             ast.parse("(" + text[:pos].lstrip() + ")")
             if pos == len(text) or text[pos] == "!" or text[pos] == ":":
                 return pos
-            else:
-                return 0
+            return 0
         except Exception:
             pos -= 1
     return 0
@@ -941,13 +932,12 @@ def check_last_piece(text):
         spos = text.find("}", pos)
         if spos == -1:
             return True
-        elif spos == len(text) - 1 or text[spos + 1] != "}":
+        if spos == len(text) - 1 or text[spos + 1] != "}":
             raise SyntaxError("f-string: single '}' is not allowed")
-        elif spos == len(text) - 2:
+        if spos == len(text) - 2:
             # }} as the last
             return True
-        else:
-            pos = spos + 2
+        pos = spos + 2
 
 
 def split_fstring(text):
@@ -1098,13 +1088,12 @@ def find_symbolic_links(item):
         if not item.exists():
             env.logger.warning(f"Non-existent symbolic link {item}")
         return {item: item.resolve()}
-    elif item.is_file():
+    if item.is_file():
         return {}
-    else:
-        result = {}
-        for x in item.iterdir():
-            result.update(find_symbolic_links(x))
-        return result
+    result = {}
+    for x in item.iterdir():
+        result.update(find_symbolic_links(x))
+    return result
 
 
 class ActivityNotifier(threading.Thread):
@@ -1185,8 +1174,7 @@ def sos_get_param(key, defvalue):
         if isinstance(defvalue, type):
             raise ArgumentError(
                 f"Argument {key} of type {defvalue.__name__} is required")
-        else:
-            return defvalue
+        return defvalue
     #
     if env.config["workflow_vars"]:
         if key in env.config["workflow_vars"]:
@@ -1480,8 +1468,7 @@ def load_config_files(filename=None, default_config_files=True):
                     if key not in val:
                         raise ValueError(
                             f"Based on key {key} not found in config")
-                    else:
-                        val = val[key]
+                    val = val[key]
                 #
                 if not isinstance(val, dict):
                     raise ValueError("Based on item must be a dictionary")
@@ -1492,12 +1479,11 @@ def load_config_files(filename=None, default_config_files=True):
                     if k not in item:
                         item[k] = v
             return item
-        else:
-            for k, v in item.items():
-                if isinstance(v, dict):
-                    # v should be processed in place
-                    process_based_on(cfg, v)
-            return item
+        for k, v in item.items():
+            if isinstance(v, dict):
+                # v should be processed in place
+                process_based_on(cfg, v)
+        return item
 
     #
     for v in cfg.values():
@@ -1607,9 +1593,8 @@ def sample_lines(lines, n):
     """Draw a sample of n lines from filename, largely evenly."""
     if len(lines) <= n:
         return "".join(lines)
-    else:
-        m = len(lines)
-        return "".join([lines[x * m // n + m // (2 * n)] for x in range(n)])
+    m = len(lines)
+    return "".join([lines[x * m // n + m // (2 * n)] for x in range(n)])
 
 
 def linecount_of_file(filename):
@@ -1651,14 +1636,13 @@ def load_var(line):
     key, value = line.split("=", 1)
     if key.endswith(":"):
         return key[:-1], pickle.loads(base64.b64decode(eval(value.strip())))
-    else:
-        try:
-            return key, eval(value.strip())
-        except Exception:
-            # use SoS_eval instead of eval because vars can contain sos objects such as R_library
-            from .eval import SoS_eval
+    try:
+        return key, eval(value.strip())
+    except Exception:
+        # use SoS_eval instead of eval because vars can contain sos objects such as R_library
+        from .eval import SoS_eval
 
-            return key, SoS_eval(value.strip())
+        return key, SoS_eval(value.strip())
 
 
 def version_info(module: str):
@@ -1730,43 +1714,42 @@ def pexpect_run(cmd, shell=False, win_width=None, stdout_socket=None):
             except pexpect.EOF:
                 break
         return child.wait()
+    import subprocess
+
+    import pexpect
+
+    if win_width:
+        os.environ["COLUMNS"] = str(win_width)
     else:
-        import subprocess
-
-        import pexpect
-
-        if win_width:
-            os.environ["COLUMNS"] = str(win_width)
-        else:
-            os.environ["COLUMNS"] = "80"
-        try:
-            if isinstance(cmd, str):
-                if shell:
-                    child = pexpect.spawn(
-                        "/bin/bash", ["-c", cmd], timeout=None)
-                else:
-                    child = pexpect.spawn(cmd, timeout=None)
+        os.environ["COLUMNS"] = "80"
+    try:
+        if isinstance(cmd, str):
+            if shell:
+                child = pexpect.spawn(
+                    "/bin/bash", ["-c", cmd], timeout=None)
             else:
-                if shell:
-                    child = pexpect.spawn(
-                        "/bin/bash", ["-c", subprocess.list2cmdline(cmd)],
-                        timeout=None)
-                else:
-                    child = pexpect.spawn(
-                        subprocess.list2cmdline(cmd), timeout=None)
-            while True:
-                try:
-                    child.expect("\r\n")
-                    if env.verbosity > 0:
-                        send_output(child.before.decode() + "\n")
-                except pexpect.EOF:
-                    break
-            child.wait()
-            child.close()
-            return child.exitstatus
-        except Exception as e:
-            sys.stderr.write(str(e))
-            return 1
+                child = pexpect.spawn(cmd, timeout=None)
+        else:
+            if shell:
+                child = pexpect.spawn(
+                    "/bin/bash", ["-c", subprocess.list2cmdline(cmd)],
+                    timeout=None)
+            else:
+                child = pexpect.spawn(
+                    subprocess.list2cmdline(cmd), timeout=None)
+        while True:
+            try:
+                child.expect("\r\n")
+                if env.verbosity > 0:
+                    send_output(child.before.decode() + "\n")
+            except pexpect.EOF:
+                break
+        child.wait()
+        child.close()
+        return child.exitstatus
+    except Exception as e:
+        sys.stderr.write(str(e))
+        return 1
 
 
 def format_par(name, par):
@@ -1779,22 +1762,19 @@ def format_par(name, par):
         if isinstance(val, type) or val is None:
             if val == bool:
                 return f"--[no-]{name} (required)"
-            elif val is None:
+            if val is None:
                 return f"--{name} VAL (required)"
-            elif val not in (str, file_target, path) and hasattr(
+            if val not in (str, file_target, path) and hasattr(
                     val, "__iter__"):
                 return f"--{name} VAL VAL ... (as {val.__class__.__name__}, required)"
-            else:
-                return f"--{name} VAL (as {val.__name__}, required)"
-        else:
-            if val is True or val is False:
-                return f"--[no-]{name} (default to {val})"
-            elif isinstance(val, Sequence) and not isinstance(val, str):
-                return f'--{name} {" ".join(str(x) for x in val)} (as {val.__class__.__name__})'
-            elif isinstance(val, str):
-                return f"--{name} {val if val.isalnum() else repr(val)}"
-            else:
-                return f"--{name} {val} (as {val.__class__.__name__})"
+            return f"--{name} VAL (as {val.__name__}, required)"
+        if val is True or val is False:
+            return f"--[no-]{name} (default to {val})"
+        if isinstance(val, Sequence) and not isinstance(val, str):
+            return f'--{name} {" ".join(str(x) for x in val)} (as {val.__class__.__name__})'
+        if isinstance(val, str):
+            return f"--{name} {val if val.isalnum() else repr(val)}"
+        return f"--{name} {val} (as {val.__class__.__name__})"
     except Exception:
         return f"--{name} {par}"
 
@@ -1984,7 +1964,7 @@ def get_nodelist():
         ]
         env.log_to_file("WORKER", f'Using "-j {args}" on a SLURM cluster.')
         return args
-    elif "PBS_ENVIRONMENT" in os.environ:
+    if "PBS_ENVIRONMENT" in os.environ:
         with open(os.environ["PBS_NODEFILE"], "r") as hosts:
             hostlist = hosts.read().split()
             from collections import Counter, OrderedDict
@@ -1996,7 +1976,7 @@ def get_nodelist():
             ]
         env.log_to_file("WORKER", f'Using "-j {args}" on a PBS cluster.')
         return args
-    elif "PE_HOSTFILE" in os.environ:
+    if "PE_HOSTFILE" in os.environ:
         # The pathname of a file containing a  detailed  descrip-
         #  tion  of  the  layout of the parallel environment to be
         #  setup by the start-up procedure. Each line of the  file
@@ -2010,7 +1990,7 @@ def get_nodelist():
             args = [":".join(host.split()[:2]) for host in hosts]
         env.log_to_file("WORKER", f'Using "-j {args}" on a SGE cluster.')
         return args
-    elif "LSB_MCPU_HOSTS" in os.environ:
+    if "LSB_MCPU_HOSTS" in os.environ:
         # IBM LSF https://www.ibm.com/support/knowledgecenter/en/SSETD4_9.1.3/lsf_config_ref/lsf_envars_ref.html
         # LSB_MCPU_HOSTS="hostA 3 hostB 3"
         hostlist = os.environ["LSB_MCPU_HOSTS"].strip().split()

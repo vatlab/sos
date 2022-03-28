@@ -199,8 +199,7 @@ class sos_variable(BaseTarget):
         # handling special !q conversion flag
         if format_spec and format_spec[0] == "R":
             return self._var.__format__(format_spec[1:])
-        else:
-            return str(self).__format__(format_spec)
+        return str(self).__format__(format_spec)
 
 
 class env_variable(BaseTarget):
@@ -229,8 +228,7 @@ class env_variable(BaseTarget):
         # handling special !q conversion flag
         if format_spec and format_spec[0] == "R":
             return self._var.__format__(format_spec[1:])
-        else:
-            return str(self).__format__(format_spec)
+        return str(self).__format__(format_spec)
 
 
 class invalid_target(BaseTarget):
@@ -373,7 +371,7 @@ class dynamic(BaseTarget):
         if isinstance(self._target, str):
             return sorted(
                 [x for x in glob.glob(self._target) if os.path.isfile(x)])
-        elif isinstance(self._target, Sequence) and all(
+        if isinstance(self._target, Sequence) and all(
                 isinstance(x, str) for x in self._target):
             return sorted(
                 sum(
@@ -383,15 +381,13 @@ class dynamic(BaseTarget):
                      for t in self._target],
                     [],
                 ))
-        else:
-            return self._target
+        return self._target
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
         if format_spec and format_spec[0] == "R":
             return sos_targets(self._target).__format__(format_spec[1:])
-        else:
-            return str(self).__format__(format_spec)
+        return str(self).__format__(format_spec)
 
 
 class remote(BaseTarget):
@@ -413,10 +409,9 @@ class remote(BaseTarget):
     def target_name(self):
         if isinstance(self._target, str):
             return file_target(self._target).target_name()
-        elif isinstance(self._target, BaseTarget):
+        if isinstance(self._target, BaseTarget):
             return self._target.target_name()
-        else:
-            return repr(self._target)
+        return repr(self._target)
 
     def target_exists(self, mode="any"):
         if not self._host and not env.config["default_queue"]:
@@ -456,8 +451,7 @@ class remote(BaseTarget):
         # handling special !q conversion flag
         if format_spec and format_spec[0] == "R":
             return sos_targets(self._target).__format__(format_spec[1:])
-        else:
-            return str(self).__format__(format_spec)
+        return str(self).__format__(format_spec)
 
 
 class executable(BaseTarget):
@@ -498,15 +492,13 @@ class executable(BaseTarget):
                     if ver in output:
                         return True
                 return False
-            else:
-                return True
+            return True
         return False
 
     def target_name(self):
         if self._version:
             return f"{self._cmd} (version={self._version})"
-        else:
-            return self._cmd
+        return self._cmd
 
     def target_signature(self):
         # we do not care if the target actually exist
@@ -520,18 +512,16 @@ class executable(BaseTarget):
         # handling special !q conversion flag
         if format_spec and format_spec[0] == "R":
             return self._cmd.__format__(format_spec[1:])
-        else:
-            return str(self).__format__(format_spec)
+        return str(self).__format__(format_spec)
 
 
 def collapseuser(path):
     home = os.path.expanduser("~")
     if path == home:
         return "~"
-    elif path.startswith(home + os.sep):
+    if path.startswith(home + os.sep):
         return "~" + path[len(home):]
-    else:
-        return path
+    return path
 
 
 class path(type(Path())):
@@ -601,8 +591,7 @@ class path(type(Path())):
                 "Incomplete sos environment: undefined host {host}")
         if "paths" not in env.sos_dict["CONFIG"]["hosts"][host]:
             return []
-        else:
-            return list(get_config(["hosts", host, "paths"]).keys())
+        return list(get_config(["hosts", host, "paths"]).keys())
 
     # the PathLike interface defines __fspath__ as str()
     def __str__(self):
@@ -692,7 +681,7 @@ class path(type(Path())):
             if host is not None and host not in env.sos_dict["CONFIG"]["hosts"]:
                 raise RuntimeError(
                     f"Incomplete sos environment: undefined host {host}") from e
-            elif (env.sos_dict.get("__host__", "localhost")
+            if (env.sos_dict.get("__host__", "localhost")
                   not in env.sos_dict["CONFIG"]["hosts"]):
                 raise RuntimeError(
                     f'Incomplete sos environment: undefined host {env.sos_dict.get("__host__", "locahost")}'
@@ -721,10 +710,9 @@ class path(type(Path())):
     def __add__(self, part):
         if isinstance(part, (str, path)):
             return self.__class__(str(self) + str(part))
-        else:
-            raise ValueError(
-                f"Cannot concatenate path to {part} of type {type(part).__name__}: expect a string or path"
-            )
+        raise ValueError(
+            f"Cannot concatenate path to {part} of type {type(part).__name__}: expect a string or path"
+        )
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
@@ -785,7 +773,7 @@ class file_target(path, BaseTarget):
         try:
             if mode in ("any", "target") and self.exists():
                 return True
-            elif mode == "any" and (self + ".zapped").exists():
+            if mode == "any" and (self + ".zapped").exists():
                 return True
             return False
         except Exception as e:
@@ -811,7 +799,7 @@ class file_target(path, BaseTarget):
             if not self._md5:
                 self._md5 = fileMD5(self)
             return (os.path.getmtime(self), os.path.getsize(self), self._md5)
-        elif (self + ".zapped").is_file():
+        if (self + ".zapped").is_file():
             with open(self + ".zapped") as sig:
                 line = sig.readline()
                 _, mtime, size, md5 = line.strip().rsplit("\t", 3)
@@ -1370,14 +1358,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         labels=i,
                     ).set(**grp._dict))
             return ret
-        elif isinstance(i, (tuple, list)):
+        if isinstance(i, (tuple, list)):
             ret = sos_targets()
             ret._undetermined = self._undetermined
             ret._targets = [self._targets[x] for x in i]
             ret._labels = [self._labels[x] for x in i]
             ret._groups = []
             return ret
-        elif callable(i):
+        if callable(i):
             kept = [idx for idx, x in enumerate(self._targets) if i(x)]
             if len(kept) == len(self._targets):
                 return self
@@ -1403,15 +1391,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         ],
                     ).set(**grp._dict))
             return ret
-        else:
-            ret = sos_targets()
-            ret._undetermined = self._undetermined
-            ret._targets = ([self._targets[i]]
-                            if isinstance(i, int) else self._targets[i])
-            ret._labels = [self._labels[i]] if isinstance(
-                i, int) else self._labels[i]
-            ret._groups = []
-            return ret
+        ret = sos_targets()
+        ret._undetermined = self._undetermined
+        ret._targets = ([self._targets[i]]
+                        if isinstance(i, int) else self._targets[i])
+        ret._labels = [self._labels[i]] if isinstance(
+            i, int) else self._labels[i]
+        ret._groups = []
+        return ret
 
     def __getitem__(self, i):
         if isinstance(i, str):
@@ -1441,8 +1428,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             if not ret._targets:
                 env.logger.warning(f'No target with label "{i}" is available.')
             return ret
-        else:
-            return self._targets[i]
+        return self._targets[i]
 
     def target_signature(self):
         return tuple((x.target_signature(), y)
@@ -1571,10 +1557,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def get(self, name, default=None):
         if name in self._dict:
             return self._dict[name]
-        elif len(self._targets) == 1:
+        if len(self._targets) == 1:
             return self._targets[0].get(name, default)
-        else:
-            return default
+        return default
 
     def _add_groups(self, grps):
         self._groups = []
@@ -2011,22 +1996,20 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def __add__(self, part):
         if len(self._targets) == 1:
             return self._targets[0].__add__(part)
-        elif len(self._targets) == 0:
+        if len(self._targets) == 0:
             raise ValueError(f"Cannot add {part} to empty target list")
-        else:
-            raise ValueError(
-                f"Cannot add {part} to group of {len(self)} targets {self!r}")
+        raise ValueError(
+            f"Cannot add {part} to group of {len(self)} targets {self!r}")
 
     def __fspath__(self):
         if len(self._targets) == 1:
             return self._targets[0].__fspath__()
-        elif len(self._targets) == 0:
+        if len(self._targets) == 0:
             raise ValueError(
                 "Cannot treat an empty sos_targets as single target")
-        else:
-            raise ValueError(
-                f"Cannot treat an sos_targets object {self} with more than one targets as a single target"
-            )
+        raise ValueError(
+            f"Cannot treat an sos_targets object {self} with more than one targets as a single target"
+        )
 
     def __repr__(self):
         return (("[" + ", ".join(repr(x) for x in self._targets) +
@@ -2040,11 +2023,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             if len(self._targets) <= 2:
                 return " ".join([x.target_name() for x in self._targets
                                 ]) + grp_info
-            else:
-                return (" ".join([x.target_name() for x in self._targets[:2]]) +
-                        f"... ({len(self._targets)} items{grp_info})")
-        else:
-            return "Unspecified" if self.unspecified() else self._undetermined
+            return (" ".join([x.target_name() for x in self._targets[:2]]) +
+                    f"... ({len(self._targets)} items{grp_info})")
+        return "Unspecified" if self.unspecified() else self._undetermined
 
     def __stable_repr__(self):
         return repr(self)
@@ -2059,8 +2040,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         if "," in format_spec:
             fmt_spec = format_spec.replace(",", "")
             return ",".join(x.__format__(fmt_spec) for x in self._targets)
-        else:
-            return " ".join(x.__format__(format_spec) for x in self._targets)
+        return " ".join(x.__format__(format_spec) for x in self._targets)
 
     def __deepcopy__(self, memo):
         ret = sos_targets()
@@ -2074,8 +2054,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
     def contains(self, target):
         if isinstance(target, str):
             return file_target(target) in self._targets
-        else:
-            return target in self._targets
+        return target in self._targets
 
 
 class InMemorySignature:
@@ -2358,11 +2337,10 @@ class RuntimeInfo(InMemorySignature):
                 self.output_files,
                 os.path.join(env.temp_dir, self.sig_id + ".lock"),
             ))
-        else:
-            env.log_to_file(
-                "TARGET",
-                f"Lock acquired for output files {short_repr(self.output_files)}",
-            )
+        env.log_to_file(
+            "TARGET",
+            f"Lock acquired for output files {short_repr(self.output_files)}",
+        )
 
     def release(self, quiet=False):
         if not self.sig_id:
@@ -2407,6 +2385,7 @@ class RuntimeInfo(InMemorySignature):
             raise ValueError(
                 f"Cannot write signature with undetermined output {self.output_files}"
             )
+<<<<<<< HEAD
         else:
             if "TARGET" in env.config["SOS_DEBUG"] or "ALL" in env.config[
                     "SOS_DEBUG"]:
@@ -2414,6 +2393,14 @@ class RuntimeInfo(InMemorySignature):
                     "TARGET",
                     f"write signature {self.sig_id} with output {self.output_files}",
                 )
+=======
+        if "TARGET" in env.config["SOS_DEBUG"] or "ALL" in env.config[
+                "SOS_DEBUG"]:
+            env.log_to_file(
+                "TARGET",
+                f"write signature {self.sig_id} with output {self.output_files}",
+            )
+>>>>>>> master
         ret = super().write()
         if ret is False:
             env.logger.debug(f"Failed to write signature {self.sig_id}")

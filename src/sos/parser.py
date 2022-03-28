@@ -183,16 +183,15 @@ def replace_sigil(text: str, sigil: str) -> str:
             # cannot split
             final_text += text.replace("{", "{{").replace("}", "}}")
             break
-        else:
-            rhs = pieces[1]
-            # now if there is {, we need to find matching number of }
-            # basically we need to find syntaxly valid expression before
-            # ending bracket... or !
-            rhs_pieces = rp.split(rhs)
-            if len(rhs_pieces) == 1:
-                raise ValueError(
-                    f"Invalid f-string {text}: missing right sigil at {rhs[:20]}"
-                )
+        rhs = pieces[1]
+        # now if there is {, we need to find matching number of }
+        # basically we need to find syntaxly valid expression before
+        # ending bracket... or !
+        rhs_pieces = rp.split(rhs)
+        if len(rhs_pieces) == 1:
+            raise ValueError(
+                f"Invalid f-string {text}: missing right sigil at {rhs[:20]}"
+            )
 
             # say we have sigil = [ ]
             #
@@ -200,17 +199,17 @@ def replace_sigil(text: str, sigil: str) -> str:
             #
             # we need to include ] in expression
             #
-            for n in range(1, len(rhs_pieces) + 1):
-                if valid_expr_till(r.join(rhs_pieces[:n])) > 0:
-                    final_text += (
-                        pieces[0].replace("{", "{{").replace("}", "}}") + "{" +
-                        r.join(rhs_pieces[:n]) + "}")
-                    text = r.join(rhs_pieces[n:])
-                    break
-                # the last one, still not valid
-                if n == len(rhs_pieces):
-                    raise ValueError(
-                        f"Invalid f-string {text}: invalid expression")
+        for n in range(1, len(rhs_pieces) + 1):
+            if valid_expr_till(r.join(rhs_pieces[:n])) > 0:
+                final_text += (
+                    pieces[0].replace("{", "{{").replace("}", "}}") + "{" +
+                    r.join(rhs_pieces[:n]) + "}")
+                text = r.join(rhs_pieces[n:])
+                break
+            # the last one, still not valid
+            if n == len(rhs_pieces):
+                raise ValueError(
+                    f"Invalid f-string {text}: invalid expression")
     # finally, replace LSIGIL etc
     return final_text
 
@@ -287,13 +286,11 @@ class SoS_Step:
                 else:
                     names.append(n if n is not None else str(i))
             return ", ".join(names)
-        else:
-            if alias and self.alias:
-                return self.alias
-            elif self.name and self.index is not None:
-                return f"{self.name}_{self.index}"
-            else:
-                return self.name if self.name else str(self.index)
+        if alias and self.alias:
+            return self.alias
+        if self.name and self.index is not None:
+            return f"{self.name}_{self.index}"
+        return self.name if self.name else str(self.index)
 
     def match(self, step_name: str) -> bool:
         # if this step provides name...
@@ -589,11 +586,11 @@ class SoS_Step:
                         raise ValueError(
                             f"{self.step_name()}: Step task should be defined as the last item in a SoS step"
                         )
-                    elif statement[1] == "task":
+                    if statement[1] == "task":
                         raise ValueError(
                             f"{self.step_name()}: Only one task is allowed for a step"
                         )
-                    elif statement[1] == "parameter":
+                    if statement[1] == "parameter":
                         raise ValueError(
                             f"{self.step_name()}: Parameters should be defined before step task"
                         )
@@ -826,9 +823,8 @@ class SoS_ScriptContent:
     def text(self) -> str:
         if self.content:
             return self.content
-        else:
-            with open(self.filename) as script:
-                return script.read()
+        with open(self.filename) as script:
+            return script.read()
 
     def __repr__(self):
         return f"{self.md5}: filename: {self.filename}, content: {self.content}"
@@ -1048,7 +1044,7 @@ class SoS_Script:
                         if not cursect.isValid():
                             cursect.extend(line)
                 continue
-            elif not line.strip():
+            if not line.strip():
                 # a blank line start a new comment block if we are still
                 # in the front of the script
                 self.clear_comment()
@@ -1261,7 +1257,7 @@ class SoS_Script:
                         else:
                             prev_names = [prev_name[0]]
                         if len(set(prev_names)
-                               & set(names)) and "global" not in names:
+                               & set(names)) > 0 and "global" not in names:
                             parsing_errors.append(
                                 lineno, line, f"Duplicate section name {names}")
                 all_step_names.extend(step_names)

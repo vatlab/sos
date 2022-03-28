@@ -123,12 +123,11 @@ def find_statement(section, name):
     ]
     if not stmt_idx:
         return None
-    elif len(stmt_idx) == 1:
+    if len(stmt_idx) == 1:
         return stmt_idx[0]
-    else:
-        raise RuntimeError(
-            f"More than one step {name} statement are specified in step {section.step_name()}"
-        )
+    raise RuntimeError(
+        f"More than one step {name} statement are specified in step {section.step_name()}"
+    )
 
 
 def no_output_from(*args, **kwargs):
@@ -315,7 +314,7 @@ def get_step_depends(section):
                 else:
                     if par[0] in SOS_TARGETS_OPTIONS:
                         continue
-                    elif par[0] == "name":
+                    if par[0] == "name":
                         if not isinstance(par[1], str):
                             raise ValueError(
                                 f"Value for named_output can only be a name (str): {par[1]} provided"
@@ -328,13 +327,13 @@ def get_step_depends(section):
 
     if depends_idx is not None:
         value = section.statements[depends_idx][2]
+        svars = ["output_from", "named_output"]
+        old_values = {
+            x: env.sos_dict.dict()[x]
+            for x in svars
+            if x in env.sos_dict.dict()
+        }
         try:
-            svars = ["output_from", "named_output"]
-            old_values = {
-                x: env.sos_dict.dict()[x]
-                for x in svars
-                if x in env.sos_dict.dict()
-            }
             # output_from and named_output has been processed
             env.sos_dict.quick_update({
                 "output_from": lambda *args, **kwargs: None,
@@ -377,13 +376,13 @@ def get_step_input(section, default_input):
 
     # input statement
     stmt = section.statements[input_idx][2]
+    svars = ["output_from", "named_output", "sos_step", "sos_variable"]
+    old_values = {
+        x: env.sos_dict.dict()[x]
+        for x in svars
+        if x in env.sos_dict.dict()
+    }
     try:
-        svars = ["output_from", "named_output", "sos_step", "sos_variable"]
-        old_values = {
-            x: env.sos_dict.dict()[x]
-            for x in svars
-            if x in env.sos_dict.dict()
-        }
         env.sos_dict.quick_update({
             "output_from": lambda *args, **kwargs: None,
             "named_output": lambda *args, **kwargs: None,
@@ -479,13 +478,13 @@ def get_step_output(section, default_output, analysis_type):
             continue
 
         value = statement[2]
+        svars = ["output_from", "named_output", "sos_step", "sos_variable"]
+        old_values = {
+            x: env.sos_dict.dict()[x]
+            for x in svars
+            if x in env.sos_dict.dict()
+        }
         try:
-            svars = ["output_from", "named_output", "sos_step", "sos_variable"]
-            old_values = {
-                x: env.sos_dict.dict()[x]
-                for x in svars
-                if x in env.sos_dict.dict()
-            }
             env.sos_dict.quick_update({
                 "output_from": no_output_from,
                 "named_output": no_named_output,
@@ -572,7 +571,7 @@ def get_output_from_steps(stmt, last_step):
     def step_name(val):
         if isinstance(val, str):
             return val
-        elif isinstance(val, int):
+        if isinstance(val, int):
             if val == -1:
                 if last_step is None:
                     # there is a case where a regular step is checked as auxiliary step.
@@ -582,10 +581,8 @@ def get_output_from_steps(stmt, last_step):
                 return last_step
             if "_" in env.sos_dict["step_name"]:
                 return f"{env.sos_dict['step_name'].rsplit('_',1)[0]}_{val}"
-            else:
-                return str(val)
-        else:
-            raise ValueError(f"Invalid value {val} for output_from() function")
+            return str(val)
+        raise ValueError(f"Invalid value {val} for output_from() function")
 
     res = []
     for value in opt_values:

@@ -23,8 +23,7 @@ class WorkflowEngine:
         r_idx = [idx for idx, x in enumerate(argv) if x.startswith(arg)]
         if not r_idx:
             return argv
-        else:
-            r_idx = r_idx[0]
+        r_idx = r_idx[0]
         # find next option
         r_next = [
             idx for idx, x in enumerate(argv[r_idx + 1:]) if x.startswith("-")

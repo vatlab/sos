@@ -351,8 +351,7 @@ class RemoteHost(object):
         if msg.startswith("error:"):
             env.logger.debug(msg)
             return textMD5(targets.target_name())
-        else:
-            return msg
+        return msg
 
     def _get_shared_dirs(self) -> List[Any]:
         value = self.config.get("shared", [])
@@ -378,7 +377,7 @@ class RemoteHost(object):
                     raise ValueError(
                         f"Path map should be separated as from -> to, {v} specified"
                     )
-                elif v.count(" -> ") > 1:
+                if v.count(" -> ") > 1:
                     raise ValueError(
                         f"Path map should be separated as from -> to, {v} specified"
                     )
@@ -446,11 +445,10 @@ class RemoteHost(object):
                 """ -q {host} -p {port} <<'HEREDOC!!'\nbash --login -c '""" +
                 (" [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && "
                  if under_workdir else " ") + """ {cmd} '\nHEREDOC!!\n""")
-        else:
-            return ("ssh " + self.cm_opts + self.pem_opts +
-                    """ -q {host} -p {port} "bash --login -c '""" +
-                    (" [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && "
-                     if under_workdir else " ") + """ {cmd}'" """)
+        return ("ssh " + self.cm_opts + self.pem_opts +
+                """ -q {host} -p {port} "bash --login -c '""" +
+                (" [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && "
+                if under_workdir else " ") + """ {cmd}'" """)
 
     def _get_query_cmd(self):
         return self.config.get(
@@ -541,12 +539,11 @@ class RemoteHost(object):
                     f"Path {source} is not under any specified paths of localhost and is mapped to {dest} on remote host."
                 )
             return dest.replace("\\", "/")
-        elif isinstance(source, (Sequence, set, sos_targets)):
+        if isinstance(source, (Sequence, set, sos_targets)):
             ret = [self._map_var(x) for x in source]
             return [x for x in ret if x is not None]
-        else:
-            env.logger.debug(f"Ignore unmappable source {source}")
-            return source
+        env.logger.debug(f"Ignore unmappable source {source}")
+        return source
 
     def test_connection(self):
         try:
@@ -581,10 +578,9 @@ class RemoteHost(object):
                     p.close()
                     if p.exitstatus == 0:
                         return "OK"
-                    elif p.before:
+                    if p.before:
                         return p.before.decode()
-                    else:
-                        return f'Command "{cmd}" exits with code {p.exitstatus}'
+                    return f'Command "{cmd}" exits with code {p.exitstatus}'
         except pexpect.TIMEOUT:
             return f"ssh connection to {self.address} time out with prompt: {str(p.before)}"
         except Exception as e:
@@ -609,12 +605,11 @@ class RemoteHost(object):
                     f"Path {dest} is not under any specified paths of localhost and is mapped to {dest} on local host."
                 )
             return dest.replace("\\", "/")
-        elif isinstance(dest, (Sequence, set, sos_targets)):
+        if isinstance(dest, (Sequence, set, sos_targets)):
             ret = [self._reverse_map_var(x) for x in dest]
             return [x for x in ret if x is not None]
-        else:
-            env.logger.debug(f"Ignore unmappable source {dest}")
-            return dest
+        env.logger.debug(f"Ignore unmappable source {dest}")
+        return dest
 
     def _remote_abs(self, path):
         # return an absolute path relative to remote host
@@ -978,7 +973,7 @@ class RemoteHost(object):
             from .utils import pexpect_run
 
             return pexpect_run(cmd)
-        elif wait_for_task or sys.platform == "win32":
+        if wait_for_task or sys.platform == "win32":
             # keep proc persistent to avoid a subprocess is still running warning.
             p = subprocess.Popen(cmd, shell=True, **kwargs)
             p.wait()
@@ -1182,9 +1177,8 @@ class Host:
                     f"Undefined localhost {env.sos_dict['CONFIG']['localhost']}"
                 )
             return env.sos_dict["CONFIG"]["localhost"]
-        else:
-            env.sos_dict["CONFIG"]["localhost"] = "localhost"
-            return "localhost"
+        env.sos_dict["CONFIG"]["localhost"] = "localhost"
+        return "localhost"
 
     def _get_remote_host(self, alias: Optional[str]) -> str:
         # get a remote host specified by Alias

@@ -276,7 +276,7 @@ class SoS_Worker(mp.Process):
                     )
                     self._runners[new_idx] = True
                     continue
-                elif "task_id" in reply:
+                if "task_id" in reply:
                     self.run_task(reply)
                     env.log_to_file(
                         "WORKER",
@@ -335,22 +335,20 @@ class SoS_Worker(mp.Process):
     def _type_of_work(self, work):
         if "section" in work:
             return "step"
-        elif "wf" in work:
+        if "wf" in work:
             return "workflow"
-        elif "task_id" in work:
+        if "task_id" in work:
             return "task"
-        else:
-            return "substep"
+        return "substep"
 
     def _name_of_work(self, work):
         if "section" in work:
             return work["section"].step_name()
-        elif "wf" in work:
+        if "wf" in work:
             return work["workflow_id"]
-        elif "task_id" in work:
+        if "task_id" in work:
             return work["task_id"]
-        else:
-            return "substep"
+        return "substep"
 
     def run_workflow(self, workflow_id, wf, targets, args, shared, config,
                      **kwargs):
@@ -402,9 +400,7 @@ class SoS_Worker(mp.Process):
         # Execute global namespace. The reason why this is executed outside of
         # step is that the content of the dictioary might be overridden by context
         # variables.
-        prepare_env(section.global_def, section.global_vars,
-                    env.config["workflow_vars"])
-
+        prepare_env(section.global_def, section.global_vars, env.config["workflow_vars"])
         # clear existing keys, otherwise the results from some random result
         # might mess with the execution of another step that does not define input
         for k in ["__step_input__", "__default_output__", "__step_output__"]:

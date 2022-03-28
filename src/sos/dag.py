@@ -209,10 +209,10 @@ class SoS_DAG(nx.DiGraph):
             x for x in self.nodes() if x._status == 'signature_pending'
         ]
         if pending_jobs:
-            try:
-                notifier = ActivityNotifier(
+            notifier = ActivityNotifier(
                     f'Waiting for {len(pending_jobs)} pending job{"s: e.g." if len(pending_jobs) > 1 else ":"} output {short_repr(pending_jobs[0]._signature[0])} with signature file {pending_jobs[0]._signature[1] + "_"}. You can manually remove this lock file if you are certain that no other process is working on the output.'
                 )
+            try:
                 while True:
                     for node in pending_jobs:
                         # if it has not been executed
@@ -298,17 +298,14 @@ class SoS_DAG(nx.DiGraph):
                             raise RuntimeError(
                                 f'Target {target} that was failed to generate is needed to continue.'
                             )
-                        else:
-                            raise RuntimeError(
-                                f'Completed target {target} is being re-executed. Please report this bug to SoS developers.'
-                            )
-                    else:
-                        env.logger.info(
-                            f'Re-running {node._node_id} to generate {target}')
-                        node._status = None
+                        raise RuntimeError(
+                            f'Completed target {target} is being re-executed. Please report this bug to SoS developers.'
+                        )
+                    env.logger.info(
+                        f'Re-running {node._node_id} to generate {target}')
+                    node._status = None
             return True
-        else:
-            return False
+        return False
 
     # def subgraph_from(self, targets: sos_targets):
     #     '''Trim DAG to keep only nodes that produce targets'''
@@ -414,8 +411,7 @@ class SoS_DAG(nx.DiGraph):
 
         if self.last_dag == out:
             return
-        else:
-            self.last_dag = out
+        self.last_dag = out
         # output file name
         if hasattr(dest, 'write'):
             dest.write(out)

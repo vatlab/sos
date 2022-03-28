@@ -35,8 +35,7 @@ def cfg_interpolate(text, local_dict={}):
         res = interpolate(text, cfg_dict, local_dict)
         if res == text:
             break
-        else:
-            text = res
+        text = res
     return res
 
 
@@ -127,7 +126,7 @@ def get_config(*args, **kwargs):
             keys.pop(0)
             val = val[key]
             continue
-        elif "." in key:
+        if "." in key:
             found = False
             subkeys = key.split(".")
             for j in range(len(subkeys)):
@@ -154,7 +153,7 @@ def get_config(*args, **kwargs):
     if isinstance(val, str):
         local_dict.update(custom_dict)
         return cfg_interpolate(val, local_dict)
-    elif isinstance(val, dict):
+    if isinstance(val, dict):
 
         def interpolate_dict(
             item,
@@ -198,8 +197,7 @@ def get_config(*args, **kwargs):
             raw_keys=raw_keys,
             expand_keys=expand_keys,
         )
-    else:
-        return val
+    return val
 
 
 def get_accessed(node):
@@ -210,7 +208,7 @@ def get_accessed(node):
     """
     if isinstance(node, ast.Assign):
         return get_accessed(node.value)
-    elif isinstance(node, ast.Name):
+    if isinstance(node, ast.Name):
         return {node.id}
     names = set()
     if isinstance(node, list):
@@ -228,11 +226,10 @@ def accessed_vars(statement: str, mode: str = "exec") -> Set[str]:
     try:
         if mode == "exec":
             return get_accessed(ast.parse(statement, "<string>", "exec"))
-        else:
-            res = get_accessed(
-                ast.parse("__NULL__(" + statement + ")", "<string>", "eval"))
-            res.remove("__NULL__")
-            return res
+        res = get_accessed(
+            ast.parse("__NULL__(" + statement + ")", "<string>", "eval"))
+        res.remove("__NULL__")
+        return res
     except Exception as e:
         raise RuntimeError(
             f"Failed to parse statement: {statement} in {mode} mode") from e
@@ -442,10 +439,9 @@ class on_demand_options(object):
                 raise ValueError(
                     f"Failed to evaluate option {key} with value {self._expressions[key]}: Only constant values are allowed for section option skip"
                 ) from e
-            else:
-                raise ValueError(
-                    f"Failed to evaluate option {key} with value {self._expressions[key]}: {e}"
-                ) from e
+            raise ValueError(
+                f"Failed to evaluate option {key} with value {self._expressions[key]}: {e}"
+            ) from e
 
     def __repr__(self):
         return repr(self._expressions)
