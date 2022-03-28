@@ -220,8 +220,7 @@ class R_library(BaseTarget):
             return (
                 f'{self.__class__.__name__}("{self.target_name()}", {self._version!r})'
             )
-        else:
-            return super().__repr__()
+        return super().__repr__()
 
 
     def target_signature(self, mode="any"):
