@@ -449,21 +449,20 @@ class SoS_DockerClient:
             if platform.system() == 'Linux':
                 # this is for a selinux problem when /var/sos/script cannot be executed
                 security_opt = '--security-opt label:disable'
-            cmd = 'docker run --rm {} {} {} {} {} {} {} {} {} {} {} {} {} {}'.format(
-                security_opt,  # security option
-                volumes_opt,  # volumes
-                volumes_from_opt,  # volumes_from
-                name_opt,  # name
-                stdin_opt,  # stdin_optn
-                tty_opt,  # tty
-                port_opt,  # port
-                workdir_opt,  # working dir
-                user_opt,  # user
-                env_opt,  # environment
-                mem_limit_opt,  # memory limit
-                extra_opt,  # any extra parameters
-                image,  # image
-                cmd_opt)
+            cmd = f"docker run --rm {security_opt} {volumes_opt} {volumes_from_opt} {name_opt} {stdin_opt} {tty_opt} {port_opt} {workdir_opt} {user_opt} {env_opt} {mem_limit_opt} {extra_opt} {image} {cmd_opt}"
+                # security option
+                # volumes
+                # volumes_from
+                # name
+                # stdin_optn
+                # tty
+                # port
+                # working dir
+                # user
+                # environment
+                # memory limit
+                # any extra parameters
+                # image
             env.logger.debug(cmd)
             if env.config['run_mode'] == 'dryrun':
                 print(f'HINT: {cmd}')
