@@ -163,7 +163,7 @@ def get_convert_parser(desc_only=False):
                     unspecified.""",
             )
         except Exception as e:
-            print("Failed to load converter {}: {}".format(entrypoint.name, e))
+            print(f"Failed to load converter {entrypoint.name}: {e}")
     return parser
 
 
