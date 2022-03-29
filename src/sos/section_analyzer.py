@@ -536,7 +536,8 @@ def get_step_output(section, default_output, analysis_type):
                     f'Failed to determine input "{value}" of an auxiliary step: {e}'
                 ) from e
         finally:
-            old_values = [env.sos_dict.dict().pop(x) for x in svars]
+            for x in svars:
+                env.sos_dict.dict().pop(x)
             env.sos_dict.quick_update(old_values)
 
     if "provides" in section.options and default_output is not None:
