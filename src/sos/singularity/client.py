@@ -336,10 +336,7 @@ class SoS_SingularityClient:
                     'script': script
                 })
 
-            cmd = 'singularity exec {} {} {}'.format(
-                bind_opt,  # volumes
-                self._image_file(image),
-                cmd_opt)
+            cmd = f"singularity exec {bind_opt} {self._image_file(image)} {cmd_opt}"
             env.logger.debug(cmd)
             if env.config['run_mode'] == 'dryrun':
                 print(f'HINT: {cmd}')
