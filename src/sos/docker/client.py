@@ -364,8 +364,7 @@ class SoS_DockerClient:
                         f'--volumes_from={x}' for x in kwargs['volumes_from'])
                 else:
                     raise RuntimeError(
-                        'Option volumes_from only accept a string or list of string: {} specified'
-                        .format(kwargs['volumes_from']))
+                        f"Option volumes_from only accept a string or list of string: {kwargs['volumes_from']}"
 
             # we also need to mount the script
             if script:
