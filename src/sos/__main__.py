@@ -230,8 +230,7 @@ def print_converter_help():
                 continue
             sys.exit(converter_parser.print_help())
         except Exception as e:
-            sys.exit("Failed to load converter {}: {}".format(
-                entrypoint.name, e))
+            sys.exit(f"Failed to load converter {entrypoint.name}: {e}")
 
 
 def cmd_convert(args, unknown_args):
@@ -564,8 +563,7 @@ def cmd_run(args, workflow_args):
     try:
         # workflow args has to be in the format of --arg, not positional, not -a
         if workflow_args and not workflow_args[0].startswith("--"):
-            raise ValueError("Unrecognized command line option {}".format(
-                " ".join(workflow_args)))
+            raise ValueError(f"Unrecognized command line option {" ".join(workflow_args)}")
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(
             args.workflow, use_default=not args.__targets__)
