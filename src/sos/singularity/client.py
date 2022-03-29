@@ -302,7 +302,7 @@ class SoS_SingularityClient:
             **kwargs):
         self._ensure_singularity()
         #
-        env.logger.debug('singularity_run with keyword args {}'.format(kwargs))
+        env.logger.debug(f"singularity_run with keyword args {kwargs}")
         #
         # now, write a temporary file to a tempoary directory under the current directory, this is because
         # we need to share the directory to ...
