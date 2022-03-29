@@ -353,7 +353,7 @@ class SoS_DockerClient:
             #
             mem_limit_opt = ''
             if 'mem_limit' in kwargs:
-                mem_limit_opt = '--memory={}'.format(kwargs['mem_limit'])
+                mem_limit_opt = f"--memory={kwargs['mem_limit']}"
             #
             volumes_from_opt = ''
             if 'volumes_from' in kwargs:
