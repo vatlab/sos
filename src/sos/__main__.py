@@ -146,8 +146,7 @@ def get_convert_parser(desc_only=False):
                 "from_file",
                 metavar="FROM",
                 nargs="?",
-                help="""File to be converted."""
-            )
+                help="""File to be converted.""")
             subparser.add_argument(
                 "to_file",
                 metavar="TO",
