@@ -277,7 +277,7 @@ class SoS_SingularityClient:
                 f'HINT: Pulling singularity image {image} to {image_file.replace(os.path.expanduser("~"), "~")}'
             )
             subprocess.check_output(
-                'singularity pull {} {}'.format(image_file, image),
+                f"singularity pull {image_file} {image}"
                 stderr=subprocess.STDOUT,
                 shell=True,
                 universal_newlines=True)
