@@ -141,11 +141,13 @@ def get_convert_parser(desc_only=False):
                 subparsers,
                 converter_parser,
                 name=f"{f_format}-{t_format}"
+            )
             subparser.add_argument(
                 "from_file",
                 metavar="FROM",
                 nargs="?",
-                help="""File to be converted.""")
+                help="""File to be converted."""
+            )
             subparser.add_argument(
                 "to_file",
                 metavar="TO",
