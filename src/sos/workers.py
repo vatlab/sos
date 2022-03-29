@@ -759,3 +759,4 @@ class WorkerManager(object):
         # join all local processes
         for worker in self._local_workers:
             worker.join()
+            
