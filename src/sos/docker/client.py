@@ -263,7 +263,7 @@ class SoS_DockerClient:
         try:
             print(f'HINT: Pulling docker image {image}')
             subprocess.check_output(
-                'docker pull {}'.format(image),
+                f"docker pull {image}",
                 stderr=subprocess.STDOUT,
                 shell=True,
                 universal_newlines=True)
