@@ -131,11 +131,11 @@ class TaskManager:
             to_be_submitted = self._unsubmitted_tasks
             self._unsubmitted_tasks = []
 
-        if slot:
             for slot in self._slots:
-                for x in slot:
-                    if x[1] is not None:
-                        to_be_submitted.extend(x[1])
+                if slot:
+                    for x in slot:
+                        if x[1] is not None:
+                            to_be_submitted.extend(x[1])
 
         else:
             # save complete blocks
