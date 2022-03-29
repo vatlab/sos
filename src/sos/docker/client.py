@@ -230,7 +230,7 @@ class SoS_DockerClient:
             raise RuntimeError(
                 'Cannot connect to the Docker daemon. Is the docker daemon running on this host?'
             )
-        env.logger.info('docker load {}'.format(image))
+        env.logger.info(f"docker load {image}")
         try:
             subprocess.call(f'''docker load -i {image} --quiet''', shell=True)
         except Exception as e:
