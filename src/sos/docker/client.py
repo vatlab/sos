@@ -223,8 +223,7 @@ class SoS_DockerClient:
                     returncode=ret, cmd=cmd, stderr=msg)
         # if a tag is given, check if the image is built
         if 'tag' in kwargs and not self._is_image_avail(kwargs['tag']):
-            raise RuntimeError('Image with tag {} is not created.'.format(
-                kwargs['tag']))
+            raise RuntimeError(f"Image with tag {kwargs['tag']} is not created.")
 
     def load_image(self, image, **kwargs):
         if not self.client:
