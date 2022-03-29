@@ -1106,6 +1106,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         for x in self._targets:
             x.set_traced()
         self.traced = True
+        return self
 
     def unspecified(self):
         return not self._targets and self._undetermined is True
