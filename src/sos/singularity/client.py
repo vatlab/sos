@@ -309,7 +309,7 @@ class SoS_SingularityClient:
         with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
             # keep the temporary script for debugging purposes
             # tempdir = tempfile.mkdtemp(dir=os.getcwd())
-            tempscript = 'singularity_run_{}{}'.format(os.getpid(), suffix)
+            tempscript = f"singularity_run_{os.getpid()}{suffix}"
             if script:
                 with open(os.path.join(tempdir, tempscript),
                           'w') as script_file:
