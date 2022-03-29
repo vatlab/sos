@@ -412,7 +412,7 @@ class SoS_DockerClient:
                 if kwargs['port'] is True:
                     port_opt = '-P'
                 elif isinstance(kwargs['port'], (str, int)):
-                    port_opt = '-p {}'.format(kwargs['port'])
+                    port_opt = f"-p {kwargs['port']}"
                 elif isinstance(kwargs['port'], list):
                     port_opt = ' '.join(
                         '-p {}'.format(x) for x in kwargs['port'])
