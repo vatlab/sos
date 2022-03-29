@@ -357,7 +357,6 @@ def get_step_depends(section):
         finally:
             for x in svars:
                 env.sos_dict.dict().pop(x)
-                
             env.sos_dict.quick_update(old_values)
     return step_depends, dynamic_depends
 
