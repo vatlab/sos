@@ -53,7 +53,7 @@ def is_basic_type(obj):
 class UnknownTarget(Error):
 
     def __init__(self, target: "BaseTarget"):
-        Error.__init__(self, "Target unavailable: %s" % target)
+        Error.__init__(self, f"Target unavailable: {target}")
         self.target = target
 
 
