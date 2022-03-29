@@ -84,6 +84,7 @@ disable=abstract-method,
       comprehension-escape,
       consider-iterating-dictionary,
       consider-using-dict-items,
+      consider-using-f-string
       consider-using-generator,
       consider-using-get,
       consider-using-in,
