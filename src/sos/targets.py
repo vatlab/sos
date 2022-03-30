@@ -599,8 +599,7 @@ class path(type(Path())):
 
     def __repr__(self):
         raw_str = super().__str__()
-        return "{}({!r})".format(self.__class__.__name__,
-                                 raw_str.replace(self._flavour.sep, "/"))
+        return f"{self.__class__.__name__}({raw_str.replace(self._flavour.sep, '/')})"
 
     def to_named_path(self, host=None):
         try:
