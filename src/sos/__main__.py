@@ -2308,8 +2308,7 @@ def cmd_remove(args, unknown_args):
                         time.time() - os.path.getmtime(filename) < args.age
                    ) or (args.age < 0 and
                          time.time() - os.path.getmtime(filename) > -args.age):
-                    env.logger.debug("{} ignored due to age limit {}".format(
-                        filename, args.age))
+                    env.logger.debug(f"{filename} ignored due to age limit {args.age}")
                     return False
             if resp.get("{} tracked file {}".format(
                     "Would zap" if args.dryrun else "Zap", filename)):
@@ -2322,7 +2321,7 @@ def cmd_remove(args, unknown_args):
                     return True
             else:
                 env.logger.debug(
-                    "No signature exists for tracked file {}".format(filename))
+                    f"No signature exists for tracked file {filename}")
             return False
 
     else:
@@ -2481,7 +2480,8 @@ def cmd_config(args, workflow_args):
     from .utils import dict_merge, env, load_config_files
 
     if workflow_args:
-        raise RuntimeError(f"Unrecognized arguments {" ".join(workflow_args)}")
+        raise RuntimeError("Unrecognized arguments {}".format(
+            " ".join(workflow_args)))
     #
     if args.__unset_config__:
         if args.__site_config__:
