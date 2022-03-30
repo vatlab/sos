@@ -1543,11 +1543,7 @@ def cmd_execute(args, workflow_args):
                     failed_tasks.add(t)
             if all(x in ("completed", "failed", "aborted") for x in res):
                 raise RuntimeError(
-                    "{} completed, {} failed, {} aborted)".format(
-                        len([x for x in res if x == "completed"]),
-                        len([x for x in res if x == "failed"]),
-                        len([x for x in res if x.startswith("aborted")]),
-                    ))
+                    f"{len([x for x in res if x == 'completed'])}, {len([x for x in res if x == "failed"])}, {len([x for x in res if x.startswith("aborted")])}")
         if all(x == "completed" for x in res):
             if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config[
                     "SOS_DEBUG"]:
@@ -2246,16 +2242,15 @@ def cmd_remove(args, unknown_args):
             if resp.get("{} untracked file {}".format(
                     "Would remove" if args.dryrun else "Remove", filename)):
                 if not args.dryrun:
-                    env.logger.debug("Remove {}".format(target))
+                    env.logger.debug(f"Remove {target}")
                     try:
                         target.unlink()
                     except Exception as e:
-                        env.logger.warning("Failed to remove {}: {}".format(
-                            filename, e))
+                        env.logger.warning(f"Failed to remove {filename}: {e}")
                     return True
             else:
                 env.logger.debug(
-                    "No signature exists for tracked file {}".format(filename))
+                    f"No signature exists for tracked file {filename}")
             return False
 
     elif args.untracked:
