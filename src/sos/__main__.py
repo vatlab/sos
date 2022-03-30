@@ -2365,7 +2365,7 @@ def cmd_remove(args, unknown_args):
                     return True
             else:
                 env.logger.debug(
-                    "No signature exists for tracked file {}".format(filename))
+                    f"No signature exists for tracked file {filename}")
             return False
 
     removed = 0
