@@ -397,8 +397,7 @@ class SoS_DockerClient:
                     env_opt = f'-e {kwargs["environment"]}'
                 else:
                     raise RuntimeError(
-                        'Invalid value for option environment (str, list, or dict is allowd, {} provided)'
-                        .format(kwargs['environment']))
+                        f"Invalid value for option environment (str, list, or dict is allowd, {kwargs['environment']} provided)")
             #
             port_opt = ''
             if 'port' in kwargs:
@@ -465,10 +464,9 @@ class SoS_DockerClient:
 
             if ret != 0:
                 debug_script_dir = env.exec_dir
-                msg = 'The script has been saved to {}/{}. To reproduce the error please run:\n``{}``'.format(
-                    debug_script_dir, tempscript,
-                    cmd.replace(f'{path(tempdir):p}',
-                                f'{path(debug_script_dir):p}'))
+                msg = (
+                    f"The script has been saved to {debug_script_dir}/{tempscript}."
+                    f"To reproduce the error please run:\n``{cmd.replace(f'{path(tempdir):p}',f'{path(debug_script_dir):p}')}")
                 shutil.copy(os.path.join(tempdir, tempscript), debug_script_dir)
                 if ret == 125:
                     msg = 'Docker daemon failed (exitcode=125). ' + msg
