@@ -2266,8 +2266,7 @@ def cmd_remove(args, unknown_args):
                 if (args.size > 0 and os.path.getsize(filename) < args.size
                    ) or (args.size < 0 and
                          os.path.getsize(filename) > -args.size):
-                    env.logger.debug("{} ignored due to size limit {}".format(
-                        filename, args.size))
+                    env.logger.debug(f"{filename} ignored due to size limit {args.size}")
                     return False
             if args.age:
                 if (args.age > 0 and
@@ -2373,7 +2372,12 @@ def cmd_remove(args, unknown_args):
                         continue
                     removed += func(os.path.join(dirname, x), resp)
             dirlist[:] = [x for x in dirlist if not x.startswith(".")]
-    env.logger.info(f"{"Signagure of " if args.signature else ""}{removed} file{"s" if removed > 1 else ""} {"zapped" if args.zap else "removed"}")
+    env.logger.info("{}{} file{} {}".format(
+        "Signagure of " if args.signature else "",
+        removed,
+        "s" if removed > 1 else "",
+        "zapped" if args.zap else "removed",
+    ))
 
 
 #
