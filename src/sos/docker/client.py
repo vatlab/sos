@@ -326,7 +326,7 @@ class SoS_DockerClient:
                 'Cannot connect to the Docker daemon. Is the docker daemon running on this host?'
             )
         #
-        env.logger.debug('docker_run with keyword args {}'.format(kwargs))
+        env.logger.debug(f'docker_run with keyword args {kwargs}')
         #
         # now, write a temporary file to a tempoary directory under the current directory, this is because
         # we need to share the directory to ...
@@ -378,12 +378,7 @@ class SoS_DockerClient:
             if 'docker_workdir' in kwargs and kwargs[
                     'docker_workdir'] is not None:
                 if not os.path.isabs(kwargs['docker_workdir']):
-                    env.logger.warning(
-                        'An absolute path is needed for -w option of docker run command. "{}" provided, "{}" used.'
-                        .format(
-                            kwargs['docker_workdir'],
-                            os.path.abspath(
-                                os.path.expanduser(kwargs['docker_workdir']))))
+                    env.logger.warning(f"An absolute path is needed for -w option of docker run command. {kwargs['docker_workdir']} provided, {os.path.abspath(os.path.expanduser(kwargs['docker_workdir']))} used.")
                     workdir_opt = f'-w={path(kwargs["docker_workdir"]).resolve():p}'
                 else:
                     workdir_opt = f'-w={path(kwargs["docker_workdir"]):p}'
