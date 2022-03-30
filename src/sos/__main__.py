@@ -2242,8 +2242,8 @@ def cmd_remove(args, unknown_args):
                          time.time() - os.path.getmtime(filename) > -args.age):
                     env.logger.debug(f"{filename} ignored due to age limit {args.age}")
                     return False
-            if resp.get(f"{"Would remove" if args.dryrun else "Remove"} tracked file {filename}")):
-                if not args.dryrun:
+            if resp.get("{} tracked file {}".format(
+                    "Would remove" if args.dryrun else "Remove", filename)):
                     env.logger.debug("Remove {}".format(target))
                     try:
                         target.unlink()
