@@ -205,9 +205,7 @@ class SoS_SingularityClient:
                 if script:
                     debug_script_dir = os.path.join(
                         os.path.expanduser('~'), '.sos')
-                    msg = 'The definition has been saved to {}/singularity.def. To reproduce the error please run:\n``{}``'.format(
-                        debug_script_dir, cmd.replace(tempdir,
-                                                      debug_script_dir))
+                    msg = f"The definition has been saved to {debug_script_dir}/singularity.def. To reproduce the error please run:\n``{cmd.replace(tempdir,debug_script_dir)}``"
                     shutil.copy(
                         os.path.join(tempdir, 'Singularityfile'),
                         debug_script_dir)
@@ -325,7 +323,7 @@ class SoS_SingularityClient:
             if 'bind' in kwargs:
                 binds = [kwargs['bind']] if isinstance(kwargs['bind'],
                                                        str) else kwargs['bind']
-                bind_opt = ' '.join('-B {}'.format(x) for x in binds)
+                bind_opt = ' '.join(f"-B {x}" for x in binds)
             else:
                 bind_opt = ''
 
