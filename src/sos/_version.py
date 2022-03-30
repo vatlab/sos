@@ -20,5 +20,4 @@ __version__ = "0.22.8"
 __py_version__ = f"{_py_ver.major}.{_py_ver.minor}.{_py_ver.micro}"
 
 #
-SOS_FULL_VERSION = "{} for Python {}.{}.{}".format(__version__, _py_ver.major,
-                                                   _py_ver.minor, _py_ver.micro)
+SOS_FULL_VERSION = f"{__version__} for Python {_py_ver.major}.{_py_ver.minor}.{_py_ver.minor}"
