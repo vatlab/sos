@@ -2481,8 +2481,7 @@ def cmd_config(args, workflow_args):
     from .utils import dict_merge, env, load_config_files
 
     if workflow_args:
-        raise RuntimeError("Unrecognized arguments {}".format(
-            " ".join(workflow_args)))
+        raise RuntimeError(f"Unrecognized arguments {" ".join(workflow_args)}")
     #
     if args.__unset_config__:
         if args.__site_config__:
