@@ -2277,7 +2277,7 @@ def cmd_remove(args, unknown_args):
                     env.logger.debug("{} ignored due to age limit {}".format(
                         filename, args.age))
                     return False
-            if resp.get("{} untracked file {}".format(
+            if resp.get("{} tracked file {}".format(
                     "Would remove" if args.dryrun else "Remove", filename)):
                 if not args.dryrun:
                     env.logger.debug("Remove {}".format(target))
