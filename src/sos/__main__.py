@@ -1331,7 +1331,7 @@ def cmd_preview(args, unknown_args):
                         msg[1]["data"].keys()))}")
             else:
                 raise RuntimeError(
-                    "Unrecognized preview output: {}".format(msg))
+                    f"Unrecognized preview output: {msg}")
     # exit with code 1 if error happens
     sys.exit(1 if any(msg[1]["name"] == "stderr"
                       for msg in msgs
