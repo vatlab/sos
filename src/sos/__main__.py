@@ -1233,7 +1233,7 @@ def preview_file(previewers, filename, style=None):
             "stream",
             {
                 "name": "stderr",
-                "text": "Failed to preview {}: {}".format(filename, e),
+                "text": f"Failed to preview {filename}: {e}",
             },
         ])
     return msg
