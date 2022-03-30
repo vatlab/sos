@@ -737,11 +737,9 @@ class WorkerManager(object):
             self._local_worker_alive_time = time.time()
             # join processes if they are now gone, it should not do anything bad
             # if the process is still running
-            [
-                worker.join()
-                for worker in self._local_workers
-                if not worker.is_alive()
-            ]
+            for worker in self._local_workers:
+                if not worker.is_alive():
+                    worker.join()
             self._local_workers = [
                 worker for worker in self._local_workers if worker.is_alive()
             ]
@@ -757,4 +755,6 @@ class WorkerManager(object):
             total_num_workers -= 1
             self.report(f"Kill {msg[1:]}")
         # join all local processes
-        [worker.join() for worker in self._local_workers]
+        for worker in self._local_workers:
+            worker.join()
+            
