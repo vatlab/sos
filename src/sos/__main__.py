@@ -2728,7 +2728,7 @@ def main():
         master_parser.add_argument(
             "--version",
             action="version",
-            version="%(prog)s {}".format(SOS_FULL_VERSION),
+            version=f"(prog)s {SOS_FULL_VERSION}"
         )
         subparsers = master_parser.add_subparsers(
             title="subcommands",
