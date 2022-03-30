@@ -137,18 +137,18 @@ class WorkflowEngine:
         status=None,
     ):
         try:
-            return self.agent.check_output(
-                f"{self.agent.config.get('sos', 'sos')} status {'' if workflows is None else ' '.join(workflows)} -v {verbosity} {} {} {} {} {} {}".format(
-                    ,
-                    ,
-                    ,
-                    "--all workflows" if check_all else "",
-                    "--html" if html else "",
-                    "--numeric-times" if numeric_times else "",
-                    f"--age {age}" if age else "",
-                    f'--tags {" ".join(tags)}' if tags else "",
-                    f'--status {" ".join(status)}' if status else "",
-                ))
+            output_to_check = (
+                f"{self.agent.config.get('sos', 'sos')} status"
+                f"{'' if workflows is None else ' '.join(workflows)}"
+                f"-v {verbosity}"
+                f"{'--all workflows' if check_all else ''}"
+                f"{'--html' if html else ''}"
+                f"{'--numeric-times' if numeric_times else ''}"
+                f"--age {age}" if age else ""
+                f"--tags {' '.join(tags)}' if tags else ",
+                f"--status {' '.join(status)}' if status else "
+            )
+            return self.agent.check_output(output_to_check)
         except subprocess.CalledProcessError as e:
             if verbosity >= 3:
                 env.logger.warning(
