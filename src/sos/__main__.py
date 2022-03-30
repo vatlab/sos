@@ -251,8 +251,7 @@ def cmd_convert(args, unknown_args):
             # if no other parameter, with option list all
             if args.verbosity and args.verbosity > 2:
                 sys.stderr.write(get_traceback())
-            env.logger.error("Failed to execute converter {}: {}".format(
-                entrypoint.name.rsplit(".", 1)[0], e))
+            env.logger.error(f"Failed to execute converter {entrypoint.name.rsplit('.', 1)[0]}: {e}")
             sys.exit(1)
     env.logger.error(f"No converter is found for {args.converter_name}")
     sys.exit(1)
@@ -563,7 +562,7 @@ def cmd_run(args, workflow_args):
     try:
         # workflow args has to be in the format of --arg, not positional, not -a
         if workflow_args and not workflow_args[0].startswith("--"):
-            raise ValueError(f"Unrecognized command line option" " ".join(workflow_args))
+            raise ValueError(f"Unrecognized command line option {' '.join(workflow_args)}")
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(
             args.workflow, use_default=not args.__targets__)
@@ -1270,7 +1269,7 @@ def cmd_preview(args, unknown_args):
 
         if "GENERAL" in env.config["SOS_DEBUG"] or "ALL" in env.config[
                 "SOS_DEBUG"]:
-            env.log_to_file(f"GENERAL", f'Running {" ".join(rargs)}"')
+            env.log_to_file(f"GENERAL", f"Running {' '.join(rargs)}")
         msgs = host._host_agent.check_output(rargs, under_workdir=True).strip()
         if not args.exists and not args.signature:
             msgs = eval(msgs)
@@ -1542,8 +1541,12 @@ def cmd_execute(args, workflow_args):
                     env.logger.warning(f"{t} ``{s}``")
                     failed_tasks.add(t)
             if all(x in ("completed", "failed", "aborted") for x in res):
-                raise RuntimeError(
-                    f"{len([x for x in res if x == 'completed'])}, {len([x for x in res if x == "failed"])}, {len([x for x in res if x.startswith("aborted")])}")
+                into_runtime_error = (
+                    f"{len([x for x in res if x == 'completed'])}"
+                    f"{len([x for x in res if x == 'failed'])}"
+                    f"{len([x for x in res if x.startswith('aborted')])}"
+                )
+                raise RuntimeError(into_runtime_error)
         if all(x == "completed" for x in res):
             if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config[
                     "SOS_DEBUG"]:
@@ -2239,8 +2242,7 @@ def cmd_remove(args, unknown_args):
                          time.time() - os.path.getmtime(filename) > -args.age):
                     env.logger.debug(f"{filename} ignored due to age limit {args.age}")
                     return False
-            if resp.get("{} untracked file {}".format(
-                    "Would remove" if args.dryrun else "Remove", filename)):
+            if resp.get(f"{'Would remove' if args.dryrun else 'Remove'} untracked file {filename}"):
                 if not args.dryrun:
                     env.logger.debug(f"Remove {target}")
                     try:
@@ -2272,10 +2274,9 @@ def cmd_remove(args, unknown_args):
                          time.time() - os.path.getmtime(filename) > -args.age):
                     env.logger.debug(f"{filename} ignored due to age limit {args.age}")
                     return False
-            if resp.get("{} tracked file {}".format(
-                    "Would remove" if args.dryrun else "Remove", filename)):
+            if resp.get(f"{'Would remove' if args.dryrun else 'Remove'} tracked file {filename}"):
                 if not args.dryrun:
-                    env.logger.debug("Remove {}".format(target))
+                    env.logger.debug(f"Remove {target}")
                     try:
                         target.unlink()
                     except Exception as e:
@@ -2303,8 +2304,7 @@ def cmd_remove(args, unknown_args):
                          time.time() - os.path.getmtime(filename) > -args.age):
                     env.logger.debug(f"{filename} ignored due to age limit {args.age}")
                     return False
-            if resp.get("{} tracked file {}".format(
-                    "Would zap" if args.dryrun else "Zap", filename)):
+            if resp.get(f"{'Would zap' if args.dryrun else 'Zap'} tracked file {filename}"):
                 if not args.dryrun:
                     env.logger.debug(f"Zap {target}")
                     try:
@@ -2325,8 +2325,7 @@ def cmd_remove(args, unknown_args):
                 if (args.size > 0 and os.path.getsize(filename) < args.size
                    ) or (args.size < 0 and
                          os.path.getsize(filename) > -args.size):
-                    env.logger.debug("{} ignored due to size limit {}".format(
-                        filename, args.size))
+                    env.logger.debug(f"{filename} ignored due to size limit {args.size}")
                     return False
             if args.age:
                 if (args.age > 0 and
@@ -2335,8 +2334,7 @@ def cmd_remove(args, unknown_args):
                          time.time() - os.path.getmtime(filename) > -args.age):
                     env.logger.debug(f"{filename} ignored due to age limit {args.age}")
                     return False
-            if resp.get("{} file {}".format(
-                    "Would remove" if args.dryrun else "Remove", filename)):
+            if resp.get(f"{'Would remove' if args.dryrun else 'Remove'} file {filename}"):
                 if not args.dryrun:
                     env.logger.debug(f"Remove {target}")
                     try:
@@ -2366,12 +2364,7 @@ def cmd_remove(args, unknown_args):
                         continue
                     removed += func(os.path.join(dirname, x), resp)
             dirlist[:] = [x for x in dirlist if not x.startswith(".")]
-    env.logger.info("{}{} file{} {}".format(
-        "Signagure of " if args.signature else "",
-        removed,
-        "s" if removed > 1 else "",
-        "zapped" if args.zap else "removed",
-    ))
+    env.logger.info(f"{'Signature of ' if args.signature else ''}{removed} file{'s' if removed > 1 else ''} {'zapped' if args.zap else 'removed'}")
 
 
 #
@@ -2473,8 +2466,7 @@ def cmd_config(args, workflow_args):
     from .utils import dict_merge, env, load_config_files
 
     if workflow_args:
-        raise RuntimeError("Unrecognized arguments {}".format(
-            " ".join(workflow_args)))
+        raise RuntimeError(f"Unrecognized arguments {' '.join(workflow_args)}")
     #
     if args.__unset_config__:
         if args.__site_config__:
@@ -2497,8 +2489,7 @@ def cmd_config(args, workflow_args):
                     cfg = {}
             except Exception as e:
                 env.logger.error(
-                    "Failed to parse sos config file {}, is it in YAML/JSON format? ({})"
-                    .format(config_file, e))
+                    f"Failed to parse sos config file {config_file}, is it in YAML/JSON format? ({e})")
                 sys.exit(1)
         else:
             env.logger.error(
@@ -2513,7 +2504,7 @@ def cmd_config(args, workflow_args):
                 for k in cfg.keys():
                     if fnmatch.fnmatch(".".join(prefix + [k]), option):
                         unset.append(k)
-                        print("Unset {}".format(".".join(prefix + [k])))
+                        print(f"Unset {'.'.join(prefix + [k])}")
             #
             if unset:
                 changed += len(unset)
@@ -2530,8 +2521,7 @@ def cmd_config(args, workflow_args):
             with open(config_file, "w") as config:
                 config.write(yaml.safe_dump(cfg, default_flow_style=False))
         else:
-            env.logger.warning("{} does not match any configuration key".format(
-                ", ".join(args.__unset_config__)))
+            env.logger.warning(f"{', '.join(args.__unset_config__)} does not match any configuration key")
     elif args.__set_config__:
         if args.__site_config__:
             config_file = os.path.join(
@@ -2553,8 +2543,7 @@ def cmd_config(args, workflow_args):
                     cfg = {}
             except Exception as e:
                 env.logger.error(
-                    "Failed to sos config file {}, is it in YAML/JSON format? ({})"
-                    .format(config_file, e))
+                    f"Failed to sos config file {config_file}, is it in YAML/JSON format? ({e})")
                 sys.exit(1)
         else:
             cfg = {}
@@ -2603,7 +2592,7 @@ def cmd_config(args, workflow_args):
         #
         dict_merge(cfg, dv)
         # reporting assignment with existing values
-        print("Set {} to {!r}".format(k.split(".")[0], cfg[k.split(".")[0]]))
+        print(f"Set {k.split('.')[0]} to {cfg[k.split('.')[0]]}")
         #
         with open(config_file, "w") as config:
             config.write(yaml.safe_dump(cfg, default_flow_style=False))
