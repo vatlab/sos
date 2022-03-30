@@ -2677,8 +2677,7 @@ def sosrunner():
             sys.exit(0)
         except Exception as e:
             sys.exit(
-                "No help information is available for script {}: {}".format(
-                    sys.argv[1], e))
+                f"No help information is available for script {sys.argv[1]}: {e}")
     args, workflow_args = parser.parse_known_args()
     cmd_run(args, workflow_args)
 
