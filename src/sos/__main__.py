@@ -1557,7 +1557,7 @@ def cmd_execute(args, workflow_args):
             return
         if any(x in ("pending", "running", "submitted") for x in res):
             continue
-        raise RuntimeError("Job returned with status {}".format(res))
+        raise RuntimeError(f"Job returned with status {res}")
         time.sleep(0.01)
 
 
