@@ -1498,7 +1498,7 @@ def cmd_execute(args, workflow_args):
             ]
             if not matched:
                 env.logger.error(
-                    "{} does not match any existing task".format(task))
+                    f"{task} does not match any existing task")
                 exit_code.append(1)
                 continue
             if len(matched) > 1:
