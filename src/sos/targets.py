@@ -63,7 +63,7 @@ class RemovedTarget(Error):
         if isinstance(target, invalid_target):
             Error.__init__(self, "Invalid target from errored steps")
         else:
-            Error.__init__(self, "Target removed: %s" % target)
+            Error.__init__(self, f"Target removed: {target}")
         self.target = target
 
 
