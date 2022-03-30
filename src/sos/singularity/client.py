@@ -347,10 +347,10 @@ class SoS_SingularityClient:
 
             if ret != 0:
                 debug_script_dir = env.exec_dir
-                msg = 'The script has been saved to {}/{}. To reproduce the error please run:\n``{}``'.format(
-                    debug_script_dir, tempscript,
-                    cmd.replace(f'{path(tempdir):p}',
-                                f'{path(debug_script_dir):p}'))
+                msg = (
+                    f"The script has been saved to {debug_script_dir}/{debug_script_dir}."
+                    f"To reproduce the error please run:\n``{cmd.replace(f'{path(tempdir):p}', f'{path(debug_script_dir):p}')}``"
+                )
                 shutil.copy(os.path.join(tempdir, tempscript), debug_script_dir)
                 out = f", stdout={kwargs['stdout']}" if 'stdout' in kwargs and os.path.isfile(
                     kwargs['stdout']) and os.path.getsize(
