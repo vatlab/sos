@@ -662,10 +662,12 @@ class TaskEngine(threading.Thread):
         #
         # verbosity cannot be send to underlying command because task engines
         # rely on the output of certain verbosity (-v1) to post kill the jobs
-        cmd = f"{self.agent.config.get('sos', 'sos')}"
-        f"{'' if all_tasks else ' '.join(tasks)}"
-        f"--tags {" ".join(tags)}' if tags else '"
-        f"--all tasks' if all_tasks else "
+        cmd = (
+            f'{self.agent.config.get('sos', 'sos')}'
+            f'kill {'' if all_tasks else ' '.join(tasks)}'
+            f'--tags {' '.join(tags)} if tags else'
+            f'--all tasks if all_tasks else '''
+            )
 
         try:
             ret = self.agent.check_output(cmd)
