@@ -141,7 +141,6 @@ def get_convert_parser(desc_only=False):
                 subparsers,
                 converter_parser,
                 name="{}-{}".format(f_format, t_format))
-            )
             subparser.add_argument(
                 "from_file",
                 metavar="FROM",
