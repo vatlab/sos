@@ -138,9 +138,9 @@ class WorkflowEngine:
     ):
         try:
             return self.agent.check_output(
-                "{} status {} -v {} {} {} {} {} {} {}".format(
-                    self.agent.config.get("sos", "sos"),
-                    "" if workflows is None else " ".join(workflows),
+                f"{self.agent.config.get('sos', 'sos')} status {'' if workflows is None else ' '.join(workflows)} -v {} {} {} {} {} {} {}".format(
+                    ,
+                    ,
                     verbosity,
                     "--all workflows" if check_all else "",
                     "--html" if html else "",
