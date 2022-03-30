@@ -1153,8 +1153,7 @@ def preview_file(previewers, filename, style=None):
             "metadata": {},
             "data": {
                 "text/plain":
-                    "\n> {} ({}):".format(
-                        filename, pretty_size(os.path.getsize(filename))),
+                    f"\n> {filename} ({pretty_size(os.path.getsize(filename))}):",
                 "text/html":
                     HTML('<div class="sos_hint">> {} ({}):</div>'.format(
                         filename, pretty_size(os.path.getsize(filename)))).data,
