@@ -1502,8 +1502,7 @@ def cmd_execute(args, workflow_args):
                 exit_code.append(1)
                 continue
             if len(matched) > 1:
-                env.logger.error('"{}" matches more than one task ID {}'.format(
-                    task, ", ".join(matched)))
+                env.logger.error(f'"{task}" matches more than one task ID {", ".join(matched)}')
                 exit_code.append(1)
                 continue
             task = matched[0]
