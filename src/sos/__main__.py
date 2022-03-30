@@ -1538,7 +1538,7 @@ def cmd_execute(args, workflow_args):
         if any(x in ("failed", "aborted") for x in res):
             for t, s in zip(args.tasks, res):
                 if s in ("failed", "aborted") and t not in failed_tasks:
-                    env.logger.warning("{} ``{}``".format(t, s))
+                    env.logger.warning(f"{t} ``{s}``")
                     failed_tasks.add(t)
             if all(x in ("completed", "failed", "aborted") for x in res):
                 raise RuntimeError(
