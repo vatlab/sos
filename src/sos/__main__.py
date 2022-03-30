@@ -2318,8 +2318,7 @@ def cmd_remove(args, unknown_args):
                     try:
                         file_target(target).zap()
                     except Exception as e:
-                        env.logger.warning("Failed to zap {}: {}".format(
-                            filename, e))
+                        env.logger.warning(f"Failed to zap {filename}: {e}")
                     return True
             else:
                 env.logger.debug(
