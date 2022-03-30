@@ -1225,7 +1225,7 @@ def preview_file(previewers, filename, style=None):
                 "stream",
                 {
                     "name": "stderr",
-                    "text": "Unrecognized preview content: {}".format(result),
+                    "text": f"Unrecognized preview content: {result}",
                 },
             ])
     except Exception as e:
