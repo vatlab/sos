@@ -140,7 +140,7 @@ def get_convert_parser(desc_only=False):
             subparser = add_sub_parser(
                 subparsers,
                 converter_parser,
-                name=f"{f_format}-{t_format}")
+                name="{}-{}".format(f_format, t_format))
             subparser.add_argument(
                 "from_file",
                 metavar="FROM",
@@ -2373,12 +2373,7 @@ def cmd_remove(args, unknown_args):
                         continue
                     removed += func(os.path.join(dirname, x), resp)
             dirlist[:] = [x for x in dirlist if not x.startswith(".")]
-    env.logger.info("{}{} file{} {}".format(
-        "Signagure of " if args.signature else "",
-        removed,
-        "s" if removed > 1 else "",
-        "zapped" if args.zap else "removed",
-    ))
+    env.logger.info(f"{"Signagure of " if args.signature else ""}{removed} file{"s" if removed > 1 else ""} {"zapped" if args.zap else "removed"}")
 
 
 #
