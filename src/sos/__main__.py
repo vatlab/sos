@@ -1269,7 +1269,7 @@ def cmd_preview(args, unknown_args):
 
         if "GENERAL" in env.config["SOS_DEBUG"] or "ALL" in env.config[
                 "SOS_DEBUG"]:
-            env.log_to_file("GENERAL", 'Running "{}"'.format(" ".join(rargs)))
+            env.log_to_file(f"GENERAL", f'Running {" ".join(rargs)}"')
         msgs = host._host_agent.check_output(rargs, under_workdir=True).strip()
         if not args.exists and not args.signature:
             msgs = eval(msgs)
