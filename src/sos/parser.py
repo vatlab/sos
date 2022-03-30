@@ -1475,8 +1475,8 @@ class SoS_Script:
                 raise ValueError(
                     f"Name of workflow should be specified because "
                     f"the script defines more than one pipelines without a default one. "
-                    f"Available pipelines are: {', '.join(self.workflows)}."
-        elif wf_name not in self.workflows and wf_name != "default":
+                    f"Available pipelines are: {', '.join(self.workflows)}.")
+        if wf_name not in self.workflows and wf_name != "default":
             raise ValueError(
                 f'Workflow {wf_name} is undefined. Available workflows are: {", ".join(self.workflows)}'
             )
