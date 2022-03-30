@@ -2573,7 +2573,7 @@ def cmd_config(args, workflow_args):
         #
         k = args.__set_config__[0]
         if not CONFIG_NAME.match(k):
-            env.logger.error("Unacceptable variable name {}.".format(k))
+            env.logger.error(f"Unacceptable variable name {k}.")
             sys.exit(1)
         #
         values = []
