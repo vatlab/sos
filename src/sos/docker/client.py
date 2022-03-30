@@ -482,8 +482,7 @@ class SoS_DockerClient:
                     if self.tot_mem is None:
                         msg = 'Script killed by docker. ' + msg
                     else:
-                        msg = 'Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137). '.format(
-                            self.tot_mem / 1024 / 1024) + msg
+                        msg = f'Script killed by docker, probably because of lack of RAM (available RAM={self.tot_mem / 1024 / 1024}GB, exitcode=137). ' + msg
                 else:
                     out = f", stdout={kwargs['stdout']}" if 'stdout' in kwargs and os.path.isfile(
                         kwargs['stdout']) and os.path.getsize(
