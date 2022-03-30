@@ -705,14 +705,15 @@ class TaskEngine(threading.Thread):
             #                 os.path.expanduser('~'), '.sos', 'tasks', x +
             #                 '.task'))
             #     ]
+            into_checkout_output = (
+                    f"{self.agent.config.get('sos', 'sos'), ' '.join(tasks)}" "purge"
+                    f"--all" if purge_all else ''
+                    f"--age {age}" if age is not None else ''
+                    f"--status {' '.join(status)}" if status is not None else ''
+                    f"--tags {' '.join(tags)}" if tags is not None else '' verbosity
+            )
             return self.agent.check_output(
-                "{} purge {} {} {} {} {} -v {}".format(
-                    self.agent.config.get('sos', 'sos'), ' '.join(tasks),
-                    '--all' if purge_all else '',
-                    f'--age {age}' if age is not None else '',
-                    f'--status {" ".join(status)}' if status is not None else
-                    '', f'--tags {" ".join(tags)}' if tags is not None else '',
-                    verbosity))
+                )
         except subprocess.CalledProcessError:
             env.logger.error(f'Failed to purge tasks {tasks}')
             return ''
