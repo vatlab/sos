@@ -2242,8 +2242,7 @@ def cmd_remove(args, unknown_args):
                          time.time() - os.path.getmtime(filename) > -args.age):
                     env.logger.debug(f"{filename} ignored due to age limit {args.age}")
                     return False
-            if resp.get("{} tracked file {}".format(
-                    "Would remove" if args.dryrun else "Remove", filename)):
+            if resp.get(f"{"Would remove" if args.dryrun else "Remove"} tracked file {filename}"):
                     env.logger.debug("Remove {}".format(target))
                     try:
                         target.unlink()
@@ -2273,8 +2272,7 @@ def cmd_remove(args, unknown_args):
                         time.time() - os.path.getmtime(filename) < args.age
                    ) or (args.age < 0 and
                          time.time() - os.path.getmtime(filename) > -args.age):
-                    env.logger.debug("{} ignored due to age limit {}".format(
-                        filename, args.age))
+                    env.logger.debug(f"{filename} ignored due to age limit {args.age}")
                     return False
             if resp.get("{} tracked file {}".format(
                     "Would remove" if args.dryrun else "Remove", filename)):
@@ -2283,8 +2281,7 @@ def cmd_remove(args, unknown_args):
                     try:
                         target.unlink()
                     except Exception as e:
-                        env.logger.warning("Failed to remove {}: {}".format(
-                            filename, e))
+                        env.logger.warning(f"Failed to remove {filename}: {e}")
                     return True
             else:
                 env.logger.debug(
@@ -2299,8 +2296,7 @@ def cmd_remove(args, unknown_args):
                 if (args.size > 0 and os.path.getsize(filename) < args.size
                    ) or (args.size < 0 and
                          os.path.getsize(filename) > -args.size):
-                    env.logger.debug("{} ignored due to size limit {}".format(
-                        filename, args.size))
+                    env.logger.debug(f"{filename} ignored due to size limit {args.size}")
                     return False
             if args.age:
                 if (args.age > 0 and
@@ -2344,7 +2340,7 @@ def cmd_remove(args, unknown_args):
             if resp.get("{} file {}".format(
                     "Would remove" if args.dryrun else "Remove", filename)):
                 if not args.dryrun:
-                    env.logger.debug("Remove {}".format(target))
+                    env.logger.debug(f"Remove {target}")
                     try:
                         target.unlink()
                     except Exception as e:
