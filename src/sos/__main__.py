@@ -2597,9 +2597,7 @@ def cmd_config(args, workflow_args):
                 v = v_val
             except Exception:
                 env.logger.debug(
-                    'Value "{}" is an invalid expression and is treated as a string.'
-                    .format(v))
-            values.append(v)
+                    f"Value {v} is an invalid expression and is treated as a string.")
         #
         if len(values) == 1:
             values = values[0]
