@@ -2521,7 +2521,7 @@ def cmd_config(args, workflow_args):
                 sys.exit(1)
         else:
             env.logger.error(
-                "Config file {} does not exist".format(config_file))
+                f"Config file {config_file} does not exist")
             sys.exit(1)
         #
 
