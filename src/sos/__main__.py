@@ -2350,8 +2350,7 @@ def cmd_remove(args, unknown_args):
                     try:
                         target.unlink()
                     except Exception as e:
-                        env.logger.warning("Failed to remove {}: {}".format(
-                            filename, e))
+                        env.logger.warning(f"Failed to remove {filename}: {e}")
                     return True
             else:
                 env.logger.debug(
