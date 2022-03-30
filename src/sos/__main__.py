@@ -2233,8 +2233,7 @@ def cmd_remove(args, unknown_args):
                 if (args.size > 0 and os.path.getsize(filename) < args.size
                    ) or (args.size < 0 and
                          os.path.getsize(filename) > -args.size):
-                    env.logger.debug("{} ignored due to size limit {}".format(
-                        filename, args.size))
+                    env.logger.debug(f"{filename} ignored due to size limit {args.size}")
                     return False
             if args.age:
                 if (args.age > 0 and
