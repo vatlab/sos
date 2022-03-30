@@ -2839,8 +2839,7 @@ def main():
                     sys.exit(0)
                 except Exception as e:
                     sys.exit(
-                        "No help information is available for script {}: {}"
-                        .format(sys.argv[1], e))
+                        f"No help information is available for script {sys.argv[1]}: {e}")
             if len(sys.argv) > 3 and sys.argv[1] == "convert":
                 print_converter_help()
         elif sys.argv[1] == "convert":
