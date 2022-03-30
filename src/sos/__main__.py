@@ -2125,7 +2125,7 @@ class AnswerMachine:
             print(msg)
             return True
         while True:
-            res = input("{} (y/n/a)? ".format(msg))
+            res = input(f"{msg} (y/n/a)? ")
             if res == "a":
                 self._confirmed = True
                 return True
