@@ -1326,9 +1326,8 @@ def cmd_preview(args, unknown_args):
                     print(msg[1]["data"]["text/plain"])
                 elif "text/html" in msg[1]["data"]:
                     print(msg[1]["data"]["text/html"])
-                else:
-                    print(f"BINARY DATA of type {", ".join(
-                        msg[1]["data"].keys()))}")
+                if "text/plain" in msg[1]["data"]:
+                    print(msg[1]["data"]["text/plain"])
             else:
                 raise RuntimeError(
                     f"Unrecognized preview output: {msg}")
