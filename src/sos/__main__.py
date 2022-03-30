@@ -2638,7 +2638,7 @@ def cmd_config(args, workflow_args):
                 if isinstance(v, dict):
                     disp_matched(v, options, prefix + [k])
                 elif not options or any(option in key for option in options):
-                    print("{}\t{!r}".format(key, v))
+                    print(f"{key}\t{v}")
 
         disp_matched(cfg, args.__get_config__)
     else:
