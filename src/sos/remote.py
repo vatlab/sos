@@ -606,7 +606,8 @@ def push_to_hosts(cfg, hosts, items, verbosity):
                 len(sent),
                 " is" if len(sent) <= 1 else "s are",
                 "\n".join([
-                    "{} => {}".format(x, sent[x]) for x in sorted(sent.keys())
+                    for x in sorted(sent.keys()):
+                        f"{x} => {sent[x]}"
                 ]),
             ))
         except Exception as e:
