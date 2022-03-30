@@ -563,7 +563,7 @@ def cmd_run(args, workflow_args):
     try:
         # workflow args has to be in the format of --arg, not positional, not -a
         if workflow_args and not workflow_args[0].startswith("--"):
-            raise ValueError(f"Unrecognized command line option {" ".join(workflow_args)}")
+            raise ValueError(f"Unrecognized command line option" " ".join(workflow_args))
         script = SoS_Script(filename=args.script)
         workflow = script.workflow(
             args.workflow, use_default=not args.__targets__)
