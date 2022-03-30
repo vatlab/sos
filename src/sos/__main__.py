@@ -2849,7 +2849,7 @@ def main():
             from_format, to_format = get_converter_formats(sys.argv[2:])
             if from_format is None or to_format is None:
                 sys.exit("Cannot determine from or to format")
-            sys.argv.insert(2, "{}-{}".format(from_format, to_format))
+            sys.argv.insert(2, f"{from_format}-{to_format}")
         args, workflow_args = master_parser.parse_known_args()
         if not hasattr(args, "func"):
             # in case of sos -v etc that no subcommand is specified
