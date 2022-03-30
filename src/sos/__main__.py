@@ -2579,7 +2579,7 @@ def cmd_config(args, workflow_args):
             cfg = {}
         #
         if len(args.__set_config__) == 1:
-            env.logger.error(f"Please specify a value for key {args.__set_config__[0])}")
+            env.logger.error(f"Please specify a value for key {args.__set_config__[0]}")
             sys.exit(1)
         #
         k = args.__set_config__[0]
