@@ -251,8 +251,7 @@ def cmd_convert(args, unknown_args):
             # if no other parameter, with option list all
             if args.verbosity and args.verbosity > 2:
                 sys.stderr.write(get_traceback())
-            env.logger.error("Failed to execute converter {}: {}".format(
-                entrypoint.name.rsplit(".", 1)[0], e))
+            env.logger.error(f"Failed to execute converter {entrypoint.name.rsplit(".", 1)[0]}: {e}")
             sys.exit(1)
     env.logger.error(f"No converter is found for {args.converter_name}")
     sys.exit(1)
