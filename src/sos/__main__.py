@@ -1185,8 +1185,7 @@ def preview_file(previewers, filename, style=None):
                                 "name":
                                     "stderr",
                                 "text":
-                                    "Failed to load previewer {}: {}".format(
-                                        y, e),
+                                    f"Failed to load previewer {y}: {e}",
                             },
                         ])
                         continue
