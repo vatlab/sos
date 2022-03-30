@@ -251,7 +251,8 @@ def cmd_convert(args, unknown_args):
             # if no other parameter, with option list all
             if args.verbosity and args.verbosity > 2:
                 sys.stderr.write(get_traceback())
-            env.logger.error(f"Failed to execute converter {entrypoint.name.rsplit(".", 1)[0]}: {e}")
+            env.logger.error("Failed to execute converter {}: {}".format(
+                entrypoint.name.rsplit(".", 1)[0], e))
             sys.exit(1)
     env.logger.error(f"No converter is found for {args.converter_name}")
     sys.exit(1)
@@ -2578,8 +2579,7 @@ def cmd_config(args, workflow_args):
             cfg = {}
         #
         if len(args.__set_config__) == 1:
-            env.logger.error("Please specify a value for key {}".format(
-                args.__set_config__[0]))
+            env.logger.error(f"Please specify a value for key {args.__set_config__[0])}")
             sys.exit(1)
         #
         k = args.__set_config__[0]
