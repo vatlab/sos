@@ -2314,7 +2314,7 @@ def cmd_remove(args, unknown_args):
             if resp.get("{} tracked file {}".format(
                     "Would zap" if args.dryrun else "Zap", filename)):
                 if not args.dryrun:
-                    env.logger.debug("Zap {}".format(target))
+                    env.logger.debug(f"Zap {target}")
                     try:
                         file_target(target).zap()
                     except Exception as e:
