@@ -1696,7 +1696,7 @@ showResourceFigure_""" + t + """()
             print(f"{t}\t{ts.ljust(tsize)}\t{dr:<14}\t{s}")
     elif verbosity == 3:
         tsize = 20
-        for s, (t, d) in zip(obtained_status, all_tasks):
+        for s, (t, dr) in zip(obtained_status, all_tasks):
             ts, ct, st, dr = TaskFile(t).tags_created_start_and_duration(
                 formatted=not numeric_times)
             tsize = max(tsize, len(ts))
