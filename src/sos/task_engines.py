@@ -710,9 +710,10 @@ class TaskEngine(threading.Thread):
                     f"--all" if purge_all else ''
                     f"--age {age}" if age is not None else ''
                     f"--status {' '.join(status)}" if status is not None else ''
-                    f"--tags {' '.join(tags)}" if tags is not None else '' verbosity
+                    f"--tags {' '.join(tags)}" if tags is not None else ''
+                    verbosity
             )
-            return self.agent.check_output(
+            return self.agent.check_output(into_checkout_output
                 )
         except subprocess.CalledProcessError:
             env.logger.error(f'Failed to purge tasks {tasks}')
