@@ -188,7 +188,9 @@ def short_repr(obj, noneAsNA=False):
 
 class WorkflowDict(object):
     """A dictionary object that keeps all SoS workflow objects.
+
     IMPORTANT:
+
     Python does not allow the passing of a derived class of dict as globals
     to eval or exec. Doing so will result in strange behavior such as __builtins__
     not found. We then have to embed a real dictionary in WorkflowDict instead of
@@ -353,12 +355,16 @@ def fileMD5(filename, partial=True):
 class RuntimeEnvironments(object):
     """A singleton object that provides runtime environment for SoS.
     Atributes of this object include:
+
     logger:
         a logging object
+
     verbosity:
         a verbosity level object that sets the verbosity level of the logger
+
     logfile:
         name of logfile for the logger. default to no logfile.
+
     """
 
     _instance = None
@@ -1052,9 +1058,12 @@ def pretty_size(n,
                 b=1024,
                 u="B",
                 pre=[""] + [p + "i" for p in "KMGTPEZY"]):
-    pow, n = min(int(math.log(max(n * b**pow, 1), b)), len(pre) - 1), n * b**pow
-    return "%%.%if %%s%%s" % abs(pow %
-                                 (-pow - 1)) % (n / b**float(pow), pre[pow], u)
+    pow, n = min(int(math.log(max(n * b**pow, 1), b)), len(pre) - 1), n * b**pow))
+
+    pow1 = 1
+    pow2 = 2
+    pow3 = 3
+    return f"{(pow1) if (pow2)(pow3)}"
 
 
 def expand_size(size):
@@ -1113,6 +1122,7 @@ class ActivityNotifier(threading.Thread):
                 prog = ProgressBar(
                     desc="", position=0, bar_format="{desc}", total=100000000)
             second_elapsed = time.time() - self.start_time
+
             prog.set_description("Elapsed time {}{}".format(
                 "" if second_elapsed < 86400 else
                 f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ',
@@ -1127,9 +1137,11 @@ class ActivityNotifier(threading.Thread):
 class DelayedAction:
     """Call the passed function with param after a few seconds. It is most often
     used to display certain message only if an action takes a long time.
+
         action = delayedAction(env.logger.info, 'This might take a while', 5)
         some_action_that_might_take_a_while
         del action
+
     if the action finishes very quick, the message will not be displayed.
     """
 
