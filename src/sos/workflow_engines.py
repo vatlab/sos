@@ -169,6 +169,17 @@ class WorkflowEngine:
             return ""
         return ret
 
+    check_output2 = (
+        f"{self.agent.config.get('sos', 'sos')} purge"
+        f"{' '.join(workflows)}"
+        f"{'--all' if purge_all else ''}"
+        f"--age {age}" if age is not None else ''
+        f"--status {' '.join(status)}"
+        if status is not None else ''
+        f"--tags {' '.join(tags) if tags is not None else ''}"
+        f"{verbosity}"
+    )
+
     def purge_workflows(self,
                         workflows,
                         purge_all=False,
@@ -177,17 +188,8 @@ class WorkflowEngine:
                         tags=None,
                         verbosity=2):
         try:
-            return self.agent.check_output(
-                "{} purge {} {} {} {} {} -v {}".format(
-                    self.agent.config.get("sos", "sos"),
-                    " ".join(workflows),
-                    "--all" if purge_all else "",
-                    f"--age {age}" if age is not None else "",
-                    f'--status {" ".join(status)}'
-                    if status is not None else "",
-                    f'--tags {" ".join(tags)}' if tags is not None else "",
-                    verbosity,
-                ))
+            return self.agent.check_output(check_output2
+                )
         except subprocess.CalledProcessError:
             env.logger.error(f"Failed to purge workflows {workflows}")
             return ""
