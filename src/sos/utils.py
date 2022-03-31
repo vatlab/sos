@@ -1648,7 +1648,7 @@ def load_var(line):
 def version_info(module: str):
     # return the version of Python module
     try:
-        code = "import %s; version=str(%s.__version__)" % (module, module)
+        code = f"import {module}; version=str({module}.__version__)"
         ns_g: Dict = {}
         ns_l: Dict = {}
         exec(compile(code, "<string>", "exec"), ns_g, ns_l)
