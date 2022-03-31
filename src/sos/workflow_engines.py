@@ -157,11 +157,11 @@ class WorkflowEngine:
             return ""
 
     def kill_workflows(self, workflows, tags=None, all_workflows=False):
-        cmd = "{} kill {} {} {}".format(
-            self.agent.config.get("sos", "sos"),
-            "" if all_workflows else " ".join(workflows),
-            f'--tags {" ".join(tags)}' if tags else "",
-            "--all workflows" if all_workflows else "",
+        cmd = (
+            f"{self.agent.config.get('sos', 'sos')}"
+            f"kill '' if all_workflows else {' '.join(workflows)}"
+            f"--tags {" ".join(tags)}" if tags else ''
+            f"--all workflows" {if all_workflows else} ''"
         )
 
         try:
