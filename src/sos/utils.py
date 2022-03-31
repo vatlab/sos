@@ -1059,8 +1059,11 @@ def pretty_size(n,
                 u="B",
                 pre=[""] + [p + "i" for p in "KMGTPEZY"]):
     pow, n = min(int(math.log(max(n * b**pow, 1), b)), len(pre) - 1), n * b**pow
-    return "%%.%if %%s%%s" % abs(pow %
-                                 (-pow - 1)) % (n / b**float(pow), pre[pow], u)
+
+    pow1 = abs(pow % (-pow - 1) % (n / b**float(pow)))
+    pow2 = abs(pre[pow])
+    pow3 = abs(u)
+    return f"{(pow1) if (pow2)(pow3)}"
 
 
 def expand_size(size):
