@@ -105,10 +105,10 @@ class Visualizer:
             for x in df.dtypes
         ]
         code = (''.join(
-            """{} &nbsp; <i class="fa fa-sort" style="color:lightgray" onclick="sortDataFrame('{}', {}, '{}')"></th>"""
-            .format(x, tid, idx, index_type if idx ==
+            f"""{x} &nbsp; <i class="fa fa-sort" style="color:lightgray" onclick="sortDataFrame('{tid}', {idx}, '{index_type if idx ==
                     0 else col_type[idx - 1]) if "<th" in x else x
-            for idx, x in enumerate(hr.split("</th>"))) + "</tr>" + rest)
+            for idx, x in enumerate(hr.split("</th>"))) + "</tr>" + rest}')"></th>"""
+
 
         # we put max-height 400px here because the notebook could be exported without using sos template
         # and associated css, resulting in very long table.
