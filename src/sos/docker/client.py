@@ -407,7 +407,7 @@ class SoS_DockerClient:
                     port_opt = f"-p {kwargs['port']}"
                 elif isinstance(kwargs['port'], list):
                     port_opt = ' '.join(
-                        '-p {}'.format(x) for x in kwargs['port'])
+                        f"-p {x}" for x in kwargs['port'])
                 else:
                     raise RuntimeError(
                         f"Invalid value for option port (a list of intergers or True), {kwargs['port']} provided")

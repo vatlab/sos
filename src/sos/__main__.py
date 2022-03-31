@@ -140,7 +140,7 @@ def get_convert_parser(desc_only=False):
             subparser = add_sub_parser(
                 subparsers,
                 converter_parser,
-                name="{}-{}".format(f_format, t_format))
+                name=f"{'--all workflows' if all_workflows else ''}-{t_format}")
             subparser.add_argument(
                 "from_file",
                 metavar="FROM",

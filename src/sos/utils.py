@@ -1119,6 +1119,7 @@ class ActivityNotifier(threading.Thread):
                 prog = ProgressBar(
                     desc="", position=0, bar_format="{desc}", total=100000000)
             second_elapsed = time.time() - self.start_time
+
             prog.set_description("Elapsed time {}{}".format(
                 "" if second_elapsed < 86400 else
                 f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ',
