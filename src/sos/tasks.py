@@ -1421,7 +1421,7 @@ def print_task_status(
                     f'<tr><th align="right"  width="30%">{th}</th><td align="left"><div class="one_liner">{td}</div></td></tr>'
                 )
 
-        for s, (t, d) in zip(obtained_status, all_tasks):
+        for s, (t, dr) in zip(obtained_status, all_tasks):
             tf = TaskFile(t)
             ts, ct, st, dr = tf.tags_created_start_and_duration(formatted=True)
             row("ID", t)
