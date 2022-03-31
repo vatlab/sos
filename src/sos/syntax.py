@@ -226,12 +226,12 @@ _SUBWORKFLOW_TMPL = r"""
 
 _SECTION_OPTION_TMPL = r"""
     ^\s*                               # start
-    (?P<name>{})                       # one of the option names
+    (?P<name>f"{'|'.join(SOS_SECTION_OPTIONS)}")                       # one of the option names
     (\s*=\s*                           # =
     (?P<value>.+)                      # value
     )?                                 # value is optional
     \s*$
-    """.format("|".join(SOS_SECTION_OPTIONS))
+    """
 
 _FORMAT_LINE_TMPL = r"""
     ^                                  # from first column
@@ -250,8 +250,8 @@ _FORMAT_VERSION_TMPL = r"""
 _DIRECTIVE_TMPL = r"""
     ^                                  # from start of line
     (?P<directive_name>                #
-    (?!({})\s*:)                       # not a python keyword followed by : (can be input)
-    ({}                                # name of directive
+    (?!({"|".join(keyword.kwlist)})\s*:)                       # not a python keyword followed by : (can be input)
+    ({"|".join(SOS_DIRECTIVES)}                                # name of directive
     |[a-zA-Z][\w\d_]*))             #    or action
     \s*:\s*                            # followed by :
     (?P<directive_value>               # and values that can be
@@ -260,12 +260,12 @@ _DIRECTIVE_TMPL = r"""
                                        # a(), or arbitrary expression (['a'...], dictionary, set
                                        # etc) which is difficult to match, so we use negative
                                        # pattern to exclude expressions starting with :, | etc
-    """.format("|".join(keyword.kwlist), "|".join(SOS_DIRECTIVES))
+    """
 
 _INDENTED_ACTION_TMPL = r"""
     ^                                  # from start of line but allow space
     (?P<action_name>                   #
-    (?!\s+({}|{})\s*:)                 # not a python keyword or SoS directive followed by :
+    (?!\s+({"|".join(keyword.kwlist)}|{"|".join(SOS_DIRECTIVES)})\s*:)                 # not a python keyword or SoS directive followed by :
     (\s+[a-zA-Z][\w\d_]*))             #    or action
     \s*:\s*                            # followed by :
     (?P<action_value>                  # and values that can be
@@ -274,7 +274,7 @@ _INDENTED_ACTION_TMPL = r"""
                                        # a(), or arbitrary expression (['a'...], dictionary, set
                                        # etc) which is difficult to match, so we use negative
                                        # pattern to exclude expressions starting with :, | etc
-    """.format("|".join(keyword.kwlist), "|".join(SOS_DIRECTIVES))
+    """
 
 _ASSIGNMENT_TMPL = r"""
     ^                                  # from start of line

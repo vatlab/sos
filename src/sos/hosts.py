@@ -1017,8 +1017,7 @@ class RemoteHost(object):
             ret = subprocess.call(receive_cmd, shell=True)
             if ret != 0:
                 raise RuntimeError(
-                    "Failed to retrieve result of job {} from {} with cmd\n{}"
-                    .format(task_id, self.alias, receive_cmd))
+                    f"Failed to retrieve result of job {task_id} from {self.alias} with cmd\n{receive_cmd}")
 
         tf = TaskFile(task_id)
         params = tf.params

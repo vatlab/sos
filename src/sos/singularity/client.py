@@ -205,14 +205,12 @@ class SoS_SingularityClient:
                 if script:
                     debug_script_dir = os.path.join(
                         os.path.expanduser('~'), '.sos')
-                    msg = 'The definition has been saved to {}/singularity.def. To reproduce the error please run:\n``{}``'.format(
-                        debug_script_dir, cmd.replace(tempdir,
-                                                      debug_script_dir))
+                    msg = f"The definition has been saved to {debug_script_dir}/singularity.def. To reproduce the error please run:\n``{cmd.replace(tempdir,debug_script_dir)}``"
                     shutil.copy(
                         os.path.join(tempdir, 'Singularityfile'),
                         debug_script_dir)
                 else:
-                    msg = f'To reproduce this error please run \n  {cmd}\nfrom command line'
+                    msg = f"To reproduce this error please run \n  {cmd}\nfrom command line"
                 raise subprocess.CalledProcessError(
                     returncode=ret, cmd=cmd, stderr=msg)
 
@@ -277,7 +275,7 @@ class SoS_SingularityClient:
                 f'HINT: Pulling singularity image {image} to {image_file.replace(os.path.expanduser("~"), "~")}'
             )
             subprocess.check_output(
-                'singularity pull {} {}'.format(image_file, image),
+                f"singularity pull {image_file} {image}",
                 stderr=subprocess.STDOUT,
                 shell=True,
                 universal_newlines=True)
@@ -302,14 +300,14 @@ class SoS_SingularityClient:
             **kwargs):
         self._ensure_singularity()
         #
-        env.logger.debug('singularity_run with keyword args {}'.format(kwargs))
+        env.logger.debug(f"singularity_run with keyword args {kwargs}")
         #
         # now, write a temporary file to a tempoary directory under the current directory, this is because
         # we need to share the directory to ...
         with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
             # keep the temporary script for debugging purposes
             # tempdir = tempfile.mkdtemp(dir=os.getcwd())
-            tempscript = 'singularity_run_{}{}'.format(os.getpid(), suffix)
+            tempscript = f"singularity_run_{os.getpid()}{suffix}"
             if script:
                 with open(os.path.join(tempdir, tempscript),
                           'w') as script_file:
@@ -325,7 +323,7 @@ class SoS_SingularityClient:
             if 'bind' in kwargs:
                 binds = [kwargs['bind']] if isinstance(kwargs['bind'],
                                                        str) else kwargs['bind']
-                bind_opt = ' '.join('-B {}'.format(x) for x in binds)
+                bind_opt = ' '.join(f"-B {x}" for x in binds)
             else:
                 bind_opt = ''
 
@@ -336,10 +334,7 @@ class SoS_SingularityClient:
                     'script': script
                 })
 
-            cmd = 'singularity exec {} {} {}'.format(
-                bind_opt,  # volumes
-                self._image_file(image),
-                cmd_opt)
+            cmd = f"singularity exec {bind_opt} {self._image_file(image)} {cmd_opt}"
             env.logger.debug(cmd)
             if env.config['run_mode'] == 'dryrun':
                 print(f'HINT: {cmd}')
@@ -350,10 +345,10 @@ class SoS_SingularityClient:
 
             if ret != 0:
                 debug_script_dir = env.exec_dir
-                msg = 'The script has been saved to {}/{}. To reproduce the error please run:\n``{}``'.format(
-                    debug_script_dir, tempscript,
-                    cmd.replace(f'{path(tempdir):p}',
-                                f'{path(debug_script_dir):p}'))
+                msg = (
+                    f"The script has been saved to {debug_script_dir}/{debug_script_dir}."
+                    f"To reproduce the error please run:\n``{cmd.replace(f'{path(tempdir):p}', f'{path(debug_script_dir):p}')}``"
+                )
                 shutil.copy(os.path.join(tempdir, tempscript), debug_script_dir)
                 out = f", stdout={kwargs['stdout']}" if 'stdout' in kwargs and os.path.isfile(
                     kwargs['stdout']) and os.path.getsize(

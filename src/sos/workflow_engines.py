@@ -137,18 +137,18 @@ class WorkflowEngine:
         status=None,
     ):
         try:
-            return self.agent.check_output(
-                "{} status {} -v {} {} {} {} {} {} {}".format(
-                    self.agent.config.get("sos", "sos"),
-                    "" if workflows is None else " ".join(workflows),
-                    verbosity,
-                    "--all workflows" if check_all else "",
-                    "--html" if html else "",
-                    "--numeric-times" if numeric_times else "",
-                    f"--age {age}" if age else "",
-                    f'--tags {" ".join(tags)}' if tags else "",
-                    f'--status {" ".join(status)}' if status else "",
-                ))
+            output_to_check = (
+                f"{self.agent.config.get('sos', 'sos')} status"
+                f"{'' if workflows is None else ' '.join(workflows)}"
+                f"-v {verbosity}"
+                f"{'--all workflows' if check_all else ''}"
+                f"{'--html' if html else ''}"
+                f"{'--numeric-times' if numeric_times else ''}"
+                f"--age {age}" if age else ""
+                f"--tags {' '.join(tags)}' if tags else ",
+                f"--status {' '.join(status)}' if status else "
+            )
+            return self.agent.check_output(output_to_check)
         except subprocess.CalledProcessError as e:
             if verbosity >= 3:
                 env.logger.warning(
@@ -157,12 +157,7 @@ class WorkflowEngine:
             return ""
 
     def kill_workflows(self, workflows, tags=None, all_workflows=False):
-        cmd = "{} kill {} {} {}".format(
-            self.agent.config.get("sos", "sos"),
-            "" if all_workflows else " ".join(workflows),
-            f'--tags {" ".join(tags)}' if tags else "",
-            "--all workflows" if all_workflows else "",
-        )
+        cmd = f"{self.agent.config.get('sos', 'sos')} kill {'' if all_workflows else ' '.join(workflows)} --tags {' '.join(tags)} if tags else '' {'--all workflows' if all_workflows else ''}"
 
         try:
             ret = self.agent.check_output(cmd)

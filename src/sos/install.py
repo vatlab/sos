@@ -12,8 +12,7 @@ _py_ver = sys.version_info
 if _py_ver.major == 2 or (_py_ver.major == 3 and
                           (_py_ver.minor, _py_ver.micro) < (6, 0)):
     raise SystemError(
-        'sos requires Python 3.6 or higher. Please upgrade your Python {}.{}.{}.'
-        .format(_py_ver.major, _py_ver.minor, _py_ver.micro))
+        f"sos requires Python 3.6 or higher. Please upgrade your Python {_py_ver.major}.{_py_ver.minor}.{_py_ver.micro}.")
 
 
 def get_install_vim_syntax_parser():

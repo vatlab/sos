@@ -43,11 +43,9 @@ def regex(filepattern: str) -> str:
             f.append(f"(?P={wildcard})")
         else:
             wildcards.add(wildcard)
-            f.append("(?P<{}>{})".format(
-                wildcard,
-                match.group("constraint")
+            f.append(f"(?P<{wildcard}>{match.group('constraint')}"
                 if match.group("constraint") else ".+",
-            ))
+            )
         last = match.end()
     f.append(re.escape(filepattern[last:]))
     f.append("$")  # ensure that the match spans the whole file

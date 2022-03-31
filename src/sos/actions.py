@@ -666,16 +666,11 @@ class SoS_ExecuteScript:
                     raise subprocess.CalledProcessError(
                         returncode=ret,
                         cmd=cmd,
-                        stderr="\nFailed to execute ``{}``\nexitcode={}, workdir=``{}``{}{}{}\n{}"
-                        .format(
-                            cmd,
-                            ret,
-                            os.getcwd(),
-                            f', task={os.path.basename(env.sos_dict["__std_err__"]).split(".")[0]}'
-                            if "__std_err__" in env.sos_dict else "",
-                            out,
-                            err,
-                            "-" * 75,
+                        stderr=(
+                            f"\nFailed to execute ``{cmd}``\nexitcode={ret}, workdir=``{os.getcwd()}``, "
+                            f", task={os.path.basename(env.sos_dict['__std_err__']).split('.')[0]}"
+                            if '__std_err__' in env.sos_dict else ''
+                            f"{out}{err}\n{'-' * 75}"
                         ),
                     )
             finally:
@@ -773,13 +768,14 @@ def sos_run(workflow=None,
                                 if not x.startswith("__"))
         if "ACTION" in env.config["SOS_DEBUG"] or "ALL" in env.config[
                 "SOS_DEBUG"]:
-            env.log_to_file(
-                "ACTION",
-                "Executing workflow ``{}`` with input ``{}`` and {}".format(
-                    workflow,
-                    short_repr(env.sos_dict.get("_input", None), True),
-                    "no args" if not args_output else args_output,
-                ),
+
+            into_log_to_file = (
+                f"ACTION"
+                f"Executing workflow ``{workflow}`` with input"
+                f"``{short_repr(env.sos_dict.get('_input', None), True)}``"
+                f"and {'no args' if not args_output else args_output}"
+            )
+            env.log_to_file(into_log_to_file
             )
 
         if not hasattr(env, "__socket__") or env.__socket__ is None:

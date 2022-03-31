@@ -606,7 +606,7 @@ def push_to_hosts(cfg, hosts, items, verbosity):
                 len(sent),
                 " is" if len(sent) <= 1 else "s are",
                 "\n".join([
-                    "{} => {}".format(x, sent[x]) for x in sorted(sent.keys())
+                    f"{x} => {sent[x]}" for x in sorted(sent.keys())
                 ]),
             ))
         except Exception as e:
@@ -639,7 +639,7 @@ def pull_from_host(cfg, hosts, items, verbosity):
             len(received),
             " is" if len(received) <= 1 else "s are",
             "\n".join([
-                "{} <= {}".format(x, received[x])
+                f"{x} <= {recieved[x]}"
                 for x in sorted(received.keys())
             ]),
         ))
