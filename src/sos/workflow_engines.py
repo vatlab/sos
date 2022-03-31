@@ -160,7 +160,7 @@ class WorkflowEngine:
         cmd = (
             f"{self.agent.config.get('sos', 'sos')}"
             f"kill '' if all_workflows else {' '.join(workflows)}"
-            f"--tags {" ".join(tags)}" if tags else ''
+            f"--tags {" ".join(tags)}" if tags else ''"
             f"--all workflows" {if all_workflows else} ''"
         )
 
