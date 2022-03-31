@@ -1059,8 +1059,8 @@ def pretty_size(n,
                 u="B",
                 pre=[""] + [p + "i" for p in "KMGTPEZY"]):
     pow, n = min(int(math.log(max(n * b**pow, 1), b)), len(pre) - 1), n * b**pow
-    return "%%.%if %%s%%s" % abs(pow %
-                                 (-pow - 1)) % (n / b**float(pow), pre[pow], u)
+
+    return "%%.%if" f"{abs(pow % (-pow - 1))}'%'{(n / b**float(pow), pre[pow], u)}'%'"
 
 
 def expand_size(size):
@@ -1120,11 +1120,12 @@ class ActivityNotifier(threading.Thread):
                     desc="", position=0, bar_format="{desc}", total=100000000)
             second_elapsed = time.time() - self.start_time
 
-            prog.set_description("Elapsed time {}{}".format(
-                "" if second_elapsed < 86400 else
-                f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ',
-                time.strftime("%H:%M:%S", time.gmtime(second_elapsed)),
-            ))
+            into_set_description = (
+                "Elapsed time" '' if second_elapsed < 86400 else
+                f"{int(second_elapsed/86400)} day{'s' if second_elapsed > 172800 else ''} "
+                f"{time.strftime('%H:%M:%S', time.gmtime(second_elapsed))}"
+            )
+            prog.set_description(into_set_description)
             prog.update(1)
 
     def stop(self):
