@@ -1685,11 +1685,11 @@ showResourceFigure_""" + t + """()
     elif verbosity == 0:
         print("\n".join(obtained_status))
     elif verbosity == 1:
-        for s, (t, d) in zip(obtained_status, all_tasks):
+        for s, (t, dr) in zip(obtained_status, all_tasks):
             print(f"{t}\t{s}")
     elif verbosity == 2:
         tsize = 20
-        for s, (t, d) in zip(obtained_status, all_tasks):
+        for s, (t, dr) in zip(obtained_status, all_tasks):
             ts, _, _, dr = TaskFile(t).tags_created_start_and_duration(
                 formatted=not numeric_times)
             tsize = max(tsize, len(ts))
