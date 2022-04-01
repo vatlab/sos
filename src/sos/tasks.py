@@ -1685,7 +1685,7 @@ showResourceFigure_""" + t + """()
     elif verbosity == 0:
         print("\n".join(obtained_status))
     elif verbosity == 1:
-        for s, (t, dr) in zip(obtained_status, all_tasks):
+        for s, (t, _) in zip(obtained_status, all_tasks):
             print(f"{t}\t{s}")
     elif verbosity == 2:
         tsize = 20
