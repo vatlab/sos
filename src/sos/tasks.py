@@ -1704,7 +1704,7 @@ showResourceFigure_""" + t + """()
     elif verbosity == 4:
         import pprint
 
-        for s, (t, d) in zip(obtained_status, all_tasks):
+        for s, (t, dr) in zip(obtained_status, all_tasks):
             tf = TaskFile(t)
             if s == "missing":
                 print(f"{t}\t{s}\n")
