@@ -178,7 +178,6 @@ class WorkflowEngine:
                         tags=None,
                         verbosity=2):
         try:
-
             check_output2 = (
                 f"{self.agent.config.get('sos', 'sos')} purge"
                 f"{' '.join(workflows)}"
