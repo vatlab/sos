@@ -186,7 +186,7 @@ class WorkflowEngine:
                 f"--age {age}" if age is not None else ''
                 f"--status {' '.join(status)}"
                 if status is not None else ''
-                f"--tags {' '.join(tags) if tags is not None else ''}"
+                f"--tags {' '.join(tags) if tags is not None else ''} -v"
                 f"{verbosity}"
             )
 
