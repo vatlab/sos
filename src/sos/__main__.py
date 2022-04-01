@@ -1155,7 +1155,7 @@ def preview_file(previewers, filename, style=None):
                 "text/plain":
                     f"\n> {filename} ({pretty_size(os.path.getsize(filename))}):",
                 "text/html":
-                    HTML(f'<div class="sos_hint">> {filename} ({pretty_size(os.path.getsize(filename))}').data,
+                    HTML('<div class="sos_hint">> {filename} ({pretty_size(os.path.getsize(filename))}').data,
             },
         },
     ])
@@ -1326,8 +1326,9 @@ def cmd_preview(args, unknown_args):
                     print(msg[1]["data"]["text/plain"])
                 elif "text/html" in msg[1]["data"]:
                     print(msg[1]["data"]["text/html"])
-                if "text/plain" in msg[1]["data"]:
-                    print(msg[1]["data"]["text/plain"])
+                else:
+                     print("BINARY DATA of type {}".format(", ".join(
+                         msg[1]["data"].keys())))
             else:
                 raise RuntimeError(
                     f"Unrecognized preview output: {msg}")

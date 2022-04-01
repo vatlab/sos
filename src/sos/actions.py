@@ -770,12 +770,11 @@ def sos_run(workflow=None,
                 "SOS_DEBUG"]:
 
             into_log_to_file = (
-                f"ACTION"
                 f"Executing workflow ``{workflow}`` with input"
                 f"``{short_repr(env.sos_dict.get('_input', None), True)}``"
                 f"and {'no args' if not args_output else args_output}"
             )
-            env.log_to_file(into_log_to_file
+            env.log_to_file("ACTION", into_log_to_file
             )
 
         if not hasattr(env, "__socket__") or env.__socket__ is None:
