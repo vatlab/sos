@@ -478,9 +478,9 @@ class SoS_DockerClient:
                     if not hasattr(self, 'tot_mem'):
                         self.tot_mem = self.total_memory(image)
                     if self.tot_mem is None:
-                        msg = 'Script killed by docker. ' + msg
+                        msg = 'Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137).' + msg
                     else:
-                        msg = f'Script killed by docker, probably because of lack of RAM (available RAM={self.tot_mem / 1024 / 1024}GB, exitcode=137). ' + msg
+                        msg = f"Script killed by docker, probably because of RAM (available RAM={self.tot_mem / 1024 / 1024:.1f}GB, exitcode=137)."
                 else:
                     out = f", stdout={kwargs['stdout']}" if 'stdout' in kwargs and os.path.isfile(
                         kwargs['stdout']) and os.path.getsize(
