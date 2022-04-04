@@ -181,7 +181,7 @@ class WorkflowEngine:
             check_output2 = (
                 f"{self.agent.config.get('sos', 'sos')} purge"
                 f"{' '.join(workflows)}"
-                f"{'--all' if purge_all else ''}"
+                '--all' if purge_all else ''
                 f"--age {age}" if age is not None else ''
                 f"--status {' '.join(status)}"
                 if status is not None else ''
