@@ -619,7 +619,7 @@ class TaskEngine(threading.Thread):
                 f"{'--numeric-times' if numeric_times else ''}"
                 f'--age {age}' if age else ''
                 f'--tags {" ".join(tags)}' if tags else ''
-                f'--status {" ".join(status)}' if status else ''
+                f'--status {" ".join(status)}' if f'{status}' else ''
             )
 
 
@@ -664,7 +664,7 @@ class TaskEngine(threading.Thread):
         # rely on the output of certain verbosity (-v1) to post kill the jobs
         cmd = (
             f"{self.agent.config.get('sos', 'sos')}"
-            f"kill {'' if all_tasks else ' '.join(tasks)}"
+            "kill ''" if f"{all_tasks}" else f"{' '.join(tasks)}"
             f"--tags {' '.join(tags)} if tags else"
             f"--all tasks if all_tasks else ''"
             )
