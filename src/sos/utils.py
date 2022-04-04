@@ -1121,7 +1121,7 @@ class ActivityNotifier(threading.Thread):
             second_elapsed = time.time() - self.start_time
 
             into_set_description = (
-                "Elapsed time" '' if second_elapsed < 86400 else
+                "Elapsed time" '' if f"{second_elapsed}" < 86400 else
                 f"{int(second_elapsed/86400)} day{'s' if second_elapsed > 172800 else ''} "
                 f"{time.strftime('%H:%M:%S', time.gmtime(second_elapsed))}"
             )
