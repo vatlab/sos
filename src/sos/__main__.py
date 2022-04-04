@@ -1155,7 +1155,7 @@ def preview_file(previewers, filename, style=None):
                 "text/plain":
                     f"\n> {filename} ({pretty_size(os.path.getsize(filename))}):",
                 "text/html":
-                    HTML('<div class="sos_hint">> {filename} ({pretty_size(os.path.getsize(filename))}').data,
+                    HTML('<div class="sos_hint">> {filename} ({pretty_size(os.path.getsize(filename))}</div>').data,
             },
         },
     ])
@@ -1269,7 +1269,7 @@ def cmd_preview(args, unknown_args):
 
         if "GENERAL" in env.config["SOS_DEBUG"] or "ALL" in env.config[
                 "SOS_DEBUG"]:
-            env.log_to_file("GENERAL", f"Running {' '.join(rargs)}")
+            env.log_to_file("GENERAL", f"""Running "{' '.join(rargs)}""")
         msgs = host._host_agent.check_output(rargs, under_workdir=True).strip()
         if not args.exists and not args.signature:
             msgs = eval(msgs)
