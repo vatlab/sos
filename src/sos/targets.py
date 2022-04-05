@@ -825,7 +825,7 @@ class file_target(path, BaseTarget):
                 return False
         if not self.exists():
             if (self + ".zapped").is_file():
-                with open(self + ".zapped") as sig_zapped:
+                with open(self + ".zapped") as sig_md5:
                     line = sig_file.readline()
                     return sig_md5 == line.strip().rsplit("\t", 3)[-1]
             else:
