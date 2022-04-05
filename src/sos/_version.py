@@ -11,15 +11,13 @@ _py_ver = sys.version_info
 if _py_ver.major == 2 or (_py_ver.major == 3 and
                           (_py_ver.minor, _py_ver.micro) < (6, 0)):
     raise SystemError(
-        "SOS requires Python 3.6 or higher. Please upgrade your Python {}.{}.{}"
-        .format(_py_ver.major, _py_ver.minor, _py_ver.micro))
+        f"SOS requires Python 3.6 or higher. Please upgrade your Python {_py_ver.major}.{_py_ver.minor}.{_py_ver.micro}")
 
 # version of the SoS language
 __sos_version__ = "1.0"
 # version of the sos command
 __version__ = "0.22.8"
-__py_version__ = "{}.{}.{}".format(_py_ver.major, _py_ver.minor, _py_ver.micro)
+__py_version__ = f"{_py_ver.major}.{_py_ver.minor}.{_py_ver.micro}"
 
 #
-SOS_FULL_VERSION = "{} for Python {}.{}.{}".format(__version__, _py_ver.major,
-                                                   _py_ver.minor, _py_ver.micro)
+SOS_FULL_VERSION = f"{__version__} for Python {_py_ver.major}.{_py_ver.minor}.{_py_ver.minor}"

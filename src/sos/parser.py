@@ -1226,8 +1226,7 @@ class SoS_Script:
                             "ALL" in env.config["SOS_DEBUG"]):
                         env.log_to_file(
                             "EXECUTOR",
-                            "Header parsed with names {} and options {}".format(
-                                step_names, step_options),
+                            f"Header parsed with names {step_names} and options {step_options}"
                         )
                 for name in step_names:
                     prev_workflows = [
@@ -1476,8 +1475,7 @@ class SoS_Script:
                 raise ValueError(
                     "Name of workflow should be specified because "
                     "the script defines more than one pipelines without a default one. "
-                    "Available pipelines are: {}.".format(", ".join(
-                        self.workflows)))
+                    f"Available pipelines are: {', '.join(self.workflows)}.")
         elif wf_name not in self.workflows and wf_name != "default":
             raise ValueError(
                 f'Workflow {wf_name} is undefined. Available workflows are: {", ".join(self.workflows)}'

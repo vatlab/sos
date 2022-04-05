@@ -1421,7 +1421,7 @@ def print_task_status(
                     f'<tr><th align="right"  width="30%">{th}</th><td align="left"><div class="one_liner">{td}</div></td></tr>'
                 )
 
-        for s, (t, d) in zip(obtained_status, all_tasks):
+        for s, (t, _) in zip(obtained_status, all_tasks):
             tf = TaskFile(t)
             ts, ct, st, dr = tf.tags_created_start_and_duration(formatted=True)
             row("ID", t)
@@ -1685,18 +1685,18 @@ showResourceFigure_""" + t + """()
     elif verbosity == 0:
         print("\n".join(obtained_status))
     elif verbosity == 1:
-        for s, (t, d) in zip(obtained_status, all_tasks):
+        for s, (t, _) in zip(obtained_status, all_tasks):
             print(f"{t}\t{s}")
     elif verbosity == 2:
         tsize = 20
-        for s, (t, d) in zip(obtained_status, all_tasks):
+        for s, (t, _) in zip(obtained_status, all_tasks):
             ts, _, _, dr = TaskFile(t).tags_created_start_and_duration(
                 formatted=not numeric_times)
             tsize = max(tsize, len(ts))
             print(f"{t}\t{ts.ljust(tsize)}\t{dr:<14}\t{s}")
     elif verbosity == 3:
         tsize = 20
-        for s, (t, d) in zip(obtained_status, all_tasks):
+        for s, (t, _) in zip(obtained_status, all_tasks):
             ts, ct, st, dr = TaskFile(t).tags_created_start_and_duration(
                 formatted=not numeric_times)
             tsize = max(tsize, len(ts))
@@ -1704,7 +1704,7 @@ showResourceFigure_""" + t + """()
     elif verbosity == 4:
         import pprint
 
-        for s, (t, d) in zip(obtained_status, all_tasks):
+        for s, (t, _) in zip(obtained_status, all_tasks):
             tf = TaskFile(t)
             if s == "missing":
                 print(f"{t}\t{s}\n")

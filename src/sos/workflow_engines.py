@@ -137,6 +137,7 @@ class WorkflowEngine:
         status=None,
     ):
         try:
+            # pylint: disable=consider-using-f-string
             return self.agent.check_output(
                 "{} status {} -v {} {} {} {} {} {} {}".format(
                     self.agent.config.get("sos", "sos"),
@@ -157,13 +158,13 @@ class WorkflowEngine:
             return ""
 
     def kill_workflows(self, workflows, tags=None, all_workflows=False):
+        # pylint: disable=consider-using-f-string
         cmd = "{} kill {} {} {}".format(
             self.agent.config.get("sos", "sos"),
             "" if all_workflows else " ".join(workflows),
             f'--tags {" ".join(tags)}' if tags else "",
             "--all workflows" if all_workflows else "",
         )
-
         try:
             ret = self.agent.check_output(cmd)
             env.logger.debug(f'"{cmd}" executed with response "{ret}"')
@@ -174,6 +175,7 @@ class WorkflowEngine:
             return ""
         return ret
 
+
     def purge_workflows(self,
                         workflows,
                         purge_all=False,
@@ -182,6 +184,7 @@ class WorkflowEngine:
                         tags=None,
                         verbosity=2):
         try:
+            # pylint: disable=consider-using-f-string
             return self.agent.check_output(
                 "{} purge {} {} {} {} {} -v {}".format(
                     self.agent.config.get("sos", "sos"),

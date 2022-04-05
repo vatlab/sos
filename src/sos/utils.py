@@ -1059,6 +1059,8 @@ def pretty_size(n,
                 u="B",
                 pre=[""] + [p + "i" for p in "KMGTPEZY"]):
     pow, n = min(int(math.log(max(n * b**pow, 1), b)), len(pre) - 1), n * b**pow
+
+    # pylint: disable=consider-using-f-string
     return "%%.%if %%s%%s" % abs(pow %
                                  (-pow - 1)) % (n / b**float(pow), pre[pow], u)
 
@@ -1119,6 +1121,7 @@ class ActivityNotifier(threading.Thread):
                 prog = ProgressBar(
                     desc="", position=0, bar_format="{desc}", total=100000000)
             second_elapsed = time.time() - self.start_time
+            # pylint: disable=consider-using-f-string
             prog.set_description("Elapsed time {}{}".format(
                 "" if second_elapsed < 86400 else
                 f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ',
@@ -1648,7 +1651,7 @@ def load_var(line):
 def version_info(module: str):
     # return the version of Python module
     try:
-        code = "import %s; version=str(%s.__version__)" % (module, module)
+        code = f"import {module}; version=str({module}.__version__)"
         ns_g: Dict = {}
         ns_l: Dict = {}
         exec(compile(code, "<string>", "exec"), ns_g, ns_l)

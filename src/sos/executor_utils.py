@@ -341,8 +341,7 @@ def create_task(global_def, global_vars, task_stmt, task_params):
 
     # save task to a file
     taskdef = TaskParams(
-        name="{} (index={})".format(env.sos_dict["step_name"],
-                                    env.sos_dict["_index"]),
+        name=f"{env.sos_dict['step_name']} (index={env.sos_dict['_index']})",
         global_def=(global_def, global_vars),
         task=task_stmt,  # task
         sos_dict=task_vars,

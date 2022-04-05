@@ -53,7 +53,7 @@ def is_basic_type(obj):
 class UnknownTarget(Error):
 
     def __init__(self, target: "BaseTarget"):
-        Error.__init__(self, "Target unavailable: %s" % target)
+        Error.__init__(self, f"Target unavailable: {target}")
         self.target = target
 
 
@@ -63,7 +63,7 @@ class RemovedTarget(Error):
         if isinstance(target, invalid_target):
             Error.__init__(self, "Invalid target from errored steps")
         else:
-            Error.__init__(self, "Target removed: %s" % target)
+            Error.__init__(self, f"Target removed: {target}")
         self.target = target
 
 
@@ -598,9 +598,8 @@ class path(type(Path())):
         return super(path, self.expandname().expanduser()).__str__()
 
     def __repr__(self):
-        raw_str = super().__str__()
-        return "{}({!r})".format(self.__class__.__name__,
-                                 raw_str.replace(self._flavour.sep, "/"))
+        raw_str = super().__str__().replace(self._flavour.sep, '/')
+        return f"{self.__class__.__name__}({raw_str})"
 
     def to_named_path(self, host=None):
         try:
