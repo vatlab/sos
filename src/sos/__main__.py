@@ -251,7 +251,8 @@ def cmd_convert(args, unknown_args):
             # if no other parameter, with option list all
             if args.verbosity and args.verbosity > 2:
                 sys.stderr.write(get_traceback())
-            env.logger.error(f"Failed to execute converter {entrypoint.name.rsplit('.', 1)[0]}: {e}")
+            converter_name = entrypoint.name.rsplit('.', 1)[0]
+            env.logger.error(f"Failed to execute converter {converter_name}: {e}")
             sys.exit(1)
     env.logger.error(f"No converter is found for {args.converter_name}")
     sys.exit(1)
@@ -1147,15 +1148,16 @@ def preview_file(previewers, filename, style=None):
             },
         ])
         return msg
+    filesize = pretty_size(os.path.getsize(filename))
     msg.append([
         "display_data",
         {
             "metadata": {},
             "data": {
                 "text/plain":
-                    f"\n> {filename} ({pretty_size(os.path.getsize(filename))}):",
+                    f"\n> {filename} ({filesize}):",
                 "text/html":
-                    HTML('<div class="sos_hint">> {filename} ({pretty_size(os.path.getsize(filename))}</div>').data,
+                    HTML('<div class="sos_hint">> {filename} ({filesize}</div>').data,
             },
         },
     ])
@@ -1541,12 +1543,10 @@ def cmd_execute(args, workflow_args):
                     env.logger.warning(f"{t} ``{s}``")
                     failed_tasks.add(t)
             if all(x in ("completed", "failed", "aborted") for x in res):
-                into_runtime_error = (
-                    f"{len([x for x in res if x == 'completed'])}"
-                    f"{len([x for x in res if x == 'failed'])}"
-                    f"{len([x for x in res if x.startswith('aborted')])}"
-                )
-                raise RuntimeError(into_runtime_error)
+                n_completed = len([x for x in res if x == 'completed'])
+                n_failed = len([x for x in res if x == 'failed'])
+                n_aborted = len([x for x in res if x.startswith('aborted')])
+                raise RuntimeError("{n_completed} completed, {n_failed} failed, {n_aborted} aborted)")
         if all(x == "completed" for x in res):
             if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config[
                     "SOS_DEBUG"]:

@@ -378,7 +378,8 @@ class SoS_DockerClient:
             if 'docker_workdir' in kwargs and kwargs[
                     'docker_workdir'] is not None:
                 if not os.path.isabs(kwargs['docker_workdir']):
-                    env.logger.warning(f"An absolute path is needed for -w option of docker run command. {kwargs['docker_workdir']} provided, {os.path.abspath(os.path.expanduser(kwargs['docker_workdir']))} used.")
+                    expanded_workdir = os.path.abspath(os.path.expanduser(kwargs['docker_workdir']))
+                    env.logger.warning(f"An absolute path is needed for -w option of docker run command. {kwargs['docker_workdir']} provided, {expanded_workdir} used.")
                     workdir_opt = f'-w={path(kwargs["docker_workdir"]).resolve():p}'
                 else:
                     workdir_opt = f'-w={path(kwargs["docker_workdir"]):p}'
@@ -440,7 +441,6 @@ class SoS_DockerClient:
             if platform.system() == 'Linux':
                 # this is for a selinux problem when /var/sos/script cannot be executed
                 security_opt = '--security-opt label:disable'
-            cmd = f"docker run --rm {security_opt} {volumes_opt} {volumes_from_opt} {name_opt} {stdin_opt} {tty_opt} {port_opt} {workdir_opt} {user_opt} {env_opt} {mem_limit_opt} {extra_opt} {image} {cmd_opt}"
                 # security option
                 # volumes
                 # volumes_from
@@ -454,6 +454,8 @@ class SoS_DockerClient:
                 # memory limit
                 # any extra parameters
                 # image
+            cmd = f"docker run --rm {security_opt} {volumes_opt} {volumes_from_opt} {name_opt} {stdin_opt} {tty_opt} {port_opt} {workdir_opt} {user_opt} {env_opt} {mem_limit_opt} {extra_opt} {image} {cmd_opt}"
+
             env.logger.debug(cmd)
             if env.config['run_mode'] == 'dryrun':
                 print(f'HINT: {cmd}')
@@ -464,9 +466,10 @@ class SoS_DockerClient:
 
             if ret != 0:
                 debug_script_dir = env.exec_dir
+                cmd_line = cmd.replace(f'{path(tempdir):p}',f'{path(debug_script_dir):p}')
                 msg = (
                     f"The script has been saved to {debug_script_dir}/{tempscript}."
-                    f"To reproduce the error please run:\n``{cmd.replace(f'{path(tempdir):p}',f'{path(debug_script_dir):p}')}")
+                    f"To reproduce the error please run:\n``{cmd_line}")
                 shutil.copy(os.path.join(tempdir, tempscript), debug_script_dir)
                 if ret == 125:
                     msg = 'Docker daemon failed (exitcode=125). ' + msg
@@ -478,9 +481,10 @@ class SoS_DockerClient:
                     if not hasattr(self, 'tot_mem'):
                         self.tot_mem = self.total_memory(image)
                     if self.tot_mem is None:
-                        msg = 'Script killed by docker, probably because of lack of RAM (available RAM={:.1f}GB, exitcode=137).' + msg
+                        msg = 'Script killed by docker. ' + msg
                     else:
-                        msg = f"Script killed by docker, probably because of RAM (available RAM={self.tot_mem / 1024 / 1024:.1f}GB, exitcode=137)."
+                        avail_mem = self.tot_mem / 1024 / 1024
+                        msg = f"Script killed by docker, probably because of RAM (available RAM={avail_mem:.1f}GB, exitcode=137)."
                 else:
                     out = f", stdout={kwargs['stdout']}" if 'stdout' in kwargs and os.path.isfile(
                         kwargs['stdout']) and os.path.getsize(

@@ -612,17 +612,17 @@ class TaskEngine(threading.Thread):
                     status=None):
         try:
             return self.agent.check_output(
-                f"{self.agent.config.get('sos', 'sos')}"
-                f"status {'' if tasks is None else ' '.join(tasks)} -v {verbosity}"
-                f"{'--all tasks' if check_all else ''}"
-                f"{'--html' if html else ''}"
-                f"{'--numeric-times' if numeric_times else ''}"
-                f'--age {age}' if age else ''
-                f'--tags {" ".join(tags)}' if tags else ''
-                f'--status {" ".join(status)}' if f'{status}' else ''
-            )
-
-
+                "{} status {} -v {} {} {} {} {} {} {}".format(
+                    self.agent.config.get('sos', 'sos'),
+                    '' if tasks is None else ' '.join(tasks),
+                    verbosity,
+                    '--all tasks' if check_all else '',
+                    '--html' if html else '',
+                    '--numeric-times' if numeric_times else '',
+                    f'--age {age}' if age else '',
+                    f'--tags {" ".join(tags)}' if tags else '',
+                    f'--status {" ".join(status)}' if status else '',
+                ))
         except subprocess.CalledProcessError as e:
             if verbosity >= 3:
                 env.logger.warning(
@@ -662,12 +662,11 @@ class TaskEngine(threading.Thread):
         #
         # verbosity cannot be send to underlying command because task engines
         # rely on the output of certain verbosity (-v1) to post kill the jobs
-        cmd = (
-            f"{self.agent.config.get('sos', 'sos')}"
-            "kill ''" if f"{all_tasks}" else f"{' '.join(tasks)}"
-            f"--tags {' '.join(tags)} if tags else"
-            f"--all tasks if all_tasks else ''"
-            )
+        cmd = "{} kill {} {} {}".format(
+            self.agent.config.get('sos',
+                                  'sos'), '' if all_tasks else ' '.join(tasks),
+            f'--tags {" ".join(tags)}' if tags else '',
+            '--all tasks' if all_tasks else '')
 
         try:
             ret = self.agent.check_output(cmd)
@@ -706,13 +705,13 @@ class TaskEngine(threading.Thread):
             #                 '.task'))
             #     ]
             return self.agent.check_output(
-                f"{self.agent.config.get('sos', 'sos'), ' '.join(tasks)}"
-                '--all' if f"{purge_all}" else "''"
-                f"'--age' {age}" if f"{age}" is not None else "''"
-                f"--status {' '.join(status)}" if f"{status}" is not None else "''"
-                f"--tags {' '.join(tags)}" if f"{tags}" is not None else "''"
-                f"{verbosity}"
-                )
+                "{} purge {} {} {} {} {} -v {}".format(
+                    self.agent.config.get('sos', 'sos'), ' '.join(tasks),
+                    '--all' if purge_all else '',
+                    f'--age {age}' if age is not None else '',
+                    f'--status {" ".join(status)}' if status is not None else
+                    '', f'--tags {" ".join(tags)}' if tags is not None else '',
+                    verbosity))
         except subprocess.CalledProcessError:
             env.logger.error(f'Failed to purge tasks {tasks}')
             return ''
