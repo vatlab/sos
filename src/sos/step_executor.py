@@ -22,8 +22,8 @@ from .executor_utils import (ExecuteError, __named_output__, __null_func__,
                              create_task, get_traceback_msg, reevaluate_output,
                              statementMD5, validate_step_sig, verify_input)
 from .messages import decode_msg, encode_msg
-from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS,
-                     SOS_TARGETS_OPTIONS)
+from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
+                     SOS_OUTPUT_OPTIONS, SOS_TARGETS_OPTIONS)
 from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
                       UnknownTarget, dynamic, file_target, invalid_target,
                       sos_step, sos_targets, sos_variable)
