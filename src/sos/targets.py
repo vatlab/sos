@@ -515,13 +515,13 @@ class executable(BaseTarget):
         return str(self).__format__(format_spec)
 
 
-def collapseuser(path):
+def collapseuser(path0):
     home = os.path.expanduser("~")
-    if path == home:
+    if path0 == home:
         return "~"
-    if path.startswith(home + os.sep):
-        return "~" + path[len(home):]
-    return path
+    if path0.startswith(home + os.sep):
+        return "~" + path0[len(home):]
+    return path0
 
 
 class path(type(Path())):
@@ -875,11 +875,11 @@ class file_target(path, BaseTarget):
 
 class sos_tempfile(file_target):
 
-    def __new__(cls, path=None, name=None, suffix=None, prefix=None, directory=None):
+    def __new__(cls, path1=None, name=None, suffix=None, prefix=None, directory=None):
         if cls is Path:
             cls = WindowsPath if os.name == "nt" else PosixPath
         filename = request_answer_from_controller(
-            ["sos_tempfile", path, name, suffix, prefix, dir])
+            ["sos_tempfile", path1, name, suffix, prefix, dir])
         return cls._from_parts([filename])
 
 
@@ -937,7 +937,7 @@ class paths(Sequence, os.PathLike):
     def __getstate__(self):
         return self._paths
 
-    def __setstate__(self, paths):
+    def __setstate__(self, paths0):
         self._paths = paths
 
     def __len__(self):
@@ -1450,10 +1450,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             if len(self._targets) == 1:
                 try:
                     return getattr(self._targets[0], name)
-                except Exception as e:
+                except Exception as e0:
                     raise AttributeError(
                         f"{self.__class__.__name__} object or its first child has no attribute {name}"
-                    ) from e
+                    ) from e0
             else:
                 raise AttributeError(
                     f"{self.__class__.__name__} object of length {len(self)} has no attribute {name}"

@@ -612,10 +612,10 @@ class RemoteHost(object):
 
     def _remote_abs(self, path1):
         # return an absolute path relative to remote host
-        path = str(path1)
-        if os.path.isabs(path1):
-            return path
-        return os.path.join(self._map_var(os.getcwd()), path1)
+        path2 = str(path1)
+        if os.path.isabs(path2):
+            return path2
+        return os.path.join(self._map_var(os.getcwd()), path2)
 
     def send_to_host(self, items):
         # we only copy files and directories, not other types of targets

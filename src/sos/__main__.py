@@ -701,11 +701,11 @@ def cmd_run(args, workflow_args):
         if args.monitor_id:
             try:
                 m.write("status\tfailed")
-            except Exception as e:
-                env.logger.debug(f"Failed to report to monitor process: {e}")
+            except Exception as e0:
+                env.logger.debug(f"Failed to report to monitor process: {e0}")
         if args.verbosity and args.verbosity > 2:
             sys.stderr.write(get_traceback())
-        env.logger.error(str(e))
+        env.logger.error(str(e0))
         sys.exit(1)
     if args.monitor_id:
         try:

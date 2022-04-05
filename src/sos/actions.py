@@ -347,8 +347,8 @@ def SoS_Action(
 
 class SoS_ExecuteScript:
 
-    def __init__(self, script, interpreter, suffix, args=""):
-        self.script = script
+    def __init__(self, script7, interpreter, suffix, args=""):
+        self.script7 = script7
         self.interpreter = interpreter
         self.args = args
         if suffix:
@@ -358,7 +358,7 @@ class SoS_ExecuteScript:
         else:
             self.suffix = ".sh"
 
-    def process_template(self, cmd, filename, script, **kwargs):
+    def process_template(self, cmd, filename, script6, **kwargs):
         if "template" in kwargs:
             template = kwargs["template"]
         else:
@@ -382,7 +382,7 @@ class SoS_ExecuteScript:
             context = copy.deepcopy(kwargs)
             context["cmd"] = cmd
             context["filename"] = filename
-            context["script"] = script
+            context["script"] = script6
             return interpolate(template, context)
         except Exception as e:
             raise ValueError(f"Failed to expand template {template}: {e}") from e

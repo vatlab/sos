@@ -16,11 +16,11 @@ if _py_ver.major == 2 or (_py_ver.major == 3 and
 
 
 def get_install_vim_syntax_parser():
-    parser = argparse.ArgumentParser(description='Install vim syntax for sos')
-    return parser
+    parser0 = argparse.ArgumentParser(description='Install vim syntax for sos')
+    return parser0
 
 
-def install_vim_syntax(args):
+def install_vim_syntax(args0):
 
     # copy sos.vim and sos-detect.vim to .vim
     vim_syntax_dir = os.path.join(os.path.expanduser('~'), '.vim', 'syntax')
@@ -46,4 +46,4 @@ def install_vim_syntax(args):
 if __name__ == '__main__':
     parser = get_install_vim_syntax_parser()
     args = parser.parse_args()
-    install_vim_syntax(args)
+    install_vim_syntax(args0)
