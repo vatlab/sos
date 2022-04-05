@@ -205,7 +205,8 @@ class SoS_SingularityClient:
                 if script:
                     debug_script_dir = os.path.join(
                         os.path.expanduser('~'), '.sos')
-                    msg = f"The definition has been saved to {debug_script_dir}/singularity.def. To reproduce the error please run:\n``{cmd.replace(tempdir,debug_script_dir)}``"
+                    cmd_line = cmd.replace(tempdir,debug_script_dir)
+                    msg = f"The definition has been saved to {debug_script_dir}/singularity.def. To reproduce the error please run:\n``{cmd_line}``"
                     shutil.copy(
                         os.path.join(tempdir, 'Singularityfile'),
                         debug_script_dir)

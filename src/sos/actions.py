@@ -663,14 +663,20 @@ class SoS_ExecuteScript:
                            if "stderr" in kwargs and
                            os.path.isfile(kwargs["stderr"]) and
                            os.path.getsize(kwargs["stderr"]) > 0 else "")
+                    # pylint: disable=consider-using-f-string
                     raise subprocess.CalledProcessError(
                         returncode=ret,
                         cmd=cmd,
-                        stderr=(
-                            f"\nFailed to execute ``{cmd}``\nexitcode={ret}, workdir=``{os.getcwd()}``, "
-                            f", task={os.path.basename(env.sos_dict['__std_err__']).split('.')[0]}"
-                            if '__std_err__' in env.sos_dict else ''
-                            f"{out}{err}\n{'-' * 75}"
+                        stderr="\nFailed to execute ``{}``\nexitcode={}, workdir=``{}``{}{}{}\n{}"
+                        .format(
+                            cmd,
+                            ret,
+                            os.getcwd(),
+                            f', task={os.path.basename(env.sos_dict["__std_err__"]).split(".")[0]}'
+                            if "__std_err__" in env.sos_dict else "",
+                            out,
+                            err,
+                            "-" * 75,
                         ),
                     )
             finally:

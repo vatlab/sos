@@ -2364,7 +2364,13 @@ def cmd_remove(args, unknown_args):
                         continue
                     removed += func(os.path.join(dirname, x), resp)
             dirlist[:] = [x for x in dirlist if not x.startswith(".")]
-    env.logger.info(f"{'Signature of ' if args.signature else ''}{removed} file{'s' if removed > 1 else ''} {'zapped' if args.zap else 'removed'}")
+    # pylint: disable=consider-using-f-string
+    env.logger.info("{}{} file{} {}".format(
+        "Signagure of " if args.signature else "",
+        removed,
+        "s" if removed > 1 else "",
+        "zapped" if args.zap else "removed",
+    ))
 
 
 #
