@@ -244,8 +244,8 @@ def get_used_in_func(node):
     if isinstance(node, ast.FunctionDef):
         return {node.name: get_accessed(node.body)}
     names = {}
-    for node in ast.iter_child_nodes(node):
-        names.update(get_used_in_func(node))
+    for nd in ast.iter_child_nodes(node):
+        names.update(get_used_in_func(nd))
     return names
 
 
@@ -505,4 +505,3 @@ def analyze_global_statements(global_stmt):
                     f"Variable {key} cannot be defined in global section because it cannot be pickled to workers."
                 ) from e
     return global_def, global_vars
-    

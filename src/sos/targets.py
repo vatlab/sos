@@ -819,14 +819,14 @@ class file_target(path, BaseTarget):
             sig_mtime, sig_size, sig_md5 = sig
         else:
             try:
-                with open(self.sig_file()) as sig:
+                with open(self.sig_file()) as sig_file:
                     sig_mtime, sig_size, sig_md5 = sig.read().strip().split()
             except Exception:
                 return False
         if not self.exists():
             if (self + ".zapped").is_file():
                 with open(self + ".zapped") as sig:
-                    line = sig.readline()
+                    line = sig_file.readline()
                     return sig_md5 == line.strip().rsplit("\t", 3)[-1]
             else:
                 return False
@@ -1860,7 +1860,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             raise ValueError(
                 f"Unacceptable value for parameter pattern: {pattern}")
         #
-        for pattern in patterns:
+        for ptrn in patterns:
             res = extract_pattern(pattern, self._targets)
             self.set(**res)
             # also make k, v pair with _input
