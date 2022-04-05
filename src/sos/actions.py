@@ -33,9 +33,9 @@ from .messages import decode_msg, encode_msg
 from .parser import SoS_Script
 from .syntax import SOS_ACTION_OPTIONS
 from .targets import executable, file_target, path, paths, sos_targets
-from .utils import (StopInputGroup, TerminateExecution, TimeoutInterProcessLock,
-                    env, fileMD5, get_traceback, load_config_files, short_repr,
-                    textMD5, transcribe)
+from .utils import (StopInputGroup, TerminateExecution,
+                    TimeoutInterProcessLock, env, fileMD5, get_traceback,
+                    load_config_files, short_repr, textMD5, transcribe)
 
 __all__ = [
     "SoS_Action",
@@ -663,6 +663,7 @@ class SoS_ExecuteScript:
                            if "stderr" in kwargs and
                            os.path.isfile(kwargs["stderr"]) and
                            os.path.getsize(kwargs["stderr"]) > 0 else "")
+                    # pylint: disable=consider-using-f-string
                     raise subprocess.CalledProcessError(
                         returncode=ret,
                         cmd=cmd,
@@ -769,12 +770,14 @@ def sos_run(workflow=None,
         if "ACTION" in env.config["SOS_DEBUG"] or "ALL" in env.config[
                 "SOS_DEBUG"]:
 
-            into_log_to_file = (
-                f"Executing workflow ``{workflow}`` with input"
-                f"``{short_repr(env.sos_dict.get('_input', None), True)}``"
-                f"and {'no args' if not args_output else args_output}"
-            )
-            env.log_to_file("ACTION", into_log_to_file
+            # pylint: disable=consider-using-f-string
+            env.log_to_file(
+                "ACTION",
+                "Executing workflow ``{}`` with input ``{}`` and {}".format(
+                    workflow,
+                    short_repr(env.sos_dict.get("_input", None), True),
+                    "no args" if not args_output else args_output,
+                )
             )
 
         if not hasattr(env, "__socket__") or env.__socket__ is None:

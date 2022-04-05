@@ -252,7 +252,8 @@ def preview_txt(filename, kernel=None, style=None):
         limit = 5
 
     nlines = linecount_of_file(filename)
-    content = f"HINT: {nlines} line{'s' if nlines > 1 else ''}{' ({limit} displayed, see --limit)' if nlines > limit else ''}\n"
+    hint = f' ({limit} displayed, see --limit)' if nlines > limit else ''
+    content = f"HINT: {nlines} line{'s' if nlines > 1 else ''}{hint}\n"
 
     with open(filename, "r") as fin:
         if limit < 0:

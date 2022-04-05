@@ -30,9 +30,9 @@ from .messages import decode_msg, encode_msg
 from .parser import SoS_Workflow
 from .pattern import extract_pattern
 from .section_analyzer import analyze_section
-from .targets import (BaseTarget, RemovedTarget, UnavailableLock, UnknownTarget,
-                      file_target, invalid_target, named_output, path, paths,
-                      sos_step, sos_targets, sos_variable)
+from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
+                      UnknownTarget, file_target, invalid_target, named_output,
+                      path, paths, sos_step, sos_targets, sos_variable)
 from .utils import env, get_localhost_ip, pickleable, short_repr, textMD5
 from .workflow_report import render_report
 
