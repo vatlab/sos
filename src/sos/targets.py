@@ -1861,7 +1861,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 f"Unacceptable value for parameter pattern: {pattern}")
         #
         for ptrn in patterns:
-            res = extract_pattern(pattern, self._targets)
+            res = extract_pattern(ptrn, self._targets)
             self.set(**res)
             # also make k, v pair with _input
             self._handle_paired_with({"_" + x: y for x, y in res.items()})
