@@ -1546,7 +1546,7 @@ def cmd_execute(args, workflow_args):
                 n_completed = len([x for x in res if x == 'completed'])
                 n_failed = len([x for x in res if x == 'failed'])
                 n_aborted = len([x for x in res if x.startswith('aborted')])
-                raise RuntimeError("{n_completed} completed, {n_failed} failed, {n_aborted} aborted)")
+                raise RuntimeError(f"{n_completed} completed, {n_failed} failed, {n_aborted} aborted)")
         if all(x == "completed" for x in res):
             if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config[
                     "SOS_DEBUG"]:

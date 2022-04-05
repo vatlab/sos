@@ -210,9 +210,9 @@ class SoS_DockerClient:
 
             if ret != 0:
                 if script:
-                    debug_script_dir = os.path.join(
-                        os.path.expanduser('~'), '.sos')
-                    msg = f"The Dockerfile has been saved to {debug_script_dir}/Dockerfile. To reproduce the error please run:\n``{cmd.replace(tempdir, debug_script_dir)}``"
+                    debug_script_dir = os.path.join(os.path.expanduser('~'), '.sos')
+                    cmd_line = cmd.replace(tempdir, debug_script_dir)
+                    msg = f"The Dockerfile has been saved to {debug_script_dir}/Dockerfile. To reproduce the error please run:\n``{cmd_line}``"
                     shutil.copy(
                         os.path.join(tempdir, 'Dockerfile'), debug_script_dir)
                 else:

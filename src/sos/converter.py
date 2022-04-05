@@ -14,9 +14,9 @@ from pygments.token import Keyword, Name
 from pygments.util import shebang_matches
 
 from ._version import __version__
-from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS,
-                     SOS_RUNTIME_OPTIONS, SOS_SECTION_HEADER,
-                     SOS_SECTION_OPTIONS)
+from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
+                     SOS_OUTPUT_OPTIONS, SOS_RUNTIME_OPTIONS,
+                     SOS_SECTION_HEADER, SOS_SECTION_OPTIONS)
 
 
 class SoS_Lexer(PythonLexer):

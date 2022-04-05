@@ -104,6 +104,7 @@ class Visualizer:
             "numeric" if self._is_numeric_type(x) else "alphabetic"
             for x in df.dtypes
         ]
+        # pylint: disable=consider-using-f-string
         code = ("".join(
             """{} &nbsp; <i class="fa fa-sort" style="color:lightgray" onclick="sortDataFrame('{}', {}, '{}')"></th>"""
             .format(x, tid, idx, index_type if idx ==

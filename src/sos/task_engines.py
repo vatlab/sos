@@ -611,6 +611,7 @@ class TaskEngine(threading.Thread):
                     tags=None,
                     status=None):
         try:
+            # pylint: disable=consider-using-f-string
             return self.agent.check_output(
                 "{} status {} -v {} {} {} {} {} {} {}".format(
                     self.agent.config.get('sos', 'sos'),
@@ -662,6 +663,7 @@ class TaskEngine(threading.Thread):
         #
         # verbosity cannot be send to underlying command because task engines
         # rely on the output of certain verbosity (-v1) to post kill the jobs
+        # pylint: disable=consider-using-f-string
         cmd = "{} kill {} {} {}".format(
             self.agent.config.get('sos',
                                   'sos'), '' if all_tasks else ' '.join(tasks),
@@ -704,6 +706,7 @@ class TaskEngine(threading.Thread):
             #                 os.path.expanduser('~'), '.sos', 'tasks', x +
             #                 '.task'))
             #     ]
+            # pylint: disable=consider-using-f-string
             return self.agent.check_output(
                 "{} purge {} {} {} {} {} -v {}".format(
                     self.agent.config.get('sos', 'sos'), ' '.join(tasks),
