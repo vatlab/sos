@@ -714,22 +714,22 @@ def sos_run(workflow=None,
         )
 
     if source is None:
-        script = SoS_Script(
+        script5 = SoS_Script(
             env.sos_dict["__step_context__"].content,
             env.sos_dict["__step_context__"].filename,
         )
         if workflows:
-            wfs = [script.workflow(wf, use_default=True) for wf in workflows]
+            wfs = [script5.workflow(wf, use_default=True) for wf in workflows]
         else:
-            wfs = [script.workflow(use_default=False)]
+            wfs = [script5.workflow(use_default=False)]
     else:
         # reading workflow from another file
-        script = SoS_Script(filename=source)
+        script5 = SoS_Script(filename=source)
 
         if workflows:
-            wfs = [script.workflow(wf, use_default=True) for wf in workflows]
+            wfs = [script5.workflow(wf, use_default=True) for wf in workflows]
         else:
-            wfs = [script.workflow(use_default=False)]
+            wfs = [script5.workflow(use_default=False)]
 
     # if wf contains the current step or one of the previous one, this constitute
     # recusive nested workflow and should not be allowed
@@ -817,12 +817,12 @@ def sos_run(workflow=None,
 
 
 @SoS_Action(acceptable_args=["script", "interpreter", "suffix", "args"])
-def script(script, interpreter="", suffix="", args="", **kwargs):
+def script(script0, interpreter="", suffix="", args="", **kwargs):
     """Execute specified script using specified interpreter. This action accepts common
     action arguments such as input, active, workdir, docker_image and args. In particular,
     content of one or more files specified by option input would be prepended before
     the specified script."""
-    return SoS_ExecuteScript(script, interpreter, suffix, args).run(**kwargs)
+    return SoS_ExecuteScript(script0, interpreter, suffix, args).run(**kwargs)
 
 
 @SoS_Action(acceptable_args=["expr", "msg"])
@@ -1166,7 +1166,7 @@ def download(URLs, dest_dir=".", dest_file=None, decompress=False, max_jobs=5):
 
 
 @SoS_Action(acceptable_args=["script", "args"])
-def run(script, args="", **kwargs):
+def run(script4, args="", **kwargs):
     """Execute specified script using bash. This action accepts common action arguments such as
     input, active, workdir, docker_image and args. In particular, content of one or more files
     specified by option input would be prepended before the specified script."""
@@ -1177,27 +1177,27 @@ def run(script, args="", **kwargs):
         interpreter = ""
     else:
         # if there is a shebang line, we ...
-        if not script.startswith("#!"):
+        if not script4.startswith("#!"):
             interpreter = "/bin/bash"
             if not args:
                 args = "-ev {filename:q}"
         else:
             # execute script directly
             interpreter = ""
-    return SoS_ExecuteScript(script, interpreter, "", args).run(**kwargs)
+    return SoS_ExecuteScript(script4, interpreter, "", args).run(**kwargs)
 
 
 @SoS_Action(acceptable_args=["script", "args"])
-def perl(script, args="", **kwargs):
+def perl(script3, args="", **kwargs):
     """Execute specified script using perl. This action accepts common action arguments such as
     input, active, workdir, docker_image and args. In particular, content of one or more files
     specified by option input would be prepended before the specified script."""
-    return SoS_ExecuteScript(script, "perl", ".pl", args).run(**kwargs)
+    return SoS_ExecuteScript(script3, "perl", ".pl", args).run(**kwargs)
 
 
-def collect_input(script, inpt):
+def collect_input(script2, inpt):
     # determine file extension
-    if input is not None:
+    if inpt is not None:
         if isinstance(input, (str, file_target)):
             ext = os.path.splitext(input)[-1]
         elif isinstance(input, Sequence) and len(input) > 0:
@@ -1229,7 +1229,7 @@ def collect_input(script, inpt):
 
 
 @SoS_Action(acceptable_args=["script"])
-def report(script=None, inpt=None, output=None, **kwargs):
+def report(script1=None, inpt=None, output=None, **kwargs):
     """Write script to an output file specified by `output`, which can be
     a filename to which the content of the script will be written,
     any object with a "write" attribute (e.g. a file handle) for which the "write"
@@ -1239,12 +1239,12 @@ def report(script=None, inpt=None, output=None, **kwargs):
     if env.config["run_mode"] == "dryrun":
         if "__std_out__" in env.sos_dict:
             with open(env.sos_dict["__std_out__"], "a") as so:
-                so.write(f'HINT: report:\n{"" if script is None else script}\n')
+                so.write(f'HINT: report:\n{"" if script1 is None else script1}\n')
                 if inpt is not None:
                     for ifile in inpt:
                         so.write(f"  from file: {ifile}\n")
         else:
-            print(f'HINT: report:\n{"" if script is None else script}')
+            print(f'HINT: report:\n{"" if script1 is None else script1}')
             if inpt is not None:
                 for ifile in inpt:
                     print(f"  from file: {ifile}")
@@ -1280,8 +1280,8 @@ def report(script=None, inpt=None, output=None, **kwargs):
 
     # file lock to prevent race condition
     with TimeoutInterProcessLock(os.path.join(env.temp_dir, "report_lock")):
-        if isinstance(script, str) and script.strip():
-            writer(script.rstrip() + "\n\n")
+        if isinstance(script1, str) and script1.strip():
+            writer(script1.rstrip() + "\n\n")
         if input is not None:
             if isinstance(input, (str, file_target)):
                 if ("ACTION" in env.config["SOS_DEBUG"] or
@@ -1306,7 +1306,7 @@ def report(script=None, inpt=None, output=None, **kwargs):
 
 
 @SoS_Action(acceptable_args=["script", "args"])
-def pandoc(script=None,
+def pandoc(script0=None,
            inpt=None,
            output=None,
            args="{input:q} --output {output:q}",
@@ -1362,7 +1362,7 @@ def pandoc(script=None,
     if not executable("pandoc").target_exists():
         raise RuntimeError("pandoc not found")
 
-    inpt = sos_targets(collect_input(script, inpt))
+    inpt = sos_targets(collect_input(script0, inpt))
 
     output = sos_targets(output)
     if len(output) == 0:

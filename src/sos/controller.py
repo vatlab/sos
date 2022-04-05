@@ -18,8 +18,8 @@ from .utils import (ProcessKilled, env, get_localhost_ip,
                     get_open_files_and_connections)
 
 EVENT_MAP = {}
-for name in ("PUSH", "PULL", "PAIR", "REQ", "REP"):
-    EVENT_MAP[getattr(zmq, name)] = name
+for name0 in ("PUSH", "PULL", "PAIR", "REQ", "REP"):
+    EVENT_MAP[getattr(zmq, name0)] = name0
 
 g_sockets = set()
 
