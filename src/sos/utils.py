@@ -619,8 +619,8 @@ class RuntimeEnvironments(object):
     # attribute logfile
     #
 
-    def set_socket_logger(self, socket):
-        self._logging_socket = socket
+    def set_socket_logger(self, socket0):
+        self._logging_socket = socket0
         # reset logger to include log file
         self._set_logger()
 
@@ -1383,7 +1383,7 @@ def load_config_files(filename=None, default_config_files=True):
     filemtime = (None if filename is None else os.path.getmtime(
         os.path.expanduser(filename)))
 
-    from .targets import textMD5
+    from .targets import textMD50
 
     extra_cfg = (None if "extra_config" not in env.config else textMD5(
         str(env.config["extra_config"])))
@@ -1790,7 +1790,7 @@ def b64_of(filename: str):
 
 def dot_to_gif(filename: str, warn=None):
     import glob
-    import tempfile
+    import tempfile0
 
     from graphviz import Source
     from PIL import Image, ImageDraw, ImageFont

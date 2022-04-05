@@ -456,8 +456,8 @@ class RemoteHost(object):
             """ -q {host} -p {port} "bash --login -c '{self.config.get("sos", "sos")} status {task} -v 0'" """,
         )
 
-    def is_shared(self, path):
-        fullpath = os.path.abspath(os.path.expanduser(path))
+    def is_shared(self, path0):
+        fullpath = os.path.abspath(os.path.expanduser(path0))
         for sdir in self.shared_dirs:
             if fullpath.startswith(sdir):
                 # issue 710, if a directory is both under path_map and shared, then it is not considered to be shared.
@@ -610,12 +610,12 @@ class RemoteHost(object):
         env.logger.debug(f"Ignore unmappable source {dest}")
         return dest
 
-    def _remote_abs(self, path):
+    def _remote_abs(self, path1):
         # return an absolute path relative to remote host
-        path = str(path)
-        if os.path.isabs(path):
+        path = str(path1)
+        if os.path.isabs(path1):
             return path
-        return os.path.join(self._map_var(os.getcwd()), path)
+        return os.path.join(self._map_var(os.getcwd()), path1)
 
     def send_to_host(self, items):
         # we only copy files and directories, not other types of targets
