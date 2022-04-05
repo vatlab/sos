@@ -19,10 +19,10 @@ class WorkflowSig(object):
     def __init__(self, workflow_id):
         self.data = defaultdict(lambda: defaultdict(list))
 
-        for entry_type, id, item in request_answer_from_controller(
+        for entry_type, ID, item in request_answer_from_controller(
             ["workflow_sig", "records", workflow_id]):
             try:
-                self.data[entry_type][id].append(item.strip())
+                self.data[entry_type][ID].append(item.strip())
             except Exception as e:
                 env.logger.debug(f"Failed to read report line: {e}")
 
@@ -42,9 +42,9 @@ class WorkflowSig(object):
             # workflow  workflow_id dict2
             # workflow  workflow_id2 dict1
             workflows = defaultdict(dict)
-            for id, values in self.data["workflow"].items():
+            for ID, values in self.data["workflow"].items():
                 for val in values:
-                    workflows[id].update(eval(val))
+                    workflows[ID].update(eval(val))
             for v in workflows.values():
                 self.convert_time(v)
                 if "dag" in v:
@@ -72,7 +72,7 @@ class WorkflowSig(object):
         try:
             # there can be multiple task status for each id
             tasks = {
-                id: merge_dict(res) for id, res in self.data["task"].items()
+                ID: merge_dict(res) for ID, res in self.data["task"].items()
             }
             for val in tasks.values():
                 self.convert_time(val)

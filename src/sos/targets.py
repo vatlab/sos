@@ -875,7 +875,7 @@ class file_target(path, BaseTarget):
 
 class sos_tempfile(file_target):
 
-    def __new__(cls, path=None, name=None, suffix=None, prefix=None, dir=None):
+    def __new__(cls, path=None, name=None, suffix=None, prefix=None, directory=None):
         if cls is Path:
             cls = WindowsPath if os.name == "nt" else PosixPath
         filename = request_answer_from_controller(
@@ -1487,20 +1487,20 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 raise ValueError(
                     f"Length of provided attributes ({len(properties)}) does not match length of sos_targets ({len(self._targets)})"
                 )
-            for target, property in zip(self._targets, properties):
-                target.set(name, property)
+            for target, prop in zip(self._targets, properties):
+                target.set(name, prop)
         else:
             raise ValueError(
                 f"Unacceptable properties {properties} for function paired_with"
             )
         return self
 
-    def remove_targets(self, type, kept=None):
+    def remove_targets(self, tp, kept=None):
         """Remove targets of certain type"""
         if kept is None:
             kept = [
                 i for i, x in enumerate(self._targets)
-                if not isinstance(x, type)
+                if not isinstance(x, tp)
             ]
         if len(kept) == len(self._targets):
             return self
@@ -1546,8 +1546,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 raise ValueError(
                     f"Length of provided properties ({len(properties)}) does not match number of groups ({len(self._groups)})"
                 )
-            for group, property in zip(self._groups, properties):
-                group.set(name, property)
+            for group, prop in zip(self._groups, properties):
+                group.set(name, prop)
         else:
             raise ValueError(
                 f"Unacceptable properties {properties} of type {properties.__class__.__name__} for function group_with"

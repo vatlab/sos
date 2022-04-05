@@ -224,7 +224,7 @@ class LocalHost(object):
         self.send_job_file(task_file)
         return True
 
-    def send_job_file(self, job_file, dir="tasks"):
+    def send_job_file(self, job_file, directory="tasks"):
         # on the same file system, no action is needed.
         dest_job_file = path(f"~/.sos/{dir}/{os.path.basename(job_file)}")
         job_file = path(job_file)
@@ -877,7 +877,7 @@ class RemoteHost(object):
         tf.status = "pending"
         self.send_job_file(task_file)
 
-    def send_job_file(self, job_file, dir="tasks"):
+    def send_job_file(self, job_file, directory="tasks"):
         send_cmd = cfg_interpolate(
             f"ssh {self.cm_opts + self.pem_opts}"
             f' -q {{address}} -p {{port}} "[ -d ~/.sos/{dir} ] || mkdir -p ~/.sos/{dir}" && '

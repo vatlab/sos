@@ -1195,7 +1195,7 @@ def perl(script, args="", **kwargs):
     return SoS_ExecuteScript(script, "perl", ".pl", args).run(**kwargs)
 
 
-def collect_input(script, input):
+def collect_input(script, inpt):
     # determine file extension
     if input is not None:
         if isinstance(input, (str, file_target)):
@@ -1219,7 +1219,7 @@ def collect_input(script, input):
             except Exception as e:
                 raise ValueError(f"Failed to read input file {input}: {e}") from e
         elif isinstance(input, Sequence):
-            for ifile in input:
+            for ifile in inpt:
                 try:
                     with open(ifile) as itmp:
                         tmp.write(itmp.read().rstrip() + "\n\n")
@@ -1229,7 +1229,7 @@ def collect_input(script, input):
 
 
 @SoS_Action(acceptable_args=["script"])
-def report(script=None, input=None, output=None, **kwargs):
+def report(script=None, inpt=None, output=None, **kwargs):
     """Write script to an output file specified by `output`, which can be
     a filename to which the content of the script will be written,
     any object with a "write" attribute (e.g. a file handle) for which the "write"
@@ -1240,13 +1240,13 @@ def report(script=None, input=None, output=None, **kwargs):
         if "__std_out__" in env.sos_dict:
             with open(env.sos_dict["__std_out__"], "a") as so:
                 so.write(f'HINT: report:\n{"" if script is None else script}\n')
-                if input is not None:
-                    for ifile in input:
+                if inpt is not None:
+                    for ifile in inpt:
                         so.write(f"  from file: {ifile}\n")
         else:
             print(f'HINT: report:\n{"" if script is None else script}')
-            if input is not None:
-                for ifile in input:
+            if inpt is not None:
+                for ifile in inpt:
                     print(f"  from file: {ifile}")
         return
     file_handle = None
@@ -1289,8 +1289,8 @@ def report(script=None, input=None, output=None, **kwargs):
                     env.log_to_file("ACTION", f"Loading report from {input}")
                 with open(input) as ifile:
                     writer(ifile.read().rstrip() + "\n\n")
-            elif isinstance(input, Sequence):
-                for ifile in input:
+            elif isinstance(inpt, Sequence):
+                for ifile in inpt:
                     try:
                         env.logger.debug(f"Loading report from {ifile}")
                         with open(ifile) as itmp:
@@ -1307,7 +1307,7 @@ def report(script=None, input=None, output=None, **kwargs):
 
 @SoS_Action(acceptable_args=["script", "args"])
 def pandoc(script=None,
-           input=None,
+           inpt=None,
            output=None,
            args="{input:q} --output {output:q}",
            **kwargs):
@@ -1362,7 +1362,7 @@ def pandoc(script=None,
     if not executable("pandoc").target_exists():
         raise RuntimeError("pandoc not found")
 
-    input = sos_targets(collect_input(script, input))
+    inpt = sos_targets(collect_input(script, inpt))
 
     output = sos_targets(output)
     if len(output) == 0:

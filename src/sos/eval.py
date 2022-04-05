@@ -284,8 +284,8 @@ class StatementHash(object):
         StatementHash.stmt_hash[h] = script
         return f"script_{h}"
 
-    def script(self, hash: str) -> str:
-        return StatementHash.stmt_hash[int(hash[7:])]
+    def script(self, hsh: str) -> str:
+        return StatementHash.stmt_hash[int(hsh[7:])]
 
 
 stmtHash = StatementHash()

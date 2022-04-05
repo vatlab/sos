@@ -270,18 +270,18 @@ def parse_shared_vars(option):
     return shared_vars
 
 
-def evaluate_shared(vars, option):
+def evaluate_shared(vrs, option):
     # handle option shared and store variables in a "__shared_vars" variable
     shared_vars = {}
     env.sos_dict.quick_update(vars[-1])
-    for key in vars[-1].keys():
+    for key in vrs[-1].keys():
         try:
             if key in ("output", "depends", "input"):
                 env.logger.warning(
                     f"Cannot overwrite variable step_{key} from substep variable {key}"
                 )
             else:
-                env.sos_dict.set("step_" + key, [x[key] for x in vars])
+                env.sos_dict.set("step_" + key, [x[key] for x in vrs])
         except Exception as e:
             env.logger.warning(
                 f"Failed to create step level variable step_{key}: {e}")
@@ -687,7 +687,7 @@ class Base_Step_Executor:
         if results is None:
             raise RuntimeError('This should not happen since results should be a dictionary returned from runner.')
 
-        for id, result in results.items():
+        for ID, result in results.items():
             # turn to string to avoid naming lookup issue
             rep_result = {
                 x: (y if isinstance(y,
@@ -697,7 +697,7 @@ class Base_Step_Executor:
             rep_result["tags"] = " ".join(self.task_manager.tags(id))
             rep_result["queue"] = queue
             send_message_to_controller(
-                ["workflow_sig", "task", id,
+                ["workflow_sig", "task", ID,
                  repr(rep_result)])
         self.task_manager.clear_submitted()
 

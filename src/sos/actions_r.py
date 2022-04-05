@@ -41,7 +41,7 @@ def R(script, args="", **kwargs):
 @SoS_Action(acceptable_args=["script", "args"])
 def Rmarkdown(
     script=None,
-    input=None,
+    inpt=None,
     output=None,
     args="{input:r}, output_file={output:ar}",
     **kwargs,
@@ -71,7 +71,7 @@ def Rmarkdown(
     if not R_library("rmarkdown").target_exists():
         raise RuntimeError("Library rmarkdown does not exist")
 
-    input = sos_targets(collect_input(script, input))
+    inpt = sos_targets(collect_input(script, inpt))
 
     output = sos_targets(output)
     if len(output) == 0:

@@ -361,7 +361,7 @@ class Controller(threading.Thread):
                 else:
                     env.logger.warning(f"Unknown signature request {msg}")
             elif msg[0] == "sos_tempfile":
-                path, name, suffix, prefix, dir = msg[1:]
+                path, name, suffix, prefix, directory = msg[1:]
                 if path is not None:
                     if path not in self._tempfiles.values():
                         if not name:
@@ -381,8 +381,8 @@ class Controller(threading.Thread):
                         filename = filename + suffix
                     if prefix is not None:
                         filename = prefix + filename
-                    if dir is not None:
-                        filename = os.path.join(dir, filename)
+                    if directory is not None:
+                        filename = os.path.join(directory, filename)
                     else:
                         filename = os.path.join(tempfile.gettempdir(), filename)
                     #

@@ -1054,11 +1054,11 @@ def dict_merge(dct, merge_dct):
 
 
 def pretty_size(n,
-                pow=0,
+                POW=0,
                 b=1024,
                 u="B",
                 pre=[""] + [p + "i" for p in "KMGTPEZY"]):
-    pow, n = min(int(math.log(max(n * b**pow, 1), b)), len(pre) - 1), n * b**pow
+    POW, n = min(int(math.log(max(n * b**pow, 1), b)), len(pre) - 1), n * b**POW
 
     # pylint: disable=consider-using-f-string
     return "%%.%if %%s%%s" % abs(pow %
