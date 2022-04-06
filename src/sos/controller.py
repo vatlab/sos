@@ -702,13 +702,13 @@ class Controller(threading.Thread):
             return
         finally:
             # remove temporary files
-            for Name, tmpfile in self._tempfiles.items():
+            for name0, tmpfile in self._tempfiles.items():
                 try:
                     if os.path.isfile(tmpfile):
                         os.remove(tmpfile)
                 except Exception as e:
                     env.logger.warning(
-                        f"Failed to tempfile associated with name {name}: {e}")
+                        f"Failed to tempfile associated with name {name0}: {e}")
             # kill all workers
             self.workers.kill_all()
 
