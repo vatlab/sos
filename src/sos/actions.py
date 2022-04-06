@@ -219,11 +219,11 @@ def SoS_Action(
             if ("tracked" in kwargs and kwargs["tracked"] is not None and
                     kwargs["tracked"] is not False):
                 if args and isinstance(args[0], str):
-                    script7 = args[0]
+                    script = args[0]
                 elif "script" in kwargs:
-                    script7 = kwargs["script"]
+                    script = kwargs["script"]
                 else:
-                    script7 = ""
+                    script = ""
 
                 try:
                     tfiles = sos_targets(
