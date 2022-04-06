@@ -39,7 +39,7 @@ from .utils import (StopInputGroup, TerminateExecution,
 
 __all__ = [
     "SoS_Action",
-    "script",
+    "script9",
     "sos_run",
     "fail_if",
     "warn_if",
