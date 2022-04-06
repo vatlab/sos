@@ -822,7 +822,7 @@ def sos_run(workflow=None,
 
 
 @SoS_Action(acceptable_args=["script", "interpreter", "suffix", "args"])
-def Script(script, interpreter="", suffix="", args="", **kwargs):
+def script(script, interpreter="", suffix="", args="", **kwargs):
     """Execute specified script using specified interpreter. This action accepts common
     action arguments such as input, active, workdir, docker_image and args. In particular,
     content of one or more files specified by option input would be prepended before
