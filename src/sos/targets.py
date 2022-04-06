@@ -515,13 +515,13 @@ class executable(BaseTarget):
         return str(self).__format__(format_spec)
 
 
-def collapseuser(path):
-    home = os.path.expanduser("~")
-    if path == home:
+def collapseuser(path0):
+    home = os.path0.expanduser("~")
+    if path0 == home:
         return "~"
     if path.startswith(home + os.sep):
         return "~" + path[len(home):]
-    return path
+    return path0
 
 
 class path(type(Path())):
@@ -813,20 +813,20 @@ class file_target(path, BaseTarget):
             os.path.expanduser('~'), '.sos', 'signatures',
             f"{textMD5(os.path.abspath(self))}.file_info")
 
-    def validate(self, sig=None):
+    def validate(self, Sig=None):
         """Check if file matches its signature"""
-        if sig is not None:
-            sig_mtime, sig_size, sig_md5 = sig
+        if Sig is not None:
+            sig_mtime, sig_size, sig_md5 = Sig
         else:
             try:
-                with open(self.sig_file()) as sig:
-                    sig_mtime, sig_size, sig_md5 = sig.read().strip().split()
+                with open(self.sig_file()) as sig0:
+                    sig_mtime, sig_size, sig_md5 = sig0.read().strip().split()
             except Exception:
                 return False
         if not self.exists():
             if (self + ".zapped").is_file():
-                with open(self + ".zapped") as sig:
-                    line = sig.readline()
+                with open(self + ".zapped") as sig0:
+                    line = sig0.readline()
                     return sig_md5 == line.strip().rsplit("\t", 3)[-1]
             else:
                 return False
@@ -875,11 +875,11 @@ class file_target(path, BaseTarget):
 
 class sos_tempfile(file_target):
 
-    def __new__(cls, path=None, name=None, suffix=None, prefix=None, dir=None):
-        if cls is Path:
+    def __new__(cls, path0=None, name=None, suffix=None, prefix=None, directory=None):
+        if cls is path0:
             cls = WindowsPath if os.name == "nt" else PosixPath
         filename = request_answer_from_controller(
-            ["sos_tempfile", path, name, suffix, prefix, dir])
+            ["sos_tempfile", path0, name, suffix, prefix, directory])
         return cls._from_parts([filename])
 
 
@@ -937,8 +937,8 @@ class paths(Sequence, os.PathLike):
     def __getstate__(self):
         return self._paths
 
-    def __setstate__(self, paths):
-        self._paths = paths
+    def __setstate__(self, Paths):
+        self._paths = Paths
 
     def __len__(self):
         return len(self._paths)
@@ -1450,10 +1450,10 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             if len(self._targets) == 1:
                 try:
                     return getattr(self._targets[0], name)
-                except Exception as e:
+                except Exception as e0:
                     raise AttributeError(
                         f"{self.__class__.__name__} object or its first child has no attribute {name}"
-                    ) from e
+                    ) from e0
             else:
                 raise AttributeError(
                     f"{self.__class__.__name__} object of length {len(self)} has no attribute {name}"
@@ -1495,12 +1495,12 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             )
         return self
 
-    def remove_targets(self, type, kept=None):
+    def remove_targets(self, Type, kept=None):
         """Remove targets of certain type"""
         if kept is None:
             kept = [
                 i for i, x in enumerate(self._targets)
-                if not isinstance(x, type)
+                if not isinstance(x, Type)
             ]
         if len(kept) == len(self._targets):
             return self
@@ -1546,8 +1546,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 raise ValueError(
                     f"Length of provided properties ({len(properties)}) does not match number of groups ({len(self._groups)})"
                 )
-            for group, property in zip(self._groups, properties):
-                group.set(name, property)
+            for group, Property in zip(self._groups, properties):
+                group.set(name, Property)
         else:
             raise ValueError(
                 f"Unacceptable properties {properties} of type {properties.__class__.__name__} for function group_with"
@@ -1860,8 +1860,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             raise ValueError(
                 f"Unacceptable value for parameter pattern: {pattern}")
         #
-        for pattern in patterns:
-            res = extract_pattern(pattern, self._targets)
+        for ptrn in patterns:
+            res = extract_pattern(ptrn, self._targets)
             self.set(**res)
             # also make k, v pair with _input
             self._handle_paired_with({"_" + x: y for x, y in res.items()})

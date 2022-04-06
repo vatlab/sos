@@ -49,12 +49,12 @@ def get_param_of_function(name, param_list, extra_dict={}):
                             extra_dict,
                         )
                     ])
-                except Exception as e:
+                except Exception as e0:
                     if ("STEP" in env.config["SOS_DEBUG"] or
                             "ALL" in env.config["SOS_DEBUG"]):
                         env.log_to_file(
                             "STEP",
-                            f"Failed to evaluate parameter of function {name} from {param_list}: {e}",
+                            f"Failed to evaluate parameter of function {name} from {param_list}: {e0}",
                         )
         for kwarg in func.keywords:
             try:
@@ -78,12 +78,12 @@ def get_param_of_function(name, param_list, extra_dict={}):
                             extra_dict,
                         ),
                     ])
-                except Exception as e:
+                except Exception as e0:
                     if ("STEP" in env.config["SOS_DEBUG"] or
                             "ALL" in env.config["SOS_DEBUG"]):
                         env.log_to_file(
                             "STEP",
-                            f"Failed to evaluate parameter of function {name} from {param_list}: {e}",
+                            f"Failed to evaluate parameter of function {name} from {param_list}: {e0}",
                         )
     return params
 

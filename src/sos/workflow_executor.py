@@ -1436,15 +1436,15 @@ class Base_Executor:
                                         "Master received an exception")
                         if runnable._status == "workflow_running_pending":
                             for pwf in runnable._pending_workflows:
-                                for midx, proc in enumerate(manager.procs):
-                                    if proc is None:
+                                for midx, proc0 in enumerate(manager.procs0):
+                                    if proc0 is None:
                                         continue
-                                    if (proc.in_status("workflow_pending") and
+                                    if (proc0.in_status("workflow_pending") and
                                             pwf
-                                            in proc.step._pending_workflows):
-                                        proc.step._pending_workflows.remove(pwf)
-                                        if not proc.step._pending_workflows:
-                                            proc.set_status("failed")
+                                            in proc0.step._pending_workflows):
+                                        proc0.step._pending_workflows.remove(pwf)
+                                        if not proc0.step._pending_workflows:
+                                            proc0.set_status("failed")
                                             manager.mark_idle(midx)
 
                         if env.config["error_mode"] == "ignore":

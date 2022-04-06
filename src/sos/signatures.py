@@ -132,12 +132,12 @@ class WorkflowSignatures(SignatureDB):
     def __init__(self):
         super().__init__()
 
-    def write(self, entry_type: str, id: str, item: str):
+    def write(self, entry_type: str, ID: str, item: str):
         try:
-            self._write((env.config["master_id"], entry_type, id, item))
+            self._write((env.config["master_id"], entry_type, ID, item))
         except sqlite3.DatabaseError as e:
             env.logger.warning(
-                f"Failed to write workflow signature of type {entry_type} and id {id}: {e}"
+                f"Failed to write workflow signature of type {entry_type} and id {ID}: {e}"
             )
             return None
 
@@ -213,4 +213,3 @@ class WorkflowSignatures(SignatureDB):
         except sqlite3.DatabaseError as e:
             env.logger.warning(f"Failed to clear workflow database: {e}")
             return []
-            

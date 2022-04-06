@@ -361,22 +361,22 @@ class Controller(threading.Thread):
                 else:
                     env.logger.warning(f"Unknown signature request {msg}")
             elif msg[0] == "sos_tempfile":
-                path, name, suffix, prefix, dir = msg[1:]
+                path, Name, suffix, prefix, dir = msg[1:]
                 if path is not None:
                     if path not in self._tempfiles.values():
-                        if not name:
-                            name = uuid.uuid4().hex
-                        self._tempfiles[name] = path
+                        if not Name:
+                            Name = uuid.uuid4().hex
+                        self._tempfiles[Name] = path
                     self.master_request_socket.send(encode_msg(path))
-                elif name is not None and name in self._tempfiles:
+                elif Name is not None and Name in self._tempfiles:
                     self.master_request_socket.send(
-                        encode_msg(self._tempfiles[name]))
+                        encode_msg(self._tempfiles[Name]))
                 else:
                     #
                     basename = uuid.uuid4().hex
                     filename = basename
-                    if name is None:
-                        name = basename
+                    if Name is None:
+                        Name = basename
                     if suffix is not None:
                         filename = filename + suffix
                     if prefix is not None:
@@ -412,7 +412,7 @@ class Controller(threading.Thread):
                         encode_msg(self._completed_steps[steps[-1]]
                                    if steps else None))
             elif msg[0] == "named_output":
-                name = msg[1]
+                Name = msg[1]
                 found = False
                 for step_output in self._completed_steps.values():
                     if name in step_output.labels:
@@ -702,7 +702,7 @@ class Controller(threading.Thread):
             return
         finally:
             # remove temporary files
-            for name, tmpfile in self._tempfiles.items():
+            for Name, tmpfile in self._tempfiles.items():
                 try:
                     if os.path.isfile(tmpfile):
                         os.remove(tmpfile)

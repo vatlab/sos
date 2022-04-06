@@ -16,8 +16,8 @@ if _py_ver.major == 2 or (_py_ver.major == 3 and
 
 
 def get_install_vim_syntax_parser():
-    parser = argparse.ArgumentParser(description='Install vim syntax for sos')
-    return parser
+    Parser = argparse.ArgumentParser(description='Install vim syntax for sos')
+    return Parser
 
 
 def install_vim_syntax(args):

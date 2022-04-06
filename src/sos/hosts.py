@@ -224,9 +224,9 @@ class LocalHost(object):
         self.send_job_file(task_file)
         return True
 
-    def send_job_file(self, job_file, dir="tasks"):
+    def send_job_file(self, job_file, dir0="tasks"):
         # on the same file system, no action is needed.
-        dest_job_file = path(f"~/.sos/{dir}/{os.path.basename(job_file)}")
+        dest_job_file = path(f"~/.sos/{dir0}/{os.path.basename(job_file)}")
         job_file = path(job_file)
         if job_file != dest_job_file:
             shutil.copyfile(job_file, dest_job_file)
@@ -456,8 +456,8 @@ class RemoteHost(object):
             """ -q {host} -p {port} "bash --login -c '{self.config.get("sos", "sos")} status {task} -v 0'" """,
         )
 
-    def is_shared(self, path):
-        fullpath = os.path.abspath(os.path.expanduser(path))
+    def is_shared(self, path0):
+        fullpath = os.path.abspath(os.path.expanduser(path0))
         for sdir in self.shared_dirs:
             if fullpath.startswith(sdir):
                 # issue 710, if a directory is both under path_map and shared, then it is not considered to be shared.
