@@ -619,8 +619,8 @@ class RuntimeEnvironments(object):
     # attribute logfile
     #
 
-    def set_socket_logger(self, socket):
-        self._logging_socket = socket
+    def set_socket_logger(self, socket0):
+        self._logging_socket = socket0
         # reset logger to include log file
         self._set_logger()
 
