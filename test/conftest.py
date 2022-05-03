@@ -6,6 +6,7 @@ import textwrap
 
 import pytest
 import yaml
+import subprocess
 
 
 @pytest.fixture
@@ -116,6 +117,11 @@ def clear_now_and_after():
     yield get_names
 
     clear_files_and_dirs()
+
+
+@pytest.fixture
+def purge_tasks():
+    subprocess.call(["sos", "purge", "--all"])
 
 
 @pytest.fixture

@@ -471,37 +471,6 @@ rng = random.randint(1, 1000)
         # Base_Executor(wf).run()
         # self.assertEqual(var, env.sos_dict['rng'])
 
-    def test_trunk_workers_option(self):
-        """Test option trunk_workers"""
-        with open("test_trunkworker.sos", "w") as tt:
-            tt.write("""
-[10]
-input: for_each={'I': range(12)}
-task: trunk_size=6, trunk_workers=3, mem='1M', walltime='10m'
-run: expand=True
-    echo {I} > {I}.txt
-    sleep 2
-""")
-        wf = SoS_Script(filename="test_trunkworker.sos").workflow()
-        Base_Executor(
-            wf,
-            config={
-                "sig_mode": "force",
-                "script": "test_trunkworker.sos",
-                "max_running_jobs": 10,
-                "workflow_args": [],
-                "output_dag": "",
-                "output_report": None,
-                "targets": [],
-                "worker_procs": ["4"],
-                "default_queue": "localhost",
-                "workflow": "default",
-                "workdir": ".",
-            },
-        ).run()
-        for i in range(10):
-            self.assertTrue(os.path.isfile("{}.txt".format(i)))
-
     def test_task_tags(self):
         """Test option tags of tasks"""
         import random
@@ -889,71 +858,6 @@ assert _input == f'{_index+1}.out'
         wf = script.workflow()
         Base_Executor(wf, config={"default_queue": "localhost"}).run()
 
-    @unittest.skipIf(not has_docker, "Docker container not usable")
-    def test_sync_input_output_and_rerun(self):
-        """Test sync input and output with remote host"""
-        for i in range(4):
-            if os.path.isfile(f"test_{i}.txt"):
-                os.remove(f"test_{i}.txt")
-            if os.path.isfile(f"test_{i}.bak"):
-                os.remove(f"test_{i}.bak")
-        import random
-
-        script = SoS_Script("""
-parameter: g = 100
-
-[10]
-input: for_each=dict(i=range(4))
-output: f'test_{i}.txt'
-
-with open(f'test_{i}.txt', 'w') as tst:
-    tst.write(f'test_{i}_{g}')
-
-[20]
-output: _input.with_suffix('.bak')
-
-task:
-
-with open(_input, 'r') as inf, open(_output, 'w') as outf:
-	outf.write(inf.read() + '.bak')
-""")
-        wf = script.workflow()
-        val = random.randint(1, 10000)
-        Base_Executor(
-            wf,
-            args=["--g", str(val)],
-            config={
-                "config_file": "~/docker.yml",
-                "default_queue": "docker",
-                "sig_mode": "force",
-            },
-        ).run()
-        # now check if
-        for i in range(4):
-            self.assertTrue(os.path.isfile(f"test_{i}.txt"))
-            with open(f"test_{i}.bak") as outf:
-                self.assertEqual(outf.read(), f"test_{i}_{val}.bak")
-            self.assertTrue(os.path.isfile(f"test_{i}.bak"))
-            with open(f"test_{i}.bak") as outf:
-                self.assertEqual(outf.read(), f"test_{i}_{val}.bak")
-        #
-        # test rerun the task file on local host
-        for i in range(4):
-            if os.path.isfile(f"test_{i}.txt"):
-                os.remove(f"test_{i}.txt")
-            if os.path.isfile(f"test_{i}.bak"):
-                os.remove(f"test_{i}.bak")
-        Base_Executor(
-            wf, args=["--g", str(val)], config={
-                "sig_mode": "force"
-            }).run()
-        for i in range(4):
-            self.assertTrue(os.path.isfile(f"test_{i}.txt"))
-            with open(f"test_{i}.bak") as outf:
-                self.assertEqual(outf.read(), f"test_{i}_{val}.bak")
-            self.assertTrue(os.path.isfile(f"test_{i}.bak"))
-            with open(f"test_{i}.bak") as outf:
-                self.assertEqual(outf.read(), f"test_{i}_{val}.bak")
 
     @unittest.skipIf(not has_docker, "Docker container not usable")
     def test_remote_input_target(self):
@@ -1164,22 +1068,20 @@ def test_local_max_mem():
         )
 
 
-def test_trunk_size_option(clear_now_and_after):
+def test_trunk_size_option(clear_now_and_after, purge_tasks):
     """Test option trunk_size"""
     clear_now_and_after([f"{i}.txt" for i in range(10)])
     execute_workflow(
         """
 [10]
 input: for_each={'I': range(10)}
-task: trunk_size=5, cores=1, mem='1M', walltime='10m'
+task: trunk_size=5, walltime='10m'
 run: expand=True
-echo {I} > {I}.txt
-sleep 0.1
+  echo {I} > {I}.txt
+  sleep 0.1
 """,
         options={
             "sig_mode": "force",
-            "max_running_jobs": 10,
-            "worker_procs": ["4"],
             "default_queue": "localhost",
         },
     )
@@ -1187,28 +1089,111 @@ sleep 0.1
     for i in range(10):
         assert os.path.isfile(f"{i}.txt")
 
+
+def test_trunk_size_none_option(clear_now_and_after, purge_tasks):
+    """Test option trunk_size"""
+    clear_now_and_after([f"{i}.txt" for i in range(10)])
     # trunk size is None or 0, -1, intepreted as all tasks
     execute_workflow(
         """
 [10]
 input: for_each={'I': range(10)}
-task: trunk_size=None, cores=1, mem='1M', walltime='10m'
+task: trunk_size=None, cores=1, walltime='10m'
 run: expand=True
-echo {I} > {I}.txt
-sleep 0.1
+  echo {I} > {I}.txt
+  sleep 0.1
 """,
         options={
             "sig_mode": "force",
-            "max_running_jobs": 10,
-            "workflow_args": [],
-            "output_dag": "",
-            "output_report": None,
-            "targets": [],
-            "worker_procs": ["4"],
             "default_queue": "localhost",
-            "workflow": "default",
-            "workdir": ".",
         },
     )
     for i in range(10):
         assert os.path.isfile(f"{i}.txt")
+
+
+def test_trunk_workers_option(clear_now_and_after, purge_tasks):
+    """Test option trunk_workers"""
+    clear_now_and_after([f"{i}.txt" for i in range(12)])
+
+    execute_workflow(
+        """
+[10]
+input: for_each={'I': range(12)}
+task: trunk_size=6, trunk_workers=3, walltime='10m'
+run: expand=True
+  echo {I} > {I}.txt
+  sleep 1
+""",
+        options={
+            "max_running_jobs": 10,
+            "worker_procs": ["4"],
+            "default_queue": "localhost"
+        },
+    )
+    for i in range(12):
+        assert os.path.isfile(f"{i}.txt")
+
+
+@pytest.mark.skipif(not has_docker, reason="Docker container not usable")
+def test_sync_input_output_and_rerun(clear_now_and_after, purge_tasks):
+    """Test sync input and output with remote host"""
+    clear_now_and_after([f'test_{i}.txt' for i in range(4)])
+    clear_now_and_after([f'test_{i}.bak' for i in range(4)])
+
+    import random
+    val = random.randint(1, 10000)
+    wf = """
+        parameter: g = 100
+
+        [10]
+        input: for_each=dict(i=range(4))
+        output: f'test_{i}.txt'
+
+        with open(f'test_{i}.txt', 'w') as tst:
+            tst.write(f'test_{i}_{g}')
+
+        [20]
+        output: _input.with_suffix('.bak')
+
+        task:
+
+        with open(_input, 'r') as inf, open(_output, 'w') as outf:
+            outf.write(inf.read() + '.bak')
+        """
+    execute_workflow(wf,
+        args=["--g", str(val)],
+        options={
+            "config_file": "~/docker.yml",
+            "default_queue": "docker",
+            "sig_mode": "force",
+        },
+    )
+
+    # now check if
+    for i in range(4):
+        assert os.path.isfile(f"test_{i}.txt")
+        with open(f"test_{i}.bak") as outf:
+            assert outf.read() == f"test_{i}_{val}.bak"
+
+        assert os.path.isfile(f"test_{i}.bak")
+        with open(f"test_{i}.bak") as outf:
+            assert outf.read() == f"test_{i}_{val}.bak"
+    #
+    # test rerun the task file on local host
+    clear_now_and_after([f'test_{i}.txt' for i in range(4)])
+    clear_now_and_after([f'test_{i}.bak' for i in range(4)])
+
+    execute_workflow(
+        wf, args=["--g", str(val)], options={
+            "sig_mode": "force"
+        })
+
+    for i in range(4):
+        assert os.path.isfile(f"test_{i}.txt")
+        with open(f"test_{i}.bak") as outf:
+            assert outf.read() == f"test_{i}_{val}.bak"
+
+        assert os.path.isfile(f"test_{i}.bak")
+        with open(f"test_{i}.bak") as outf:
+            assert outf.read() == f"test_{i}_{val}.bak"
