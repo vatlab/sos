@@ -14,6 +14,7 @@ from collections.abc import Sequence
 from io import StringIO
 from tokenize import generate_tokens
 from typing import Any
+from secrets import token_urlsafe
 
 import psutil
 
@@ -157,8 +158,10 @@ def clear_output(output=None):
     for target in env.sos_dict["_output"] if output is None else output:
         if isinstance(target, file_target) and target.exists():
             try:
-                target.unlink()
-                env.logger.warning(f"{target} removed due to failed step.")
+                new_name = target + '.' + token_urlsafe(6)
+                target.rename(new_name)
+                env.logger.warning(
+                    f"{target} removed to {new_name} due to failed step.")
             except Exception as e:
                 env.logger.warning(f"Failed to remove {target}: {e}")
 

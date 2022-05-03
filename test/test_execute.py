@@ -1604,7 +1604,6 @@ def test_pass_of_target_source():
         """)
 
 
-
 def test_return_output_in_step_output():
     """Testing the return of _output as groups of step_output"""
     execute_workflow("""\
@@ -2594,30 +2593,6 @@ def test_param_with_step_no_statement():
             """,
         options={"default_queue": "localhost"},
     )
-
-
-def test_parallel_nestedworkflow():
-    # 1375
-    execute_workflow(r"""
-        [global]
-        parameter: num = [x+1 for x in range(5)]
-
-        [1]
-        input: for_each = 'num'
-        output: f'{_num}.txt'
-        bash: expand = True
-        touch {_output}
-
-        [2]
-        parameter: a = 1
-        output: f'{_input:n}.out'
-        sos_run('a' if a >=1 else 'b')
-
-        [a,b]
-        output: f'{_input:n}.out'
-        bash: expand = True
-        touch {_output}
-        """)
 
 
 def test_concurrent_running_tasks(script_factory):

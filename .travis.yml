@@ -5,9 +5,9 @@ os:
     # travis does not support python on osx yet (https://github.com/travis-ci/travis-ci/issues/4729)
 language: python
 python:
-    - "3.6"
     - "3.7"
     - "3.8"
+    - "3.9"
 
 addons:
     apt:
@@ -63,7 +63,8 @@ before_script:
     - cd test
     - sh build_test_docker.sh
 script:
-    - pytest -v --cov sos --cov-config ../.coveragerc --cov-report=xml
+    # - pytest -v --cov sos --cov-config ../.coveragerc --cov-report=xml
+    - sh run_tests.sh
 
 after_success:
     - coverage combine;

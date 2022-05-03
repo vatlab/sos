@@ -274,6 +274,7 @@ def evaluate_shared(vars, option):
     # handle option shared and store variables in a "__shared_vars" variable
     shared_vars = {}
     env.sos_dict.quick_update(vars[-1])
+    step_vars = set()
     for key in vars[-1].keys():
         try:
             if key in ("output", "depends", "input"):
@@ -282,12 +283,15 @@ def evaluate_shared(vars, option):
                 )
             else:
                 env.sos_dict.set("step_" + key, [x[key] for x in vars])
+                step_vars.add(key)
         except Exception as e:
             env.logger.warning(
                 f"Failed to create step level variable step_{key}: {e}")
     if isinstance(option, str):
         if option in env.sos_dict:
             shared_vars[option] = env.sos_dict[option]
+            if option in step_vars:
+                shared_vars["step_" + option] = env.sos_dict["step_" + option]
         else:
             raise RuntimeError(f"shared variable does not exist: {option}")
     elif isinstance(option, Mapping):
@@ -308,6 +312,8 @@ def evaluate_shared(vars, option):
             if isinstance(item, str):
                 if item in env.sos_dict:
                     shared_vars[item] = env.sos_dict[item]
+                    if item in step_vars:
+                        shared_vars["step_" + item] = env.sos_dict["step_" + item]
                 else:
                     raise RuntimeError(
                         f"shared variable does not exist: {option}")
@@ -1829,7 +1835,7 @@ class Base_Step_Executor:
                             skip_index = True
                             break
                         except Exception as e:
-                            # clear_output()
+                            clear_output()
                             if env.config["error_mode"] == "abort":
                                 raise
                             if env.config["error_mode"] == "ignore":
@@ -1871,7 +1877,7 @@ class Base_Step_Executor:
                             skip_index = True
                             break
                         except Exception:
-                            # clear_output()
+                            clear_output()
                             raise
                 # if there is no statement , but there are tasks, we should
                 # check signature here.

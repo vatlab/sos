@@ -180,16 +180,17 @@ def test_for_each_as_target_property_nested_list(temp_factory):
         r"""
         [0: shared=['processed']]
         files = ['a.txt', 'b.txt']
-        processed = []
+        processed = None
 
         input: files, for_each={'par':[(1, 2), (1, 3), (2, 3)], 'res': ['p1.txt', 'p2.txt', 'p3.txt']}
         output: _input.res
 
-        processed.append((_input.par, _input.res))
+        processed = (_input.par, _input.res)
         """,
         options={"run_mode": "dryrun"},
     )
-    assert env.sos_dict["processed"] == [
+
+    assert env.sos_dict["step_processed"] == [
         ((1, 2), "p1.txt"),
         ((1, 3), "p2.txt"),
         ((2, 3), "p3.txt"),
