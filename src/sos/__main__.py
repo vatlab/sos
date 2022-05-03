@@ -2569,10 +2569,9 @@ def cmd_config(args, workflow_args):
                 v_val = ast.literal_eval(v)
                 # test if the value can be saved by yaml
                 yaml.safe_dump(v_val)
-                v = v_val
+                values.append(v_val)
             except Exception:
-                env.logger.debug(
-                    f"Value {v} is an invalid expression and is treated as a string.")
+                values.append(v)
         #
         if len(values) == 1:
             values = values[0]
