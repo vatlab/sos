@@ -224,9 +224,9 @@ _SUBWORKFLOW_TMPL = r"""
     \s*$                               # end
     """
 
-_SECTION_OPTION_TMPL = r"""
+_SECTION_OPTION_TMPL = rf"""
     ^\s*                               # start
-    (?P<name>f"{'|'.join(SOS_SECTION_OPTIONS)}")                       # one of the option names
+    (?P<name>{'|'.join(SOS_SECTION_OPTIONS)})                       # one of the option names
     (\s*=\s*                           # =
     (?P<value>.+)                      # value
     )?                                 # value is optional
@@ -247,7 +247,7 @@ _FORMAT_VERSION_TMPL = r"""
     \s*$                               # till end of line
     """
 
-_DIRECTIVE_TMPL = r"""
+_DIRECTIVE_TMPL = rf"""
     ^                                  # from start of line
     (?P<directive_name>                #
     (?!({"|".join(keyword.kwlist)})\s*:)                       # not a python keyword followed by : (can be input)
@@ -262,7 +262,7 @@ _DIRECTIVE_TMPL = r"""
                                        # pattern to exclude expressions starting with :, | etc
     """
 
-_INDENTED_ACTION_TMPL = r"""
+_INDENTED_ACTION_TMPL = rf"""
     ^                                  # from start of line but allow space
     (?P<action_name>                   #
     (?!\s+({"|".join(keyword.kwlist)}|{"|".join(SOS_DIRECTIVES)})\s*:)                 # not a python keyword or SoS directive followed by :

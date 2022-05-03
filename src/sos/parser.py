@@ -1219,7 +1219,7 @@ class SoS_Script:
                                 step_options[opt_name] = opt_value
                             else:
                                 parsing_errors.append(lineno, line,
-                                                      "Invalid section option")
+                                                      f'Invalid section option "{option}"')
                     except Exception as e:
                         parsing_errors.append(lineno, line, str(e))
                     if ("EXECUTOR" in env.config["SOS_DEBUG"] or
