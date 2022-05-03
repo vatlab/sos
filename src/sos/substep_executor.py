@@ -246,6 +246,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
             if task:
                 res["task_id"] = None
             if not e.keep_output:
+                clear_output()
                 # treat as an error
                 res["output"] = sos_targets([])
             elif sig:

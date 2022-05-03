@@ -158,6 +158,7 @@ def clear_output(output=None):
         if isinstance(target, file_target) and target.exists():
             try:
                 target.unlink()
+                env.logger.warning(f"{target} removed due to failed step.")
             except Exception as e:
                 env.logger.warning(f"Failed to remove {target}: {e}")
 
