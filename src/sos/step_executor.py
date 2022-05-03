@@ -670,7 +670,6 @@ class Base_Step_Executor:
         tasks = self.task_manager.get_job(all_tasks=True)
         if tasks:
             self.submit_tasks(tasks)
-
         # waiting for results of specified IDs
         results = None
         try:
@@ -719,8 +718,8 @@ class Base_Step_Executor:
                 for _, mres in results.items():
                     if "subtasks" in mres and task in mres["subtasks"]:
                         self.proc_results[idx] = mres["subtasks"][task]
-                    # elif 'exception' in mres:
-                    #    self.proc_results[idx] = mres
+                    elif 'exception' in mres:
+                        self.proc_results[idx] = mres
         #
         # check if all have results?
         if any(isinstance(x, str) for x in self.proc_results.values()):
