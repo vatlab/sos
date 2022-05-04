@@ -639,7 +639,7 @@ def pull_from_host(cfg, hosts, items, verbosity):
             len(received),
             " is" if len(received) <= 1 else "s are",
             "\n".join([
-                f"{x} <= {recieved[x]}"
+                f"{x} <= {received[x]}"
                 for x in sorted(received.keys())
             ]),
         ))

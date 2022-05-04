@@ -297,6 +297,7 @@ def test_signature_of_remote_target(clear_now_and_after, monkeypatch):
         "sos remote push docker --files remote_file.txt -c ~/docker.yml",
         shell=True)
     os.remove("remote_file.txt")
+    os.remove("result.txt")
     #
     execute_workflow(
         wf,
@@ -332,7 +333,7 @@ def test_remote_exec(clear_now_and_after):
     with open(file_target("result_exec.txt")) as res:
         result = res.read()
         assert "Output: result_exec.txt" in result
-        assert f"PWD: {root_dir}/vatlab/sos/test." in result
+        assert f"PWD: {root_dir}" in result
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
@@ -360,7 +361,7 @@ def test_remote_exec_named_path(clear_now_and_after):
         result = res.read()
         print(result)
         assert "Output: /root/result_named_path.txt" in result
-        assert f"PWD: {root_dir}/vatlab/sos/test." in result
+        assert f"PWD: {root_dir}" in result
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")

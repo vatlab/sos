@@ -1,13 +1,13 @@
 import os
 import pathlib
 import shutil
+import subprocess
 import tempfile
 import textwrap
 
 import pytest
 import yaml
-import subprocess
-
+from sos.utils import env
 
 @pytest.fixture
 def config_factory():
@@ -122,6 +122,14 @@ def clear_now_and_after():
 @pytest.fixture
 def purge_tasks():
     subprocess.call(["sos", "purge", "--all"])
+
+@pytest.fixture
+def clear_signatures():
+    subprocess.call(["sos", "remove", "-s"])
+
+@pytest.fixture
+def reset_env():
+    env.reset()
 
 
 @pytest.fixture

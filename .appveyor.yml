@@ -1,50 +1,43 @@
 version: 1.0.{build}
 # docker support
-image: Visual Studio 2017
-
-#init:
-#  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
-
-#branches:
-#    only:
-#        - master
+image: Ubuntu2004
 
 skip_tags: true
-
 max_jobs: 100
-
 build: none
-
-clone_folder: c:\projects\sos
+clone_folder: "$HOME/sos"
 clone_depth: 50
 shallow_clone: false
 
+services:
+  - docker
+
 environment:
   matrix:
-    - PYTHON: "C:\\Miniconda36-x64"
-      PYTHON_VERSION: 3.6
+    - PYTHON: "venv3.8"
+    - PYTHON: "venv3.9"
 
 install:
-  - set PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%
-  - conda config --set always_yes yes --set changeps1 no
-  - conda update -q conda
-  # Useful for debugging any issues with conda
-  - conda info -a
+  - export PATH=/home/appveyor/$PYTHON/bin:$PATH
+  - echo $PATH
+  - echo $PYTHON
   # packages required by SoS
-  - pip install jedi pyyaml psutil tqdm
-  - pip install fasteners pygments ipython ptpython networkx pydot pydotplus nose
+  - pip install fasteners pygments networkx pydot pydotplus nose
   - pip install entrypoints numpy pandas
+  - pip install docker pyyaml psutil tqdm graphviz imageio pillow entrypoints
+  - pip install pytest coverage codacy-coverage pytest-cov python-coveralls -U
 
-  # install sos
-  - pip install pytest
   - pip install .
+  - pip install sos-pbs
 
 test_script:
   - cd test
-  - pytest -v
-    #
-    #on_finish:
-    #- ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+  - sh build_test_docker.sh
+  - sh run_tests.sh
+
+  #
+  #on_finish:
+  #- ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
 # do not report coverage because codacy only accept coverage for each commit
 #

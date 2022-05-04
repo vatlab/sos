@@ -273,6 +273,12 @@ class LocalHost(object):
 
         res = tf.result
         if not res or "ret_code" not in res:
+            if tf.has_stderr():
+                return {
+                    "ret_code": 1,
+                    "task": task_id,
+                    "exception": RuntimeError(tf.stderr),
+                }
             return {
                 "ret_code":
                     1,
@@ -447,7 +453,7 @@ class RemoteHost(object):
         return ("ssh " + self.cm_opts + self.pem_opts +
                 """ -q {host} -p {port} "bash --login -c '""" +
                 (" [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && "
-                if under_workdir else " ") + """ {cmd}'" """)
+                 if under_workdir else " ") + """ {cmd}'" """)
 
     def _get_query_cmd(self):
         return self.config.get(
@@ -917,7 +923,8 @@ class RemoteHost(object):
             )
         except Exception as e:
             raise ValueError(
-                f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})') from e
+                f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})'
+            ) from e
         if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
             env.log_to_file("TASK", f"Executing command ``{cmd}``")
         try:
@@ -1017,7 +1024,8 @@ class RemoteHost(object):
             ret = subprocess.call(receive_cmd, shell=True)
             if ret != 0:
                 raise RuntimeError(
-                    f"Failed to retrieve result of job {task_id} from {self.alias} with cmd\n{receive_cmd}")
+                    f"Failed to retrieve result of job {task_id} from {self.alias} with cmd\n{receive_cmd}"
+                )
 
         tf = TaskFile(task_id)
         params = tf.params

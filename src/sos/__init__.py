@@ -18,9 +18,9 @@ assert __version__
 def execute_workflow(script: str,
                      workflow=None,
                      targets=None,
-                     args=[],
-                     options={},
-                     config={}):
+                     args=None,
+                     options=None,
+                     config=None):
     '''
     Execute a SoS workflow with the following parameters:
 
@@ -64,6 +64,14 @@ def execute_workflow(script: str,
 
     Note: executing on specified host (option "-r") is not supported by this function.
     '''
+    if args is None:
+        args = []
+    if options is None:
+        options = {}
+    if config is None:
+        config = {}
+    from .utils import env
+    env.reset()
     try:
         script = SoS_Script(textwrap.dedent(script))
     except Exception as e:
@@ -117,8 +125,6 @@ def execute_workflow(script: str,
         workflow_args = []
 
     run_options.update(options)
-
-    from .utils import env
     env.verbosity = run_options['verbosity']
 
     executor = Base_Executor(wf, args=workflow_args, config=run_options)

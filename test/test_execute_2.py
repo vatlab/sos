@@ -1,15 +1,14 @@
 import os
+import subprocess
 
 import pytest
-import subprocess
+
 from sos import execute_workflow
 from sos._version import __version__
 from sos.parser import SoS_Script
 from sos.utils import env
 # if the test is imported under sos/test, test interacive executor
 from sos.workflow_executor import Base_Executor
-
-
 
 
 def test_for_each_nested_list(temp_factory):
@@ -21,16 +20,15 @@ def test_for_each_nested_list(temp_factory):
         r"""
         [0: shared=['processed']]
         files = ['a.txt', 'b.txt']
-        processed = []
 
         input: files, for_each={'par':[(1, 2), (1, 3), (2, 3)], 'res': ['p1.txt', 'p2.txt', 'p3.txt']}
         output: res
 
-        processed.append((par, res))
+        processed = (par, res)
         """,
         options={"run_mode": "dryrun"},
     )
-    assert env.sos_dict["processed"] == [
+    assert env.sos_dict["step_processed"] == [
         ((1, 2), "p1.txt"),
         ((1, 3), "p2.txt"),
         ((2, 3), "p3.txt"),
@@ -40,22 +38,21 @@ def test_for_each_nested_list(temp_factory):
 def test_removal_of_output_from_failed_step(clear_now_and_after):
     """Test the removal of output files if a step fails #1055"""
     clear_now_and_after("failed.csv", "result.csv")
-    script = SoS_Script("""
+    script = """
 [sub: provides='{file}.csv']
 sh: expand=True
-touch {_output}
-eco "something wrong"
+  touch {_output}
+  eco "something wrong"
 
 [step]
 depends: 'failed.csv'
 path('result.csv').touch()
-""")
-    wf = script.workflow()
+"""
     with pytest.raises(Exception):
-        Base_Executor(wf).run()
+        execute_workflow(script, workflow='step')
     # rerun should still raise
     with pytest.raises(Exception):
-        Base_Executor(wf).run()
+        execute_workflow(script, workflow='step')
 
     assert not os.path.isfile("failed.csv")
     assert not os.path.isfile("result.csv")
@@ -145,7 +142,6 @@ _output.touch()
     assert not os.path.isfile("test_30.txt")
 
 
-
 def test_parallel_nestedworkflow():
     # 1375
     execute_workflow(r"""
@@ -168,8 +164,6 @@ def test_parallel_nestedworkflow():
         bash: expand = True
         touch {_output}
         """)
-
-
 
 
 def test_for_each_as_target_property_nested_list(temp_factory):
@@ -197,8 +191,10 @@ def test_for_each_as_target_property_nested_list(temp_factory):
     ]
 
 
-def test_rerun_with_zap():
-    execute_workflow("""
+def test_rerun_with_zap(clear_now_and_after):
+    clear_now_and_after([f"zapped_example_{i}.txt.zapped" for i in range(3)])
+
+    script = '''
         [step_10]
         input: for_each={'i': range(3)}
         output: f'zapped_example_{i}.txt'
@@ -212,25 +208,9 @@ def test_rerun_with_zap():
             cp {_input} {_output}
 
         _input.zap()
-        """)
-    execute_workflow("""
-        [step_10]
-        input: for_each={'i': range(3)}
-        output: f'zapped_example_{i}.txt'
-        sh: expand=True
-            echo "hello" > {_output}
-
-        [step_20]
-        input: group_by=1
-        output: _input.with_suffix('.bak')
-        print(_output)
-        sh: expand=True
-            cp {_input} {_output}
-
-        _input.zap()
-        """)
-    for i in range(3):
-        os.remove(f"zapped_example_{i}.txt.zapped")
+    '''
+    execute_workflow(script)
+    execute_workflow(script)
 
 
 def test_for_each_as_target_property_same_level_loop(temp_factory):
@@ -243,17 +223,16 @@ def test_for_each_as_target_property_same_level_loop(temp_factory):
         files = ['a.txt', 'b.txt']
         par = [(1, 2), (1, 3), (2, 3)]
         res = ['p1.txt', 'p2.txt', 'p3.txt']
-        processed = []
 
         input: files, for_each='par,res'
         output: res, group_by=1
 
         print([x._dict for x in step_input._groups])
-        processed.append((_input._par, _input._res))
+        processed = (_input._par, _input._res)
         """,
         options={"run_mode": "dryrun"},
     )
-    assert env.sos_dict["processed"] == [
+    assert env.sos_dict["step_processed"] == [
         ((1, 2), "p1.txt"),
         ((1, 3), "p2.txt"),
         ((2, 3), "p3.txt"),

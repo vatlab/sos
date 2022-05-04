@@ -579,9 +579,9 @@ class path(type(Path())):
     def names(host=None):
         if host is None:
             if "__host__" not in env.sos_dict:
-               env.logger.debug(
+                env.logger.debug(
                    'Incomplete sos environment: missing __host__ definition, assuming "localhost".'
-               )
+                )
             host = env.sos_dict.get("__host__", "localhost")
         if "CONFIG" not in env.sos_dict or "hosts" not in env.sos_dict["CONFIG"]:
             raise RuntimeError(

@@ -67,10 +67,6 @@ docker run -d -P --env TS_SLOTS=10 --name test_sos eg_sshd
 # get the port
 PORT22=$(docker port test_sos 22 | cut -f2 -d:)
 
-# add the docker machine to known_hosts so that sos will not be
-# prompt with the message "are you sure you want to connect"?
-
-ssh  -o 'StrictHostKeyChecking no' -p $PORT22 root@localhost exit
 
 # write a host file
 cat > ~/docker.yml << HERE
@@ -131,3 +127,10 @@ cat >> ~/docker.yml << 'HERE'
             #
             {command}
 HERE
+
+
+# add the docker machine to known_hosts so that sos will not be
+# prompt with the message "are you sure you want to connect"?
+
+ssh-keygen -f "$HOME/.ssh/known_hosts" -R "[localhost]:$PORT22"
+ssh  -o 'StrictHostKeyChecking no' -p $PORT22 root@localhost exit

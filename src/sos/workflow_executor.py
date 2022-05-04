@@ -236,10 +236,13 @@ class Base_Executor:
         workflow: Optional[SoS_Workflow] = None,
         args: Optional[Any] = None,
         shared: None = None,
-        config: Optional[Dict[str, Any]] = {},
+        config = None,
     ) -> None:
         self.workflow = workflow
         self.local_ip = get_localhost_ip()
+
+        if config is None:
+            config = {}
 
         # args serves as two purposes
         # in the master workflow, args is the command line argument and there is no workflow variables
