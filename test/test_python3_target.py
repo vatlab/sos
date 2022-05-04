@@ -3,10 +3,10 @@
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
 
-from sos.targets import file_target
 import pytest
-
 from sos import execute_workflow
+from sos.targets import file_target
+
 
 def test_py_module(clear_now_and_after):
     '''Test target Py_Module'''

@@ -9,6 +9,7 @@ import pytest
 import yaml
 from sos.utils import env
 
+
 @pytest.fixture
 def config_factory():
     filename = tempfile.NamedTemporaryFile(suffix='.yml', delete=False).name
@@ -485,3 +486,35 @@ AGGGTGGGGAGAATTACAAAGAACCTTCTTAAGAGTGGGGGAGATTACAAAGAACATTCTTAAGGGTGAGGGAGATTACA
 +
 <A<FAF7A(<AFFKKA<KKKAFKF7<FKFKKKKK7,7,,(AFAKFKKFKAKKAKAFK7A,,FFA,<F7,,AAFFFK<FFAKKAFKF<,AAAFAFAK7FKK
 ''')
+
+@pytest.fixture
+def test_workflow(clear_now_and_after):
+    clear_now_and_after('temp')
+    os.mkdir('temp')
+    os.chdir('temp')
+    with open('test.sos', 'w') as script:
+        script.write('''
+[0]
+output:  't_f1'
+run:
+    touch t_f1
+
+[1]
+output:  't_d1/t_f2'
+run:
+    touch t_d1/t_f2
+    touch t_d1/ut_f4
+
+[2]
+output:  't_d2/t_d3/t_f3'
+run:
+    touch t_d2/t_d3/t_f3
+
+''')
+    subprocess.call('sos run test -s force', shell=True)
+    # create some other files and directory
+    for d in ('ut_d1', 'ut_d2', 'ut_d2/ut_d3'):
+        os.mkdir(d)
+    for f in ('ut_f1', 'ut_d1/ut_f2', 'ut_d2/ut_d3/ut_f3'):
+        with open(f, 'w') as tf:
+            tf.write(f)

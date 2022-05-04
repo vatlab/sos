@@ -8,7 +8,6 @@ import shutil
 import subprocess
 
 import pytest
-
 from sos import execute_workflow
 
 

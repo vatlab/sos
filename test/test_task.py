@@ -11,7 +11,6 @@ import time
 from contextlib import contextmanager
 
 import pytest
-
 from sos import execute_workflow
 from sos.parser import SoS_Script
 from sos.tasks import TaskFile, TaskParams
@@ -145,8 +144,8 @@ import os
 task: workdir={0!r}
 
 with open(os.path.join({1!r}, 'result.txt'), 'w') as res:
-for file in os.listdir({1!r}):
-    res.write(file + '\n')
+    for file in os.listdir({1!r}):
+        res.write(file + '\n')
 """.format(os.path.split(tdir)[0],
            os.path.split(tdir)[1])
 
@@ -628,14 +627,14 @@ echo 0.1
         assert "00:02:00" in out.decode()
 
 
-def test_task_signature():
+def test_task_signature(purge_tasks):
     """Test re-execution of tasks"""
     with cd_new("temp_signature"):
         with open("test.sos", "w") as tst:
             tst.write("""
 task:
 sh:
-sleep 2
+    sleep 2
 """)
         subprocess.call("sos run test -s force -q localhost", shell=True)
         tasks = get_tasks()
@@ -728,11 +727,11 @@ def test_trunk_size_with_stop_if(clear_now_and_after):
         output: [f'{x+1}.txt' for x in range(5)]
         for i in range(5):
             name = f'{i+1}.txt'
-        if i not in [0,1,2]:
-            path(name).touch()
-        else:
-            with open(name, 'w') as f:
-                f.write('test it')
+            if i not in [0,1,2]:
+                path(name).touch()
+            else:
+                with open(name, 'w') as f:
+                    f.write('test it')
 
         [2]
         input: group_by = 1
@@ -780,7 +779,7 @@ def test_remote_input_target(clear_now_and_after):
         task:
 
         with open(_input, 'r') as inf, open(_output, 'w') as outf:
-        outf.write(inf.read())
+            outf.write(inf.read())
         """,
         options={
             "config_file": "~/docker.yml",

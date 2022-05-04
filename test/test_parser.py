@@ -7,7 +7,6 @@ import os
 import subprocess
 
 import pytest
-
 from sos import execute_workflow
 from sos.converter import extract_workflow
 from sos.parser import ParsingError, SoS_Script

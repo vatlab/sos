@@ -7,7 +7,6 @@ import shutil
 import subprocess
 
 import pytest
-
 from sos import execute_workflow
 from sos.parser import SoS_Script
 from sos.targets import file_target
