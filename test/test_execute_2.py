@@ -141,8 +141,10 @@ _output.touch()
     assert not os.path.isfile("test_30.txt")
 
 
-def test_parallel_nestedworkflow():
+def test_parallel_nestedworkflow(clear_now_and_after):
     # 1375
+    clear_now_and_after([f'{i+1}.txt' for i in range(5)])
+    clear_now_and_after([f'{i+1}.out' for i in range(5)])
     execute_workflow(r"""
         [global]
         parameter: num = [x+1 for x in range(5)]
@@ -192,6 +194,7 @@ def test_for_each_as_target_property_nested_list(temp_factory):
 
 def test_rerun_with_zap(clear_now_and_after):
     clear_now_and_after([f"zapped_example_{i}.txt.zapped" for i in range(3)])
+    clear_now_and_after([f"zapped_example_{i}.bak" for i in range(3)])
 
     script = '''
         [step_10]
