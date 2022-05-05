@@ -1711,8 +1711,9 @@ def test_output_from(clear_now_and_after):
             workflow=wf)
 
 
-def test_named_output1336():
+def test_named_output1336(clear_now_and_after):
     "Test issue 1336"
+    clear_now_and_after('A.bak', 'B.txt')
     execute_workflow("""
         import time
 
@@ -1729,8 +1730,11 @@ def test_named_output1336():
         """)
 
 
-def test_set_variables_to_output():
+def test_set_variables_to_output(clear_now_and_after):
     """Test assigning variables to _output"""
+    clear_now_and_after('a.txt')
+    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
+
     execute_workflow("""\
         [10]
         output: 'a.txt'
