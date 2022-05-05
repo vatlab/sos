@@ -797,23 +797,14 @@ class file_target(path, BaseTarget):
         full_md5 = env.config['sig_type'] == 'md5'
         if self.exists():
             if full_md5:
-                self._md5, md5 = fileMD5(self, sig_type='both')
-                #
                 md5_file = self + '.md5'
-                if md5_file.exists(
-                ) and os.path.getmtime(self) < os.path.getmtime(md5_file):
-                    # validate against md5
-                    with open(md5_file, 'r') as mfile:
-                        existing_md5 = mfile.readline().strip().split()[-1]
-                        if existing_md5 != md5:
-                            raise ValueError(
-                                f'MD5 signature mismatch {self}: read {existing_md5}, calculated {md5}'
-                            )
-                else:
+                if not md5_file.exists(
+                ) or os.path.getmtime(self) > os.path.getmtime(md5_file):
+                    self._md5, md5 = fileMD5(self, sig_type='both')
                     # write md5 file
                     with open(md5_file, 'w') as mfile:
                         mfile.write(f'MD5 ({self.name}) = {md5}\n')
-            else:
+            elif not self._md5:
                 self._md5 = fileMD5(self)
             return (os.path.getmtime(self), os.path.getsize(self), self._md5)
         if (self + ".zapped").is_file():
