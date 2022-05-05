@@ -706,7 +706,6 @@ class SoS_Workflow:
                 if x.index and x.index >= 0
             }
             #
-            print([f'{x.index=} {x.names}' for x in self.sections])
             for item in allowed_steps.split(","):
                 # remove space
                 item = "".join([x for x in item if x != " "])

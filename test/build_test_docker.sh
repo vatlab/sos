@@ -134,3 +134,5 @@ HERE
 
 ssh-keygen -f "$HOME/.ssh/known_hosts" -R "[localhost]:$PORT22"
 ssh  -o 'StrictHostKeyChecking no' -p $PORT22 root@localhost exit
+# for testing, this should work now.
+ssh  -p $PORT22 root@localhost exit
