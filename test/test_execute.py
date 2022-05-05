@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 import time
+import shutil
 
 import pytest
 from sos import execute_workflow
@@ -1355,7 +1356,8 @@ cat {_input} > {_output}
 
 
 @pytest.mark.skipif(
-    sys.platform == "win32", reason="Graphviz not available under windows")
+    not shutil.which("dot") or sys.platform == "win32",
+    reason="Graphviz not available under windows")
 def test_output_report_with_dag(clear_now_and_after):
     # test dag
     clear_now_and_after("report.html")
@@ -1401,11 +1403,9 @@ def test_sos_step_with_output():
         """)
 
 
-def test_multi_sos_step():
+def test_multi_sos_step(clear_now_and_after):
     """Test matching 'a_1', 'a_2' etc with sos_step('a')"""
-    for file in ("a_1", "a_2"):
-        if file_target(file).exists():
-            file_target(file).unlink()
+    clear_now_and_after("a_1", "a_2")
     res = execute_workflow("""
     [a_b_1]
     output: "a_1"
@@ -1526,7 +1526,7 @@ def test_concurrent_with_dynamic_output(clear_now_and_after):
     """Test concurrent steps with dynamic output"""
     douts = glob.glob("*.dout")
     for dout in douts:
-        clear_now_and_after(dout)
+        os.remove(dout)
     execute_workflow("""
         input: for_each={'i': range(3)}, concurrent=True
         output: dynamic('*.dout')
@@ -1535,6 +1535,8 @@ def test_concurrent_with_dynamic_output(clear_now_and_after):
         """)
     douts = glob.glob("*.dout")
     assert len(douts) == 3
+    for dout in douts:
+        os.remove(dout)
 
 
 def test_group_by_with_emtpy_input():
@@ -1564,8 +1566,9 @@ def test_depends_to_concurrent_substep():
         """)
 
 
-def test_pass_of_target_source():
+def test_pass_of_target_source(clear_now_and_after):
     """Test passing of source information from step_output"""
+    clear_now_and_after('a.txt', 'b.txt', 'c.txt')
     execute_workflow("""
         [1]
         output: 'a.txt'
@@ -1598,8 +1601,10 @@ def test_pass_of_target_source():
         """)
 
 
-def test_return_output_in_step_output():
+def test_return_output_in_step_output(clear_now_and_after):
     """Testing the return of _output as groups of step_output"""
+    clear_now_and_after([f'a_{i}.txt' for i in range(5)])
+    clear_now_and_after([f'b_{i}.txt' for i in range(5)])
     execute_workflow("""\
         [1]
         input: for_each=dict(i=range(5))
@@ -1808,7 +1813,7 @@ def test_reexecution_of_dynamic_depends(clear_now_and_after):
 
 def test_traced_function(clear_now_and_after):
     clear_now_and_after("a.bam", "a.bam.bai")
-    execute_workflow("""
+    script = """
         [BAI: provides='{filename}.bam.bai']
         _output.touch()
 
@@ -1819,21 +1824,11 @@ def test_traced_function(clear_now_and_after):
         [default]
         input: 'a.bam'
         depends: traced(_input.with_suffix('.bam.bai'))
-    """)
+    """
+    execute_workflow(script)
     # if we run again, because depends, the step will be re-checked
     os.remove("a.bam")
-    res = execute_workflow("""
-        [BAI: provides='{filename}.bam.bai']
-        _output.touch()
-
-        [BAM]
-        output: 'a.bam'
-        _output.touch()
-
-        [default]
-        input: 'a.bam'
-        depends: traced(_input.with_suffix('.bam.bai'))
-        """)
+    res = execute_workflow(script)
     assert res["__completed__"]["__step_completed__"] == 2
     assert res["__completed__"]["__step_skipped__"] == 1
 
@@ -2136,8 +2131,9 @@ def test_named_output(clear_now_and_after):
         )
 
 
-def test_auto_provide():
+def test_auto_provide(clear_now_and_after):
     """Testing steps to provide plain output"""
+    clear_now_and_after('a.txt', 'a.out')
     execute_workflow("""
         [global]
 
@@ -2570,8 +2566,10 @@ _output.touch()
     assert os.path.isfile("test_chdir/a_0.txt")
 
 
-def test_param_with_step_no_statement():
+def test_param_with_step_no_statement(clear_now_and_after):
     # 1375
+    clear_now_and_after([f'{x+1}.txt' for x in range(5)])
+    clear_now_and_after([f'{x+1}.out' for x in range(5)])
     execute_workflow(
         r"""
         [global]
