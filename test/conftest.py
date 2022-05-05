@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import tempfile
 import textwrap
+import glob
 
 import pytest
 import yaml
@@ -102,6 +103,9 @@ def clear_now_and_after():
                     os.remove(temp_fd)
                 elif os.path.isdir(temp_fd):
                     shutil.rmtree(temp_fd)
+                else:
+                    for tmpfile in glob.glob(temp_fd + '.??????.bak'):
+                        os.remove(tmpfile)
             except Exception:
                 pass
 

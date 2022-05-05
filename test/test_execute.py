@@ -7,8 +7,8 @@ import glob
 import os
 import subprocess
 import sys
-import textwrap
 import time
+import shutil
 
 import pytest
 from sos import execute_workflow
@@ -34,8 +34,9 @@ def multi_attempts(fn):
     return wrapper
 
 
-def test_command_line():
+def test_command_line(clear_now_and_after):
     """Test command line arguments"""
+    clear_now_and_after("test_cl.sos")
     with open("test_cl.sos", "w") as cl:
         cl.write("""\
 #!/usr/bin/env sos-runner
@@ -935,17 +936,16 @@ def test_local_namespace(temp_factory):
     """Test if steps are well separated."""
     # interctive mode behave differently
     temp_factory("a.txt")
-    script = textwrap.dedent(r"""
-    [1]
-    a = 1
-
-    [2]
-    # this should fail because a is defined in another step
-    print(a)
-
-    """)
     with pytest.raises(Exception):
-        execute_workflow(script)
+        execute_workflow(r"""
+            [1]
+            a = 1
+
+            [2]
+            # this should fail because a is defined in another step
+            print(a)
+
+            """)
     # however, alias should be sent back
     execute_workflow(
         r"""
@@ -1094,27 +1094,25 @@ def test_duplicate_io_files(temp_factory):
                 """)
     assert os.path.isfile("temp/5.input")
     # Test duplicate output
-    script = textwrap.dedent("""
-    [1]
-    output: ['temp/2.txt' for x in range(5)]
-    run: expand=True
-    touch temp/2.txt
-    touch temp/{len(_output)}.output
-    """)
     with pytest.raises(Exception):
-        execute_workflow(script)
+        execute_workflow("""
+            [1]
+            output: ['temp/2.txt' for x in range(5)]
+            run: expand=True
+            touch temp/2.txt
+            touch temp/{len(_output)}.output
+            """)
     # Test duplicate depends
-    script = textwrap.dedent("""
-    [1]
-    input: 'temp/1.txt'
-    depends: ['temp/2.txt' for x in range(5)]
-    output: 'temp/3.txt'
-    run: expand=True
-    touch temp/3.txt
-    touch temp/{len(_depends)}.depends
-    """)
     with pytest.raises(Exception):
-        execute_workflow(script)
+        execute_workflow("""
+            [1]
+            input: 'temp/1.txt'
+            depends: ['temp/2.txt' for x in range(5)]
+            output: 'temp/3.txt'
+            run: expand=True
+            touch temp/3.txt
+            touch temp/{len(_depends)}.depends
+            """)
 
 
 def test_output_in_loop(temp_factory):
@@ -1358,7 +1356,8 @@ cat {_input} > {_output}
 
 
 @pytest.mark.skipif(
-    sys.platform == "win32", reason="Graphviz not available under windows")
+    not shutil.which("dot") or sys.platform == "win32",
+    reason="Graphviz not available under windows")
 def test_output_report_with_dag(clear_now_and_after):
     # test dag
     clear_now_and_after("report.html")
@@ -1404,11 +1403,9 @@ def test_sos_step_with_output():
         """)
 
 
-def test_multi_sos_step():
+def test_multi_sos_step(clear_now_and_after):
     """Test matching 'a_1', 'a_2' etc with sos_step('a')"""
-    for file in ("a_1", "a_2"):
-        if file_target(file).exists():
-            file_target(file).unlink()
+    clear_now_and_after("a_1", "a_2")
     res = execute_workflow("""
     [a_b_1]
     output: "a_1"
@@ -1511,19 +1508,17 @@ def test_dryrun_placeholder():
 def test_dryrun_in_sos_run(temp_factory):
     """Test dryrun mode with sos_run #1007"""
     temp_factory("1.txt")
-    script = SoS_Script(
-        textwrap.dedent("""
+    script = """
         [remove]
         run:
         rm 1.txt
 
         [default]
         sos_run('remove')
-        """))
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """
+    execute_workflow(script, options={'run_mode': "dryrun"})
     assert os.path.isfile("1.txt")
-    Base_Executor(wf).run(mode="run")
+    execute_workflow(script, options={'run_mode': "run"})
     assert not os.path.isfile("1.txt")
 
 
@@ -1531,7 +1526,7 @@ def test_concurrent_with_dynamic_output(clear_now_and_after):
     """Test concurrent steps with dynamic output"""
     douts = glob.glob("*.dout")
     for dout in douts:
-        clear_now_and_after(dout)
+        os.remove(dout)
     execute_workflow("""
         input: for_each={'i': range(3)}, concurrent=True
         output: dynamic('*.dout')
@@ -1540,6 +1535,8 @@ def test_concurrent_with_dynamic_output(clear_now_and_after):
         """)
     douts = glob.glob("*.dout")
     assert len(douts) == 3
+    for dout in douts:
+        os.remove(dout)
 
 
 def test_group_by_with_emtpy_input():
@@ -1569,8 +1566,9 @@ def test_depends_to_concurrent_substep():
         """)
 
 
-def test_pass_of_target_source():
+def test_pass_of_target_source(clear_now_and_after):
     """Test passing of source information from step_output"""
+    clear_now_and_after('a.txt', 'b.txt', 'c.txt')
     execute_workflow("""
         [1]
         output: 'a.txt'
@@ -1603,8 +1601,10 @@ def test_pass_of_target_source():
         """)
 
 
-def test_return_output_in_step_output():
+def test_return_output_in_step_output(clear_now_and_after):
     """Testing the return of _output as groups of step_output"""
+    clear_now_and_after([f'a_{i}.txt' for i in range(5)])
+    clear_now_and_after([f'b_{i}.txt' for i in range(5)])
     execute_workflow("""\
         [1]
         input: for_each=dict(i=range(5))
@@ -1637,80 +1637,83 @@ def test_return_output_in_step_output():
         """)
 
 
-def test_output_from():
+def test_output_from(clear_now_and_after):
     """Testing output_from input function"""
-    script = SoS_Script("""\
-[A]
-input: for_each=dict(i=range(5))
-output: f'a_{i}.txt'
-_output.touch()
-
-[A1]
-input: for_each=dict(i=range(4))
-output: aa=f'a_{i}.txt'
-_output.touch()
-
-[B]
-input: output_from('A')
-assert(len(step_input.groups) == 5)
-assert(len(step_input) == 5)
-assert(step_input.labels == ['A']*5)
-assert(step_input.groups[0] == 'a_0.txt')
-assert(step_input.groups[4] == 'a_4.txt')
-
-[C]
-input: K=output_from('A')
-assert(len(step_input.groups) == 5)
-assert(step_input.labels == ['K']*5)
-
-[D]
-input: K=output_from('A', group_by='all')
-assert(len(step_input) == 5)
-assert(len(step_input.groups) == 1)
-assert(step_input.labels == ['K']*5)
-
-[E]
-input: output_from('A1', group_by='all')
-assert(len(step_input) == 4)
-assert(len(step_input.groups) == 1)
-assert(step_input.labels == ['aa']*4)
-
-[F]
-input: K=output_from('A1', group_by='all')['aa']
-assert(len(step_input) == 4)
-assert(len(step_input.groups) == 1)
-assert(step_input.labels == ['K']*4)
-
-[G_0]
-input: for_each=dict(i=range(4))
-output: f'g_{i}.txt'
-_output.touch()
-
-[G_100]
-input: K=output_from(-1, group_by=2)
-assert(len(step_input) == 4)
-assert(len(step_input.groups) == 2)
-assert(step_input.labels == ['K']*4)
-
-[H_0]
-input: for_each=dict(i=range(4))
-output: f'g_{i}.txt'
-_output.touch()
-
-[H_100]
-input: K=output_from([-1, 'A1'], group_by=2)
-assert(len(step_input) == 8)
-assert(len(step_input.groups) == 4)
-assert(step_input.labels == ['K']*8)
-
-""")
+    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
+    clear_now_and_after([f'g_{i}.txt' for i in range(4)])
     for wf in ("B", "C", "D", "E", "F", "G", "H"):
-        wf = script.workflow(wf)
-        Base_Executor(wf).run()
+        execute_workflow(
+            """\
+            [A]
+            input: for_each=dict(i=range(5))
+            output: f'a_{i}.txt'
+            _output.touch()
+
+            [A1]
+            input: for_each=dict(i=range(4))
+            output: aa=f'a_{i}.txt'
+            _output.touch()
+
+            [B]
+            input: output_from('A')
+            assert(len(step_input.groups) == 5)
+            assert(len(step_input) == 5)
+            assert(step_input.labels == ['A']*5)
+            assert(step_input.groups[0] == 'a_0.txt')
+            assert(step_input.groups[4] == 'a_4.txt')
+
+            [C]
+            input: K=output_from('A')
+            assert(len(step_input.groups) == 5)
+            assert(step_input.labels == ['K']*5)
+
+            [D]
+            input: K=output_from('A', group_by='all')
+            assert(len(step_input) == 5)
+            assert(len(step_input.groups) == 1)
+            assert(step_input.labels == ['K']*5)
+
+            [E]
+            input: output_from('A1', group_by='all')
+            assert(len(step_input) == 4)
+            assert(len(step_input.groups) == 1)
+            assert(step_input.labels == ['aa']*4)
+
+            [F]
+            input: K=output_from('A1', group_by='all')['aa']
+            assert(len(step_input) == 4)
+            assert(len(step_input.groups) == 1)
+            assert(step_input.labels == ['K']*4)
+
+            [G_0]
+            input: for_each=dict(i=range(4))
+            output: f'g_{i}.txt'
+            _output.touch()
+
+            [G_100]
+            input: K=output_from(-1, group_by=2)
+            assert(len(step_input) == 4)
+            assert(len(step_input.groups) == 2)
+            assert(step_input.labels == ['K']*4)
+
+            [H_0]
+            input: for_each=dict(i=range(4))
+            output: f'g_{i}.txt'
+            _output.touch()
+
+            [H_100]
+            input: K=output_from([-1, 'A1'], group_by=2)
+            assert(len(step_input) == 8)
+            assert(len(step_input.groups) == 4)
+            assert(step_input.labels == ['K']*8)
+
+            """,
+            workflow=wf)
 
 
-def test_named_output1336():
+def test_named_output1336(clear_now_and_after):
     "Test issue 1336"
+    clear_now_and_after('A.bak', 'B.txt')
     execute_workflow("""
         import time
 
@@ -1727,8 +1730,11 @@ def test_named_output1336():
         """)
 
 
-def test_set_variables_to_output():
+def test_set_variables_to_output(clear_now_and_after):
     """Test assigning variables to _output"""
+    clear_now_and_after('a.txt')
+    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
+
     execute_workflow("""\
         [10]
         output: 'a.txt'
@@ -1811,7 +1817,7 @@ def test_reexecution_of_dynamic_depends(clear_now_and_after):
 
 def test_traced_function(clear_now_and_after):
     clear_now_and_after("a.bam", "a.bam.bai")
-    execute_workflow("""
+    script = """
         [BAI: provides='{filename}.bam.bai']
         _output.touch()
 
@@ -1822,53 +1828,39 @@ def test_traced_function(clear_now_and_after):
         [default]
         input: 'a.bam'
         depends: traced(_input.with_suffix('.bam.bai'))
-    """)
+    """
+    execute_workflow(script)
     # if we run again, because depends, the step will be re-checked
     os.remove("a.bam")
-    res = execute_workflow("""
-        [BAI: provides='{filename}.bam.bai']
-        _output.touch()
-
-        [BAM]
-        output: 'a.bam'
-        _output.touch()
-
-        [default]
-        input: 'a.bam'
-        depends: traced(_input.with_suffix('.bam.bai'))
-        """)
+    res = execute_workflow(script)
     assert res["__completed__"]["__step_completed__"] == 2
     assert res["__completed__"]["__step_skipped__"] == 1
 
 
-def test_error_handling_of_step():
+def test_error_handling_of_step(clear_now_and_after):
     # test fail_if of killing another running substep
-    def cleanup():
-        for step in (10, 11):
-            if os.path.isfile(f"{step}.txt"):
-                os.remove(f"{step}.txt")
+    clear_now_and_after([f"{step}.txt" for step in (10, 11)])
 
-    script = textwrap.dedent(r"""
-    import time
+    script = r"""
+        import time
 
-    [10]
-    output: '10.txt'
-    time.sleep(8)
-    _output.touch()
+        [10]
+        output: '10.txt'
+        time.sleep(8)
+        _output.touch()
 
-    [11]
-    output: '11.txt'
-    _output.touch()
+        [11]
+        output: '11.txt'
+        _output.touch()
 
-    [20]
-    input: None
-    time.sleep(2)
-    fail_if(True)
-    """)
+        [20]
+        input: None
+        time.sleep(2)
+        fail_if(True)
+        """
     #
     # default mode
     #
-    cleanup()
     st = time.time()
     with pytest.raises(Exception):
         execute_workflow(script)
@@ -1879,7 +1871,7 @@ def test_error_handling_of_step():
     #
     # ignore mode
     #
-    cleanup()
+    clear_now_and_after([f"{step}.txt" for step in (10, 11)])
     #
     st = time.time()
     execute_workflow(script, options={"error_mode": "ignore"})
@@ -1890,7 +1882,7 @@ def test_error_handling_of_step():
     #
     # abort mode
     #
-    cleanup()
+    clear_now_and_after([f"{step}.txt" for step in (10, 11)])
     #
     with pytest.raises(Exception):
         execute_workflow(script, options={"error_mode": "abort"})
@@ -1898,14 +1890,10 @@ def test_error_handling_of_step():
     assert not os.path.isfile("11.txt")
 
 
-def test_error_handling_of_concurrent_substeps():
+def test_error_handling_of_concurrent_substeps(clear_now_and_after):
+    clear_now_and_after([f"test_{i}.txt" for i in range(200)])
 
-    def cleanup():
-        for i in range(200):
-            if os.path.isfile(f"test_{i}.txt"):
-                os.remove(f"test_{i}.txt")
-
-    script = textwrap.dedent(r"""
+    script = r"""
     import time
 
     [10]
@@ -1916,11 +1904,10 @@ def test_error_handling_of_concurrent_substeps():
 
     fail_if(_index == 5, 'fail at 5')
     fail_if(_index == 10, 'fail at 10')
-    """)
+    """
     #
     # default mode
     #
-    cleanup()
     with pytest.raises(Exception):
         execute_workflow(script)
     for i in (5, 10):
@@ -2109,8 +2096,10 @@ def test_interpolation_4(temp_factory):
     ]
 
 
-def test_named_output():
+def test_named_output(clear_now_and_after):
     """Testing named_output input function"""
+    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
+    clear_now_and_after([f'b_{i}.txt' for i in range(4)])
     for wf in ("B", "C", "D"):
         execute_workflow(
             """
@@ -2146,8 +2135,9 @@ def test_named_output():
         )
 
 
-def test_auto_provide():
+def test_auto_provide(clear_now_and_after):
     """Testing steps to provide plain output"""
+    clear_now_and_after('a.txt', 'a.out')
     execute_workflow("""
         [global]
 
@@ -2253,8 +2243,9 @@ def test_1379(clear_now_and_after):
         """)
 
 
-def test_remove_empty_groups_default():
+def test_remove_empty_groups_default(clear_now_and_after):
     """Test remove of empty groups"""
+    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
     # case 1, default output
     execute_workflow("""
         [10]
@@ -2268,9 +2259,10 @@ def test_remove_empty_groups_default():
         """)
 
 
-def test_remove_empty_groups_false():
+def test_remove_empty_groups_false(clear_now_and_after):
     """Test remove of empty groups"""
     # case 2, use default remove_empty_groups=False
+    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
     execute_workflow("""
         [A]
         input: for_each=dict(i=range(4))
@@ -2284,9 +2276,11 @@ def test_remove_empty_groups_false():
         """)
 
 
-def test_remove_empty_groups_true():
+def test_remove_empty_groups_true(clear_now_and_after):
     """Test remove of empty groups"""
     # case 3, use remove_empty_groups=True
+    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
+
     execute_workflow("""
         [A]
         input: for_each=dict(i=range(4))
@@ -2300,9 +2294,10 @@ def test_remove_empty_groups_true():
         """)
 
 
-def test_remove_empty_groups_named():
+def test_remove_empty_groups_named(clear_now_and_after):
     """Test remove of empty groups"""
     # case 4, use named_output
+    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
     execute_workflow("""
         [A]
         input: for_each=dict(i=range(4))
@@ -2316,9 +2311,10 @@ def test_remove_empty_groups_named():
         """)
 
 
-def test_remove_empty_groups_empty_named():
+def test_remove_empty_groups_empty_named(clear_now_and_after):
     """Test remove of empty groups"""
     # case 5, use named_output
+    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
     execute_workflow("""
         [A]
         input: for_each=dict(i=range(4))
@@ -2574,8 +2570,10 @@ _output.touch()
     assert os.path.isfile("test_chdir/a_0.txt")
 
 
-def test_param_with_step_no_statement():
+def test_param_with_step_no_statement(clear_now_and_after):
     # 1375
+    clear_now_and_after([f'{x+1}.txt' for x in range(5)])
+    clear_now_and_after([f'{x+1}.out' for x in range(5)])
     execute_workflow(
         r"""
         [global]
