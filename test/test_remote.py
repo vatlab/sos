@@ -7,7 +7,6 @@ import os
 import subprocess
 
 import pytest
-
 from sos import execute_workflow
 from sos.targets import file_target
 

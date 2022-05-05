@@ -4,8 +4,8 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import os
-
 import sys
+
 import pytest
 from sos.eval import accessed_vars, on_demand_options
 from sos.parser import SoS_Script
@@ -13,8 +13,8 @@ from sos.pattern import expand_pattern, extract_pattern
 from sos.targets import executable, file_target, sos_step, sos_targets
 # these functions are normally not available but can be imported
 # using their names for testing purposes
-from sos.utils import (WorkflowDict, as_fstring, env, get_logger, split_fstring,
-                       stable_repr)
+from sos.utils import (WorkflowDict, as_fstring, env, get_logger,
+                       split_fstring, stable_repr)
 from sos.workflow_executor import Base_Executor, analyze_section
 
 

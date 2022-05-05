@@ -8,7 +8,6 @@ import os
 import sys
 
 import pytest
-
 from sos import execute_workflow
 from sos.eval import interpolate
 from sos.parser import SoS_Script

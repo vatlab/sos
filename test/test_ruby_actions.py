@@ -6,9 +6,9 @@
 import os
 import shutil
 
+import pytest
 from sos import execute_workflow
 
-import pytest
 
 @pytest.mark.skipif(not shutil.which('ruby'), reason='ruby not installed')
 def test_ruby(clear_now_and_after):
