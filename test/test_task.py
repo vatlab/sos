@@ -54,7 +54,9 @@ def get_tasks():
     #conn = sqlite3.connect(os.path.join(env.exec_dir, "workflow_signatures.db"))
     cur = conn.cursor()
     cur.execute('SELECT DISTINCT id FROM workflows WHERE entry_type = "task"')
-    return [x[0] for x in cur.fetchall()]
+    return [x[0] for x in cur.fetchall() if os.path.isfile(
+        os.path.join(os.path.expanduser('~'), '.sos', 'tasks', x[0] + '.task'
+    ))]
 
 
 def test_task_file():

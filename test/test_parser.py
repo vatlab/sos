@@ -890,33 +890,33 @@ def test_group_by(temp_factory):
     # group_by = 'all'
     temp_factory(["a{}.txt".format(x) for x in range(15)])
     #
-    script = SoS_Script("""
-[0: shared='executed']
+    execute_workflow(
+        """
+        [0: shared='executed']
 
-executed = []
-input: [f'a{x}.txt' for x in range(1, 5)], group_by='all'
+        executed = []
+        input: [f'a{x}.txt' for x in range(1, 5)], group_by='all'
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt", "a2.txt", "a3.txt", "a4.txt")
     ]
     assert env.sos_dict["executed"][0].labels == ["0"] * 4
     # group_by = 'single'
-    script = SoS_Script("""
-[0: shared='executed']
+    execute_workflow(
+        """
+        [0: shared='executed']
 
-executed = []
-input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='single'
+        executed = []
+        input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='single'
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt"),
         sos_targets("a2.txt"),
@@ -924,49 +924,49 @@ executed.append(_input)
         sos_targets("a4.txt"),
     ]
     # group_by = 'pairs'
-    script = SoS_Script("""
-[0: shared='executed']
+    execute_workflow(
+        """
+        [0: shared='executed']
 
-executed = []
-input: [f'a{x}.txt' for x in range(1, 5)], group_by='pairs'
+        executed = []
+        input: [f'a{x}.txt' for x in range(1, 5)], group_by='pairs'
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt", "a3.txt"),
         sos_targets("a2.txt", "a4.txt")
     ]
     # group_by = 'pairs2'
-    script = SoS_Script("""
-[0: shared='executed']
+    execute_workflow(
+        """
+        [0: shared='executed']
 
-executed = []
-input: [f'a{x}.txt' for x in range(1, 9)], group_by='pairs2'
+        executed = []
+        input: [f'a{x}.txt' for x in range(1, 9)], group_by='pairs2'
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt", "a2.txt", "a5.txt", "a6.txt"),
         sos_targets("a3.txt", "a4.txt", "a7.txt", "a8.txt"),
     ]
     # group_by = 'pairs3'
-    script = SoS_Script("""
-[0: shared='executed']
+    execute_workflow(
+        """
+        [0: shared='executed']
 
-executed = []
-input: [f'a{x}.txt' for x in range(1, 13)], group_by='pairs3'
+        executed = []
+        input: [f'a{x}.txt' for x in range(1, 13)], group_by='pairs3'
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt", "a2.txt", "a3.txt", "a7.txt", "a8.txt", "a9.txt"),
         sos_targets("a4.txt", "a5.txt", "a6.txt", "a10.txt", "a11.txt",
@@ -974,51 +974,51 @@ executed.append(_input)
     ]
 
     # group_by = 'pairwise'
-    script = SoS_Script("""
-[0: shared='executed']
+    execute_workflow(
+        """
+        [0: shared='executed']
 
-executed = []
-input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='pairwise'
+        executed = []
+        input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='pairwise'
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt", "a2.txt"),
         sos_targets("a2.txt", "a3.txt"),
         sos_targets("a3.txt", "a4.txt"),
     ]
     # group_by = 'pairwiseN'
-    script = SoS_Script("""
-[0: shared='executed']
+    execute_workflow(
+        """
+        [0: shared='executed']
 
-executed = []
-input: ['a{}.txt'.format(x) for x in range(1, 7)], group_by='pairwise2'
+        executed = []
+        input: ['a{}.txt'.format(x) for x in range(1, 7)], group_by='pairwise2'
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt", "a2.txt", "a3.txt", "a4.txt"),
         sos_targets("a3.txt", "a4.txt", "a5.txt", "a6.txt"),
     ], f'obtained {env.sos_dict["executed"]}'
 
     # group_by = 'combinations'
-    script = SoS_Script("""
-[0: shared='executed']
+    execute_workflow(
+        """
+        [0: shared='executed']
 
-executed = []
-input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='combinations'
+        executed = []
+        input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='combinations'
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"], [
         sos_targets("a1.txt", "a2.txt"),
         sos_targets("a1.txt", "a3.txt"),
@@ -1029,17 +1029,17 @@ executed.append(_input)
     ]
 
     # group_by = 'combinations3'
-    script = SoS_Script("""
-[0: shared='executed']
+    execute_workflow(
+        """
+        [0: shared='executed']
 
-executed = []
-input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='combinations3'
+        executed = []
+        input: ['a{}.txt'.format(x) for x in range(1, 5)], group_by='combinations3'
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [
         sos_targets(["a1.txt", "a2.txt", "a3.txt"]),
         sos_targets(["a1.txt", "a2.txt", "a4.txt"]),
@@ -1047,34 +1047,34 @@ executed.append(_input)
         sos_targets(["a2.txt", "a3.txt", "a4.txt"]),
     ], f'obtained {env.sos_dict["executed"]}'
     # group_by chunks specified as integers
-    script = SoS_Script("""
-[0: shared='executed']
+    execute_workflow(
+        """
+        [0: shared='executed']
 
-executed = []
-input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by=3
+        executed = []
+        input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by=3
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt", "a2.txt", "a3.txt"),
         sos_targets("a4.txt", "a5.txt", "a6.txt"),
         sos_targets("a7.txt", "a8.txt", "a9.txt"),
     ]
     # group_by chunks specified as integer strings
-    script = SoS_Script("""
-[0: shared='executed']
+    execute_workflow(
+        """
+        [0: shared='executed']
 
-executed = []
-input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by='3'
+        executed = []
+        input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by='3'
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt", "a2.txt", "a3.txt"),
         sos_targets("a4.txt", "a5.txt", "a6.txt"),
@@ -1082,53 +1082,54 @@ executed.append(_input)
     ]
     # number of files should be divisible by group_by
     temp_factory(["a{}.txt".format(x) for x in range(1, 10)])
-    script = SoS_Script("""
-[0]
+    execute_workflow(
+        """
+        [0]
 
-executed = []
-input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by=4
+        executed = []
+        input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by=4
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     # incorrect value causes an exception
-    script = SoS_Script("""
-[0]
-
-executed = []
-input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by='something'
-
-executed.append(_input)
-
-""")
-    wf = script.workflow()
     with pytest.raises(Exception):
-        Base_Executor(wf).run(mode="dryrun")
+        execute_workflow(
+            """
+            [0]
+
+            executed = []
+            input: ['a{}.txt'.format(x) for x in range(1, 10)], group_by='something'
+
+            executed.append(_input)
+
+            """,
+            options={'run_mode': "dryrun"})
+
     #
     # group by label
     file_target("c.txt").touch()
-    script = SoS_Script("""
-[A]
-output: 'a.txt'
-_output.touch()
+    execute_workflow(
+        """
+        [A]
+        output: 'a.txt'
+        _output.touch()
 
-[B]
-input: for_each={'i': range(2)}
-output: 'b.txt', 'b1.txt', group_by=1
-_output.touch()
+        [B]
+        input: for_each={'i': range(2)}
+        output: 'b.txt', 'b1.txt', group_by=1
+        _output.touch()
 
-[0: shared='executed']
-executed = []
+        [0: shared='executed']
+        executed = []
 
-input: 'c.txt', output_from(['A', 'B']), group_by='label'
+        input: 'c.txt', output_from(['A', 'B']), group_by='label'
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [
         sos_targets("c.txt"),
         sos_targets("a.txt"),
@@ -1137,25 +1138,25 @@ executed.append(_input)
     #
     # group_by='pairlabel'
     file_target("c.txt").touch()
-    script = SoS_Script("""
-[A]
-output: 'a1.txt', 'a2.txt'
-_output.touch()
+    execute_workflow(
+        """
+        [A]
+        output: 'a1.txt', 'a2.txt'
+        _output.touch()
 
-[B]
-output: 'b1.txt', 'b2.txt'
-_output.touch()
+        [B]
+        output: 'b1.txt', 'b2.txt'
+        _output.touch()
 
-[0: shared='executed']
-executed = []
+        [0: shared='executed']
+        executed = []
 
-input: output_from(['A', 'B']), group_by='pairlabel'
+        input: output_from(['A', 'B']), group_by='pairlabel'
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt", "b1.txt"),
         sos_targets("a2.txt", "b2.txt")
@@ -1164,25 +1165,25 @@ executed.append(_input)
     # group_by='pairlabel3'
     temp_factory(["c{}.txt".format(x) for x in range(1, 7)])
 
-    script = SoS_Script("""
-[A]
-output: [f'a{x}.txt' for x in range(1, 7)]
-_output.touch()
+    execute_workflow(
+        """
+        [A]
+        output: [f'a{x}.txt' for x in range(1, 7)]
+        _output.touch()
 
-[B]
-output: [f'b{x}.txt' for x in range(1, 7)]
-_output.touch()
+        [B]
+        output: [f'b{x}.txt' for x in range(1, 7)]
+        _output.touch()
 
-[0: shared='executed']
-executed = []
+        [0: shared='executed']
+        executed = []
 
-input: [f'c{x}.txt' for x in range(1, 7)], output_from(['A', 'B']), group_by='pairlabel3'
+        input: [f'c{x}.txt' for x in range(1, 7)], output_from(['A', 'B']), group_by='pairlabel3'
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [
         sos_targets(
             "c1.txt",
@@ -1210,25 +1211,25 @@ executed.append(_input)
     # group_by='pairlabel3'
     temp_factory(["c{}.txt".format(x) for x in range(1, 7)])
 
-    script = SoS_Script("""
-[A]
-output: 'a1.txt'
-_output.touch()
+    execute_workflow(
+        """
+        [A]
+        output: 'a1.txt'
+        _output.touch()
 
-[B]
-output: [f'b{x}.txt' for x in range(1, 7)]
-_output.touch()
+        [B]
+        output: [f'b{x}.txt' for x in range(1, 7)]
+        _output.touch()
 
-[0: shared='executed']
-executed = []
+        [0: shared='executed']
+        executed = []
 
-input: [f'c{x}.txt' for x in range(1, 3)], output_from(['A', 'B']), group_by='pairlabel3'
+        input: [f'c{x}.txt' for x in range(1, 3)], output_from(['A', 'B']), group_by='pairlabel3'
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [
         sos_targets("c1.txt", "a1.txt", "b1.txt", "b2.txt", "b3.txt"),
         sos_targets("c2.txt", "a1.txt", "b4.txt", "b5.txt", "b6.txt"),
@@ -1236,37 +1237,37 @@ executed.append(_input)
     #
     # group by function
     file_target("c.txt").touch()
-    script = SoS_Script("""
-[0: shared='executed']
-executed = []
+    execute_workflow(
+        """
+        [0: shared='executed']
+        executed = []
 
-def grp(x):
-    return  [x[:3], x[3:]]
+        def grp(x):
+            return  [x[:3], x[3:]]
 
-input: ['a{}.txt'.format(x) for x in range(5)], group_by=grp
+        input: ['a{}.txt'.format(x) for x in range(5)], group_by=grp
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [["a0.txt", "a1.txt", "a2.txt"],
                                         ["a3.txt", "a4.txt"]]
 
     #
     # group by lambda function
     file_target("c.txt").touch()
-    script = SoS_Script("""
-[0: shared='executed']
-executed = []
+    execute_workflow(
+        """
+        [0: shared='executed']
+        executed = []
 
-input: ['a{}.txt'.format(x) for x in range(6)], group_by=lambda x: zip(x[:3], x[3:])
+        input: ['a{}.txt'.format(x) for x in range(6)], group_by=lambda x: zip(x[:3], x[3:])
 
-executed.append(_input)
+        executed.append(_input)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [["a0.txt", "a3.txt"],
                                         ["a1.txt", "a4.txt"],
                                         ["a2.txt", "a5.txt"]]
@@ -1277,18 +1278,18 @@ def test_output_group_by(temp_factory):
     # group_by = 'all'
     temp_factory(["a{}.txt".format(x) for x in range(4)])
     #
-    script = SoS_Script("""
-[0: shared='executed']
+    execute_workflow(
+        """
+        [0: shared='executed']
 
-executed = []
-input: ['a{}.txt'.format(x) for x in range(4)], group_by=2
-output: ['a{}.txt.bak'.format(x) for x in range(4)], group_by=2
+        executed = []
+        input: ['a{}.txt'.format(x) for x in range(4)], group_by=2
+        output: ['a{}.txt.bak'.format(x) for x in range(4)], group_by=2
 
-executed.append(_output)
+        executed.append(_output)
 
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run(mode="dryrun")
+        """,
+        options={'run_mode': "dryrun"})
     assert env.sos_dict["executed"] == [
         sos_targets("a0.txt.bak", "a1.txt.bak"),
         sos_targets("a2.txt.bak", "a3.txt.bak"),
@@ -1297,31 +1298,27 @@ executed.append(_output)
 
 def test_steps_with_step_name():
     """Test from steps"""
-    script = SoS_Script("""
-[step_10]
+    execute_workflow("""
+        [step_10]
 
-output: 'a.txt'
-_output.touch()
+        output: 'a.txt'
+        _output.touch()
 
-[step_20]
-input: output_from(step_name.split('_')[0] + '_10')
-print(_input)
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run()
+        [step_20]
+        input: output_from(step_name.split('_')[0] + '_10')
+        print(_input)
+        """)
     #
-    script = SoS_Script("""
-[step_10]
+    execute_workflow("""
+        [step_10]
 
-output: 'a.txt'
-_output.touch()
+        output: 'a.txt'
+        _output.touch()
 
-[step_20]
-input: output_from(10)
-print(_input)
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run()
+        [step_20]
+        input: output_from(10)
+        print(_input)
+        """)
 
 
 def test_section_actions():
@@ -1337,64 +1334,60 @@ string''', with_option=1
         SoS_Script("""
 [0]
 func(
-""",
-        )
+""",)
 
 
 def test_longer_code():
     """Test definition of classes (with intermediate newlines) in step."""
-    script = SoS_Script("""# first block
+    execute_workflow("""
+        # first block
+        [0: shared='b']
+        class A:
+            def __init__(self):
+                pass
 
-[0: shared='b']
-class A:
-    def __init__(self):
-        pass
+            # the newline above should be fine because SoS treat this as
+            # regular lines
+            def __call__(self):
+                return 0
 
-    # the newline above should be fine because SoS treat this as
-    # regular lines
-    def __call__(self):
-        return 0
+        b = A()()
 
-b = A()()
-
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run()
+        """)
     assert env.sos_dict["b"] == 0
 
 
 def test_combined_workflow():
     """Test the creation and execution of combined workfow"""
-    script = SoS_Script("""
-a0 = 0
-if 'executed' not in locals():
-    executed = []
-parameter: a = a0 + 1
-[a_1: shared='executed']
-executed.append(step_name)
-[a_2: shared='executed']
-executed.append(step_name)
-[a_3: shared='executed']
-executed.append(step_name)
-[a_4: shared='executed']
-executed.append(step_name)
-output: 'out_a_4'
-[b_1: shared=['executed', 'input_b1']]
-executed.append(step_name)
-input_b1 = _input
-[b_2: shared='executed']
-executed.append(step_name)
-[b_3: shared='executed']
-executed.append(step_name)
-[b_4: shared='executed']
-executed.append(step_name)
-[c: shared='executed']
-executed.append(step_name)
-[d: shared='executed']
-executed.append(step_name)
-""")
-    wf = script.workflow("a+b")
-    Base_Executor(wf).run(mode="dryrun")
+    script = """
+        a0 = 0
+        if 'executed' not in locals():
+            executed = []
+        parameter: a = a0 + 1
+        [a_1: shared='executed']
+        executed.append(step_name)
+        [a_2: shared='executed']
+        executed.append(step_name)
+        [a_3: shared='executed']
+        executed.append(step_name)
+        [a_4: shared='executed']
+        executed.append(step_name)
+        output: 'out_a_4'
+        [b_1: shared=['executed', 'input_b1']]
+        executed.append(step_name)
+        input_b1 = _input
+        [b_2: shared='executed']
+        executed.append(step_name)
+        [b_3: shared='executed']
+        executed.append(step_name)
+        [b_4: shared='executed']
+        executed.append(step_name)
+        [c: shared='executed']
+        executed.append(step_name)
+        [d: shared='executed']
+        executed.append(step_name)
+        """
+    execute_workflow(script, workflow="a+b", options={'run_mode': 'dryrun'})
     assert env.sos_dict["executed"] == [
         "a_1", "a_2", "a_3", "a_4", "b_1", "b_2", "b_3", "b_4"
     ]
@@ -1403,13 +1396,12 @@ executed.append(step_name)
     assert env.sos_dict["input_b1"] == ["out_a_4"]
     #
     env.sos_dict.pop("executed", None)
-    wf = script.workflow("a: 1-2 + a:4 + b:3-")
-    Base_Executor(wf).run(mode="dryrun")
+    execute_workflow(
+        script, workflow="a: 1-2 + a:4 + b:3-", options={'run_mode': 'dryrun'})
     assert env.sos_dict["executed"] == ["a_1", "a_2", "a_4", "b_3", "b_4"]
     #
     env.sos_dict.pop("executed", None)
-    wf = script.workflow("a+c+d")
-    Base_Executor(wf).run(mode="dryrun")
+    execute_workflow(script, workflow="a+c+d", options={'run_mode': 'dryrun'})
     assert env.sos_dict["executed"] == ["a_1", "a_2", "a_3", "a_4", "c", "d"]
 
 
@@ -1453,16 +1445,15 @@ print(CONFIG.get('StoreOwnerSpouse', 'someone else'))
 
 def test_var_output():
     """Test early appearance of variable output"""
-    script = SoS_Script("""
-[0]
-seq = range(3)
-input: for_each='seq'
-output: f"test{_seq}.txt"
-print(_output)
-""")
-    wf = script.workflow()
-    # this does not work before until we make variable output available sooner
-    Base_Executor(wf).run(mode="dryrun")
+    execute_workflow(
+        """
+        [0]
+        seq = range(3)
+        input: for_each='seq'
+        output: f"test{_seq}.txt"
+        print(_output)
+        """,
+        options={'run_mode': "dryrun"})
 
 
 def test_cell():
@@ -1474,12 +1465,11 @@ a = 1
 """)
 
 
-def test_overwrite_keyword():
+def test_overwrite_keyword(clear_now_and_after):
     """Test overwrite sos keyword with user defined one."""
-    if file_target("a.txt").exists():
-        file_target("a.txt").unlink()
+    clear_now_and_after("a.txt")
     #
-    script = SoS_Script("""
+    execute_workflow("""
 def run(script):
     pass
 
@@ -1487,20 +1477,15 @@ def run(script):
 run:
     touch a.txt
 """)
-    wf = script.workflow()
-    Base_Executor(wf).run()
     assert not os.path.isfile("a.txt")
     #
-    script = SoS_Script("""
+    execute_workflow("""
 parameter: run = 5
 
 [1]
 run:
     touch a.txt
 """)
-    wf = script.workflow()
-    # this is ok, see https://github.com/vatlab/SoS/issues/1221
-    Base_Executor(wf).run()
 
 
 def test_help_message():
@@ -1536,175 +1521,155 @@ def test_help_on_multi_workflow():
     assert "default" in msg
 
 
-def test_parameter_abbreviation():
+def test_parameter_abbreviation(clear_now_and_after):
     """Test potential problem caused by parameter abbreviation #1053"""
-    if os.path.isfile("0914.txt"):
-        os.remove("0914.txt")
-    script = SoS_Script("""
-[global]
-parameter: name = '0914'
+    clear_now_and_after("0914.txt")
+    execute_workflow(
+        """
+        [global]
+        parameter: name = '0914'
 
-[1]
-parameter: n = 4
-output: f'{name}.txt'
-print(_output)
-_output.touch()
-""")
-    wf = script.workflow()
-    Base_Executor(wf, args=["--n", "5"]).run()
+        [1]
+        parameter: n = 4
+        output: f'{name}.txt'
+        print(_output)
+        _output.touch()
+        """,
+        args=["--n", "5"])
     assert os.path.isfile("0914.txt")
 
 
-def test_named_input():
+def test_named_input(temp_factory):
     """Test named input"""
-    for filename in ("a.txt", "b.txt"):
-        with open(filename, "w") as out:
-            out.write(filename + "\n")
-    script = SoS_Script("""
-[1]
-input: {'A': 'a.txt', 'B': 'b.txt'}, group_by='pairlabel'
-output: 'c.txt'
-assert _input['A'] == [file_target('a.txt')]
-assert _input['B'] == [file_target('b.txt')]
-with open(_output, 'w') as out:
-    out.write(open(_input['A']).read())
-    out.write(open(_input['B']).read())
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run()
+    temp_factory('a.txt', content='a.txt' + '\n')
+    temp_factory('b.txt', content='b.txt' + '\n')
+    execute_workflow("""
+        [1]
+        input: {'A': 'a.txt', 'B': 'b.txt'}, group_by='pairlabel'
+        output: 'c.txt'
+        assert _input['A'] == [file_target('a.txt')]
+        assert _input['B'] == [file_target('b.txt')]
+        with open(_output, 'w') as out:
+            out.write(open(_input['A']).read())
+            out.write(open(_input['B']).read())
+        """)
     assert open("c.txt").read() == "a.txt\nb.txt\n"
 
 
 def test_named_output_in_depends():
     """Test named_output in depends statement"""
-    script = SoS_Script("""
-[A]
-output: A='a.txt'
-_output.touch()
+    execute_workflow("""
+        [A]
+        output: A='a.txt'
+        _output.touch()
 
-[default]
-depends: named_output('A')
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run()
+        [default]
+        depends: named_output('A')
+        """)
 
 
 def test_output_from_in_depends():
     """Test output_from in depends statement"""
-    script = SoS_Script("""
-[A]
-output: A='a.txt'
-_output.touch()
+    execute_workflow("""
+        [A]
+        output: A='a.txt'
+        _output.touch()
 
-[default]
-depends: output_from('A')
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run()
+        [default]
+        depends: output_from('A')
+        """)
 
 
 def test_named_output_in_output():
     """Test named_output in output statement"""
-    script = SoS_Script("""
-[A]
-output: Aa='a.txt'
-_output.touch()
-
-[default]
-output: named_output('Aa')
-""")
-    wf = script.workflow()
     with pytest.raises(Exception):
-        Base_Executor(wf).run()
+        execute_workflow("""
+            [A]
+            output: Aa='a.txt'
+            _output.touch()
+
+            [default]
+            output: named_output('Aa')
+            """)
 
 
 def test_output_from_in_output():
     """Test output_from in output statement"""
-    script = SoS_Script("""
-[Aa]
-output: A='a.txt'
-_output.touch()
-
-[default]
-output: output_from('Aa')
-""")
-    wf = script.workflow()
     with pytest.raises(Exception):
-        Base_Executor(wf).run()
+        execute_workflow("""
+            [Aa]
+            output: A='a.txt'
+            _output.touch()
+
+            [default]
+            output: output_from('Aa')
+            """)
 
 
 def test_sos_step_in_input():
     """Test sos_step in input statement"""
-    script = SoS_Script("""
-[A]
-output: A='a.txt'
-_output.touch()
-
-[default]
-input: sos_step('A')
-""")
-    wf = script.workflow()
     with pytest.raises(Exception):
-        Base_Executor(wf).run()
+        execute_workflow("""
+            [A]
+            output: A='a.txt'
+            _output.touch()
+
+            [default]
+            input: sos_step('A')
+            """)
 
 
 def test_sos_variable_in_input():
     """Test sos_variable in input statement"""
-    script = SoS_Script("""
-[A]
-a=1
-
-[default]
-input: sos_variable('a')
-""")
-    wf = script.workflow()
     with pytest.raises(Exception):
-        Base_Executor(wf).run()
+        execute_workflow("""
+            [A]
+            a=1
+
+            [default]
+            input: sos_variable('a')
+            """)
 
 
 def test_sos_variable_in_output():
     """Test sos_variable in output statement"""
-    script = SoS_Script("""
-[A]
-a = 1
 
-[default]
-output: sos_variable('a')
-""")
-    wf = script.workflow()
     with pytest.raises(Exception):
-        Base_Executor(wf).run()
+        execute_workflow("""
+            [A]
+            a = 1
+
+            [default]
+            output: sos_variable('a')
+            """)
 
 
 def test_sos_variable_with_keywordargument():
     """Test output_from in output statement"""
-    script = SoS_Script("""
-[A]
-a = 1
 
-[default]
-depends: sos_variable(var='a')
-""")
-    wf = script.workflow()
     with pytest.raises(Exception):
-        Base_Executor(wf).run()
+        execute_workflow("""
+            [A]
+            a = 1
+
+            [default]
+            depends: sos_variable(var='a')
+            """)
 
 
 def test_wide_card_step_name():
     """test resolving step name with *"""
-    script = SoS_Script("""
+    execute_workflow("""
 [A_1]
 
 [*_2]
 assert step_name == 'A_2', f'step_name is {step_name}, A_2 expected'
 """)
-    wf = script.workflow()
-    Base_Executor(wf).run()
 
 
 def test_outfrom_prev_step():
     """Test output_from(-1) from output_from """
-    script = SoS_Script("""
+    execute_workflow("""
 [A_1]
 output: 'A_1.txt'
 _output.touch()
@@ -1716,60 +1681,50 @@ input: output_from(-1)
 depends: sos_step('A_2')
 
 """)
-    wf = script.workflow()
-    Base_Executor(wf).run()
 
 
 def test_step_from_numeric_step():
     """Test sos_step(index) #1209"""
-    script = SoS_Script("""
+    execute_workflow("""
 [1]
 
 [2]
 depends: sos_step('1')
 """)
-    wf = script.workflow()
-    Base_Executor(wf).run()
+
     #
-    script = SoS_Script("""
+    execute_workflow("""
 [1]
 
 [2]
 depends: sos_step(1)
 
 """)
-    wf = script.workflow()
-    Base_Executor(wf).run()
 
 
-def test_depends_on_step_with_unspecified_input():
-    for file in ("A_1.txt", "A_2.txt", "A_3.txt", "A_4.txt"):
-        if os.path.isfile(file):
-            os.remove(file)
+def test_depends_on_step_with_unspecified_input(clear_now_and_after):
+    clear_now_and_after("A_1.txt", "A_2.txt", "A_3.txt", "A_4.txt")
     #
-    script = SoS_Script("""
-[A_1]
-output: f'{step_name}.txt'
-_output.touch()
+    execute_workflow("""
+        [A_1]
+        output: f'{step_name}.txt'
+        _output.touch()
 
-[A_2]
-output: f'{step_name}.txt'
-_output.touch()
+        [A_2]
+        output: f'{step_name}.txt'
+        _output.touch()
 
-[A_3]
-output: f'{step_name}.txt'
-_output.touch()
+        [A_3]
+        output: f'{step_name}.txt'
+        _output.touch()
 
-[A_4]
-output: f'{step_name}.txt'
-_output.touch()
+        [A_4]
+        output: f'{step_name}.txt'
+        _output.touch()
 
-[default]
-depends: sos_step('A_2')
-""")
-    wf = script.workflow()
-    # this should execute A_2 and A_1
-    Base_Executor(wf).run()
+        [default]
+        depends: sos_step('A_2')
+        """)
     assert os.path.isfile("A_1.txt")
     assert os.path.isfile("A_2.txt")
     assert not os.path.isfile("A_3.txt")
@@ -1779,29 +1734,26 @@ depends: sos_step('A_2')
         if os.path.isfile(file):
             os.remove(file)
     #
-    script = SoS_Script("""
-[A_1]
-output: f'{step_name}.txt'
-_output.touch()
+    execute_workflow("""
+        [A_1]
+        output: f'{step_name}.txt'
+        _output.touch()
 
-[A_2]
-output: f'{step_name}.txt'
-_output.touch()
+        [A_2]
+        output: f'{step_name}.txt'
+        _output.touch()
 
-[A_3]
-output: f'{step_name}.txt'
-_output.touch()
+        [A_3]
+        output: f'{step_name}.txt'
+        _output.touch()
 
-[A_4]
-output: f'{step_name}.txt'
-_output.touch()
+        [A_4]
+        output: f'{step_name}.txt'
+        _output.touch()
 
-[default]
-input: output_from('A_2')
-""")
-    wf = script.workflow()
-    # this should execute A_2 and A_1
-    Base_Executor(wf).run()
+        [default]
+        input: output_from('A_2')
+        """)
     assert os.path.isfile("A_1.txt")
     assert os.path.isfile("A_2.txt")
     assert not os.path.isfile("A_3.txt")
@@ -1811,30 +1763,27 @@ input: output_from('A_2')
         if os.path.isfile(file):
             os.remove(file)
     #
-    script = SoS_Script("""
-[A_1]
-output: f'{step_name}.txt'
-_output.touch()
+    execute_workflow("""
+        [A_1]
+        output: f'{step_name}.txt'
+        _output.touch()
 
-[A_2]
-input: None
-output: f'{step_name}.txt'
-_output.touch()
+        [A_2]
+        input: None
+        output: f'{step_name}.txt'
+        _output.touch()
 
-[A_3]
-output: f'{step_name}.txt'
-_output.touch()
+        [A_3]
+        output: f'{step_name}.txt'
+        _output.touch()
 
-[A_4]
-output: f'{step_name}.txt'
-_output.touch()
+        [A_4]
+        output: f'{step_name}.txt'
+        _output.touch()
 
-[default]
-input: output_from('A_2')
-""")
-    wf = script.workflow()
-    # this should execute A_2 and A_1
-    Base_Executor(wf).run()
+        [default]
+        input: output_from('A_2')
+        """)
     assert not os.path.isfile("A_1.txt")
     assert os.path.isfile("A_2.txt")
     assert not os.path.isfile("A_3.txt")
@@ -1849,115 +1798,104 @@ def test_output_from_workflow():
         if os.path.isfile(file):
             os.remove(file)
     #
-    script = SoS_Script(r"""
-[A_1]
-output: f'{step_name}.txt'
+    execute_workflow(r"""
+        [A_1]
+        output: f'{step_name}.txt'
 
-with open(_output, 'w') as out:
-    out.write(step_name)
-    out.write('\n')
+        with open(_output, 'w') as out:
+            out.write(step_name)
+            out.write('\n')
 
-[A_2]
-output: f'{step_name}.txt'
+        [A_2]
+        output: f'{step_name}.txt'
 
-with open(_output, 'w') as out:
-    out.write(step_name)
-    out.write('\n')
+        with open(_output, 'w') as out:
+            out.write(step_name)
+            out.write('\n')
 
-[default]
-input: output_from('A')
+        [default]
+        input: output_from('A')
 
-with open(_input) as content:
-    assert content.read() == 'A_2\n'
+        with open(_input) as content:
+            assert content.read() == 'A_2\n'
 
-""")
-    wf = script.workflow()
+        """)
     # this should execute A_2 and A_1
-    Base_Executor(wf).run()
-    #
     assert os.path.isfile("A_1.txt")
     assert os.path.isfile("A_2.txt")
 
 
 def test_execute_global_section():
     """Global section should be executed only once #1219"""
-    script = SoS_Script(r"""
-[global]
-parameter: A=[1, 2]
-parameter: B=[]
-B.extend(A)
+    execute_workflow(r"""
+        [global]
+        parameter: A=[1, 2]
+        parameter: B=[]
+        B.extend(A)
 
-[default]
-assert B == [1, 2]
-input: for_each=dict(i=range(2))
-assert B == [1, 2]
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run()
+        [default]
+        assert B == [1, 2]
+        input: for_each=dict(i=range(2))
+        assert B == [1, 2]
+        """)
 
 
 def test_para_from_nested_workflow():
     """Test passing arguments to nested workflow #1229"""
-    script = SoS_Script(r"""
-[A]
-parameter: param = str
-print(param)
+    execute_workflow(
+        r"""
+        [A]
+        parameter: param = str
+        print(param)
 
-[B]
-print(step_name)
+        [B]
+        print(step_name)
 
-[default]
-sos_run('B+A')
-""")
-    wf = script.workflow()
-    Base_Executor(wf, args=["--param", "2"]).run()
+        [default]
+        sos_run('B+A')
+        """,
+        args=["--param", "2"])
 
 
 def test_indented_action():
     """Test the use of indented action in script format"""
     #
     # not indented
-    script = SoS_Script(r"""
-[1]
-if True:
-    sh:
-echo something
+    execute_workflow(r"""
+        [1]
+        if True:
+            sh:
+        echo something
 
-[2]
-for i in range(2):
-    sh:
-echo something
-""")
-    wf = script.workflow()
-    Base_Executor(wf).run()
+        [2]
+        for i in range(2):
+            sh:
+        echo something
+        """)
     # not indented double action
-    script = SoS_Script(r"""
-[1]
-if True:
-    sh:
-echo something
+    with pytest.raises(Exception):
+        execute_workflow(r"""
+            [1]
+            if True:
+                sh:
+            echo something
 
-    python:
-print(1)
-""")
-    wf = script.workflow()
-    with pytest.raises(Exception):
-        Base_Executor(wf).run()
+                python:
+            print(1)
+        """)
     # not indented Python structure
-    script = SoS_Script(r"""
-[1]
-if True:
-    sh:
-echo something
-else:
-    python:
-print(1)
-""")
-    wf = script.workflow()
     with pytest.raises(Exception):
-        Base_Executor(wf).run()
+        execute_workflow(r"""
+            [1]
+            if True:
+                sh:
+            echo something
+            else:
+                python:
+            print(1)
+            """)
     #  indented
-    script = SoS_Script(r"""
+    execute_workflow(r"""
 [1]
 if True:
     sh:
@@ -1968,10 +1906,9 @@ for i in range(2):
     sh:
         echo something
 """)
-    wf = script.workflow()
-    Base_Executor(wf).run()
+
     # indented double action
-    script = SoS_Script(r"""
+    execute_workflow(r"""
 [1]
 if True:
     sh:
@@ -1979,10 +1916,8 @@ if True:
     python:
         print(1)
 """)
-    wf = script.workflow()
-    Base_Executor(wf).run()
     # indented Python structure
-    script = SoS_Script(r"""
+    execute_workflow(r"""
 [1]
 if True:
     sh:
@@ -1991,10 +1926,8 @@ else:
     python:
         print(1)
 """)
-    wf = script.workflow()
-    Base_Executor(wf).run()
     # indented, nested structure
-    script = SoS_Script(r"""
+    execute_workflow(r"""
 [1]
 for i in range(2):
     if True:
@@ -2004,16 +1937,12 @@ for i in range(2):
         python:
             print(1)
 """)
-    wf = script.workflow()
-    Base_Executor(wf).run()
     #
     # wrong nested action
-    script = SoS_Script(r"""
+    execute_workflow(r"""
 report:
     name: 'a.txt'
 """)
-    wf = script.workflow()
-    Base_Executor(wf).run()
 
 
 def test_task_param_var():
