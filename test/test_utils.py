@@ -5,6 +5,7 @@
 
 import os
 import sys
+import random
 
 import pytest
 from sos.eval import accessed_vars, on_demand_options
@@ -14,7 +15,7 @@ from sos.targets import executable, file_target, sos_step, sos_targets
 # these functions are normally not available but can be imported
 # using their names for testing purposes
 from sos.utils import (WorkflowDict, as_fstring, env, get_logger,
-                       split_fstring, stable_repr)
+                       split_fstring, stable_repr, fileMD5)
 from sos.workflow_executor import Base_Executor, analyze_section
 
 
@@ -319,3 +320,13 @@ def test_file_sig(clear_now_and_after):
         ts.write('bac')
 
     assert not a.validate()
+
+@pytest.mark.parametrize('fsize', [12354, 33554432, 34605213])
+def test_file_md5(fsize, temp_factory):
+    '''test save and validate of file signature'''
+    fname = 'test_md5.txt'
+    temp_factory(fname, size = fsize)
+
+    partial_md5, full_md5 = fileMD5(fname, sig_type='both')
+    assert partial_md5 == fileMD5(fname, sig_type='partial')
+    assert full_md5 == fileMD5(fname, sig_type='full')

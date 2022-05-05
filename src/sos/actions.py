@@ -1065,7 +1065,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
             prog.close()
             with open(dest + ".md5") as md5:
                 rec_md5 = md5.readline().split()[0].strip()
-                obs_md5 = fileMD5(dest, partial=False)
+                obs_md5 = fileMD5(dest, sig_type='full')
                 if rec_md5 != obs_md5:
                     prog.set_description(
                         message + ":\033[91m MD5 signature mismatch\033[0m")

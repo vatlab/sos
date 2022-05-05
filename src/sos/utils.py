@@ -313,43 +313,97 @@ def objectMD5(obj):
         return ""
 
 
-def fileMD5(filename, partial=True):
+def fileMD5(filename, sig_type="partial"):
     """Calculate partial MD5, basically the first and last 8M
     of the file for large files. This should signicicantly reduce
     the time spent on the creation and comparison of file signature
-    when dealing with large bioinformat ics datasets."""
+    when dealing with large bioinformat ics datasets. If sig_type="full",
+    the complete md5 signature will be returned. If sig_type="both", both
+    partial and full signatures will be returned as a tuple."""
     filesize = os.path.getsize(filename)
     # calculate md5 for specified file
-    if partial:
-        md5 = hash_md5()
-    else:
-        md5 = full_md5()
+    partial_sig = hash_md5() if sig_type in ('partial', 'both') else None
+    full_sig = full_md5() if sig_type in ('full', 'both') else None
+
     block_size = 2**20  # buffer of 1M
     try:
         # 2**24 = 16M
-        if (not partial) or filesize < 2**24:
+        if filesize < 2**24 or partial_sig is None:
             with open(filename, "rb") as f:
                 while True:
                     data = f.read(block_size)
                     if not data:
                         break
-                    md5.update(data)
-        else:
-            count = 16
+                    if partial_sig:
+                        partial_sig.update(data)
+                    if full_sig:
+                        full_sig.update(data)
+        elif full_sig is None:
+            # only partial sig, use the old algorithm
+            count = 8
             # otherwise, use the first and last 8M
             with open(filename, "rb") as f:
                 while True:
                     data = f.read(block_size)
                     count -= 1
-                    if count == 8:
+                    if count == 0:
                         # 2**23 = 8M
                         f.seek(-(2**23), 2)
-                    if not data or count == 0:
+                    if not data:
                         break
-                    md5.update(data)
+                    partial_sig.update(data)
+        else:
+            # let us assume that the file size is
+            # a: exact 33554432 (32M)
+            # b: notexact 34605213 (33M + 2205 bytes)
+
+            # 8M point, when f.tell() is at this location, the previous ones
+            # can be read
+            first_stop = 2**23
+            # -8M point
+            #
+            # a: 25165824 (24M), second_stop // block_size = 24
+            # b: 26216605 (25.002M), second_step // block_size = 25
+            second_stop = filesize - first_stop
+
+            # the next buffer place
+            # a: 26214400 (beginning of 25M)
+            # b: 27262976 (beginning the 26M)
+            third_stop = block_size * (second_stop // block_size + 1)
+
+            # The overlap amount
+            # a: 1048576 (=block_size==1048576)
+            # b: 1046371 (<block_size)
+            overlap_size = third_stop - second_stop
+            #
+            # large file, with both partial and full_sig. The most complicated case
+            with open(filename, "rb") as f:
+                while True:
+                    data = f.read(block_size)
+                    if not data:
+                        break
+                    full_sig.update(data)
+                    # first block
+                    loc = f.tell()
+                    # loc can be at 0, 1, 2, 3M...25M, 26M
+                    # however when loc just reached third_stop, it should not be read
+                    # because the content is from before...
+                    if loc <= first_stop or loc > third_stop:
+                        partial_sig.update(data)
+                    # now if loc is at 24M point, it should not update anything
+                    # if loc is at 25M point, > second_stop (a), it should get the entire
+                    # buffer of 1M.
+                    # if loc is at 26M point, it is greater than second_step (b), and will
+                    # read overlap_size bytes.
+                    elif loc > second_stop: # and < third_stop
+                        partial_sig.update(data[-overlap_size:])
     except IOError as e:
         sys.exit(f"Failed to read {filename}: {e}")
-    return md5.hexdigest()
+    if full_sig and partial_sig:
+        return partial_sig.hexdigest(), full_sig.hexdigest()
+    if full_sig:
+        return full_sig.hexdigest()
+    return partial_sig.hexdigest()
 
 
 #
