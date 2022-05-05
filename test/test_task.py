@@ -471,7 +471,7 @@ def test_max_mem():
             """
             [10]
             task: mem='2G'
-            print('a')
+            print('test_max_mem')
             """,
             options={
                 "config_file": "~/docker.yml",
@@ -507,7 +507,7 @@ def test_max_cores():
             """
             [10]
             task: cores=8
-            print('a')
+            print('test_max_cores')
             """,
             options={
                 "config_file": "~/docker.yml",
@@ -524,7 +524,7 @@ def test_override_max_cores():
         """
         [10]
         task: cores=8
-        print('a')
+        print('test_override_max_cores')
         """,
         options={
             "config_file": "~/docker.yml",
@@ -553,7 +553,7 @@ def test_max_walltime(purge_tasks):
             """
             [10]
             task: walltime='1:00:00'
-            print('a')
+            print('test_max_walltime')
             """,
             options={
                 "config_file": "~/docker.yml",
@@ -654,7 +654,7 @@ def test_wrong_host():
             """
             [10]
             task: walltime='1:00:00', queue='undefined'
-            print('a')
+            print('test_wrong_host')
             """,
             options={"default_queue": "localhost"})
 
@@ -943,7 +943,7 @@ def test_local_max_cores():
             """
         [10]
         task: cores=8
-        print('a')
+        print('test_local_max_cores')
         """,
             options={
                 "config_file": "~/docker.yml",
@@ -960,7 +960,7 @@ def test_local_max_mem():
             """
         [10]
         task: mem='2G'
-        print('a')
+        print('test_local_max_mem')
         """,
             options={
                 "config_file": "~/docker.yml",
