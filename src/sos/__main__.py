@@ -400,6 +400,21 @@ def get_run_parser(interactive=False, with_workflow=True, desc_only=False):
             the use of runtime signatures.""",
     )
     runmode.add_argument(
+        "-S",
+        choices=[
+            "default",
+            "md5",
+        ],
+        default="default",
+        metavar="SIGTYPE",
+        dest="__sig_type__",
+        help="""Type of signatures. By default signatures are saved to
+            ~/.sos and not seen by users. Alternatively, it can be
+            set to `md5` for which `.md5` files will be automatically saved
+            for all output files, and checked for all input files if a `.md5`
+            file exists.""",
+    )
+    runmode.add_argument(
         "-T",
         action="store_true",
         dest="trace_existing",
@@ -620,6 +635,8 @@ def cmd_run(args, workflow_args):
                 args.__max_running_jobs__,
             "sig_mode":
                 "ignore" if args.dryrun else args.__sig_mode__,
+            "sig_type":
+                args.__sig_type__ if args.__sig_type__ else "default",
             # when being tapped by sos notebook, we suppose it is in interactive mode
             "run_mode":
                 "dryrun" if args.dryrun else

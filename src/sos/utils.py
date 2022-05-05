@@ -40,6 +40,8 @@ try:
 except ImportError:
     from hashlib import md5 as hash_md5
 
+from hashlib import md5 as full_md5
+
 __all__ = ["get_output"]
 
 COLOR_CODE = {
@@ -318,7 +320,10 @@ def fileMD5(filename, partial=True):
     when dealing with large bioinformat ics datasets."""
     filesize = os.path.getsize(filename)
     # calculate md5 for specified file
-    md5 = hash_md5()
+    if partial:
+        md5 = hash_md5()
+    else:
+        md5 = full_md5()
     block_size = 2**20  # buffer of 1M
     try:
         # 2**24 = 16M
