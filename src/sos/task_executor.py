@@ -295,6 +295,7 @@ class BaseTaskExecutor(object):
             with open(env.sos_dict["__std_out__"],
                       "a") as my_stdout, open(env.sos_dict["__std_err__"],
                                               "a") as my_stderr:
+                clear_output(backup_existing=False)
                 with redirect_stdout(my_stdout), redirect_stderr(my_stderr):
                     # step process
                     SoS_exec(task)

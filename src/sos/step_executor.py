@@ -780,6 +780,7 @@ class Base_Step_Executor:
 
     def execute(self, stmt, return_result=False):
         try:
+            clear_output(backup_existing=False)
             self.last_res = SoS_exec(
                 stmt,
                 return_result=return_result or

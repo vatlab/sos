@@ -192,7 +192,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
         verify_input(ignore_internal_targets=True)
 
         if stmt:
-
+            clear_output(backup_existing=False)
             # statement can be empty for task only substep
             if capture_output:
                 with stdoutIO() as (out, err):
