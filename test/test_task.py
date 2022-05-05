@@ -546,9 +546,8 @@ def test_list_hosts():
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
-def test_max_walltime():
+def test_max_walltime(purge_tasks):
     """Test server restriction max_walltime"""
-
     with pytest.raises(Exception):
         execute_workflow(
             """
