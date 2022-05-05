@@ -25,6 +25,7 @@ import urllib.parse
 import urllib.request
 from collections import defaultdict
 from collections.abc import KeysView, Mapping, Sequence, Set
+from hashlib import md5 as full_md5
 from html.parser import HTMLParser
 from io import BytesIO, FileIO, StringIO
 from typing import Dict, List, Optional
@@ -38,9 +39,8 @@ from zmq.log.handlers import PUBHandler
 try:
     from xxhash import xxh64 as hash_md5
 except ImportError:
-    from hashlib import md5 as hash_md5
+    hash_md5 = full_md5
 
-from hashlib import md5 as full_md5
 
 __all__ = ["get_output"]
 
@@ -340,13 +340,13 @@ def fileMD5(filename, sig_type="partial"):
                         full_sig.update(data)
         elif full_sig is None:
             # only partial sig, use the old algorithm
-            count = 8
+            count = 16
             # otherwise, use the first and last 8M
             with open(filename, "rb") as f:
                 while True:
                     data = f.read(block_size)
                     count -= 1
-                    if count == 0:
+                    if count == 8:
                         # 2**23 = 8M
                         f.seek(-(2**23), 2)
                     if not data:
