@@ -531,7 +531,10 @@ run:
         with open(f, 'w') as tf:
             tf.write(f)
 
-@pytest.fixture(autouse=True)
+#
+# We do not apply this automatically for now.
+#
+#@pytest.fixture(autouse=True)
 def check_extra_files(request, output_file='extra_files.txt'):
     file_list = os.listdir('.') + [output_file]
 
