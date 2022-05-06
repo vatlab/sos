@@ -194,8 +194,9 @@ def test_docker_build_windows_image():
 @pytest.mark.skipif(
     not has_docker or sys.platform == 'win32',
     reason='Skip test because docker is not installed.')
-def test_docker_image(fastq_files):
+def test_docker_image(fastq_files, clear_now_and_after):
     '''Test docker_image option'''
+    clear_now_and_after('S20_R1_fastqc/zip', 'S20_R2_fastqc.zip','S20_R1_fastqc.html','S20_R2_fastqc.html')
     execute_workflow(r'''
         import os
         import glob

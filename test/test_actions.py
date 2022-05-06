@@ -590,7 +590,7 @@ def test_report_2(clear_now_and_after):
 
 def test_report_3(clear_now_and_after):
     """Test action report"""
-    clear_now_and_after("report.txt". "out.txt", "a.txt", "b.txt")
+    clear_now_and_after("report.txt", "out.txt", "a.txt", "b.txt")
     #
     execute_workflow(r"""
         [A_1]
