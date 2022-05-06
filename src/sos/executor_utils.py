@@ -164,7 +164,7 @@ def clear_output(output=None):
                 #    f"{target} removed to {new_name} due to failed step.")
                 target.unlink()
                 (target + '.md5').unlink()
-            except Exception as e:
+            except Exception:
                 # ok if file does not exist (FileNotfoundError)
                 pass
 
