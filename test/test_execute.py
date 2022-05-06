@@ -1549,13 +1549,13 @@ def test_group_by_with_emtpy_input():
         """)
 
 
-def test_depends_to_concurrent_substep(test_depends_to_concurrent_substep):
+def test_depends_to_concurrent_substep(clear_now_and_after):
     """Testing forward style example"""
     # sos_variable('data') is passed to step [2]
     # but it is not passed to concurrent substep because
     # the variable is not used in the substep. This test
     # should fail at least under windows
-    test_depends_to_concurrent_substep('a.txt')
+    clear_now_and_after('a.txt')
     execute_workflow("""
         [1: shared={'data': 'step_output'}]
         output: 'a.txt'
