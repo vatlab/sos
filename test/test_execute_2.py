@@ -153,7 +153,7 @@ def test_parallel_nestedworkflow(clear_now_and_after):
         input: for_each = 'num'
         output: f'{_num}.txt'
         bash: expand = True
-        touch {_output}
+            touch {_output}
 
         [2]
         parameter: a = 1
@@ -163,7 +163,7 @@ def test_parallel_nestedworkflow(clear_now_and_after):
         [a,b]
         output: f'{_input:n}.out'
         bash: expand = True
-        touch {_output}
+            touch {_output}
         """)
 
 
