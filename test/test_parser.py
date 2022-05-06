@@ -2049,7 +2049,7 @@ def test_sos_step_in_output():
 def test_comments(sample_workflow):
     """Test the use of comments in sos script"""
     # extract workflow from ipynb
-    wf = extract_workflow("sample_workflow.ipynb")
+    wf = extract_workflow(sample_workflow)
     assert "this is a test workflow" not in wf
     assert wf.count("this comment will be included but not shown in help") == 1
     assert wf.count("this comment will become the comment for parameter b") == 1
