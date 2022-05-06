@@ -1008,8 +1008,9 @@ def test_step_with_multiple_output(clear_now_and_after):
     clear_now_and_after('test.dot')
 
 
-def test_auxiliary_sos_step():
+def test_auxiliary_sos_step(clear_now_and_after):
     '''Testing the use of sos_step with auxiliary step. #736'''
+    clear_now_and_after('1.txt')
     execute_workflow('''
         [default]
         depends: '1.txt'
@@ -1111,6 +1112,7 @@ def test_sos_step_miniworkflow(clear_now_and_after):
 
 def test_compound_workflow(clear_now_and_after):
     '''Test the DAG of compound workflow'''
+    clear_now_and_after('test.dot')
     script = SoS_Script(
         textwrap.dedent('''
     [A_1]

@@ -887,8 +887,9 @@ def test_output_pattern(temp_factory):
     ]
 
 
-def test_output_from_input(temp_factory):
+def test_output_from_input(temp_factory, clear_now_and_after):
     """Test deriving output files from input files"""
+    clear_now_and_after("a.txt.bak", "b.txt.bak")
     temp_factory("a.txt", "b.txt")
     execute_workflow(
         r"""
@@ -1330,7 +1331,7 @@ def test_non_existent_dependent_target():
 
 def test_output_report(clear_now_and_after):
     """Test generation of report"""
-    clear_now_and_after("report.html")
+    clear_now_and_after("report.html", "1.txt", "2.txt", "3.txt")
     script = SoS_Script(r"""
 [1: shared = {'dfile':'_output'}]
 output: '1.txt'
@@ -1355,12 +1356,14 @@ cat {_input} > {_output}
     assert os.path.isfile("report.html")
 
 
+@pytest.mark.xfail(reason='dot may segfault')
 @pytest.mark.skipif(
     not shutil.which("dot") or sys.platform == "win32",
     reason="Graphviz not available under windows")
 def test_output_report_with_dag(clear_now_and_after):
     # test dag
-    clear_now_and_after("report.html")
+    clear_now_and_after("report.html", "1.txt", "2.txt", "4.txt")
+
     execute_workflow(
         r"""
         [1: shared = {'dfile':'_output'}]
