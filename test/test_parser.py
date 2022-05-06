@@ -885,10 +885,12 @@ output: (f"a{x}" for x in _input)
         ["aa.txt", "aa0", "aa1", "ab.txt"])
 
 
-def test_group_by(temp_factory):
+def test_group_by(temp_factory, clear_now_and_after):
     """Test group_by parameter of step input"""
+    clear_now_and_after('a.txt', 'b.txt', 'xx.txt')
+    clear_now_and_after([f"b{x+1}.txt"for x in range(5)])
     # group_by = 'all'
-    temp_factory(["a{}.txt".format(x) for x in range(15)])
+    temp_factory([f"a{x}.txt" for x in range(15)])
     #
     execute_workflow(
         """
@@ -1296,8 +1298,9 @@ def test_output_group_by(temp_factory):
     ]
 
 
-def test_steps_with_step_name():
+def test_steps_with_step_name(clear_now_and_after):
     """Test from steps"""
+    clear_now_and_after('a.txt')
     execute_workflow("""
         [step_10]
 
@@ -1405,8 +1408,9 @@ def test_combined_workflow():
     assert env.sos_dict["executed"] == ["a_1", "a_2", "a_3", "a_4", "c", "d"]
 
 
-def test_yaml_config():
+def test_yaml_config(clear_now_and_after):
     """Test config file in yaml format"""
+    clear_now_and_after('myconfig.yml', 'config.sos')
     with open("myconfig.yml", "w") as config:
         config.write("""
 # Lines beginning with # are skipped when the JSON is parsed, so we can
@@ -1488,10 +1492,10 @@ run:
 """)
 
 
-def test_help_message():
+def test_help_message(sample_workflow):
     """Test help message from ipynb notebook"""
     msg = subprocess.check_output(
-        "sos run sample_workflow.ipynb -h", shell=True).decode()
+        f"sos run {sample_workflow} -h", shell=True).decode()
     assert "this comment will be included but not shown in help" not in msg
     assert msg.count(
         "this comment will become the comment for parameter b") == 1

@@ -33,8 +33,9 @@ sos_run('sub')
         workflow='a')
 
 
-def test_nested_workflow(temp_factory):
+def test_nested_workflow(temp_factory, clear_now_and_after):
     '''Test the creation and execution of combined workfow'''
+    clear_now_and_after('a.done')
     temp_factory('a.txt', 'b.txt', 'b.begin')
     execute_workflow(
         '''
@@ -333,7 +334,7 @@ def test_sos_run(clear_now_and_after):
     for f in ['0.txt', '1.txt']:
         assert file_target(f).target_exists()
     #
-    clear_now_and_after('0.txt', '1.txt')
+    clear_now_and_after('0.txt', '1.txt', '5.txt')
 
     execute_workflow(
         r'''
@@ -352,7 +353,7 @@ def test_sos_run(clear_now_and_after):
 
     assert file_target('5.txt').target_exists()
 
-    file_target('5.txt').unlink()
+    clear_now_and_after('10.txt', '11.txt')
     #
     # test parameter shared to send and return vars
     #
@@ -534,7 +535,8 @@ def test_fun_def(temp_factory):
 
 def test_search_path(clear_now_and_after):
     '''Test if any action should exit in five seconds in dryrun mode'''
-    clear_now_and_after('crazy_path')
+    clear_now_and_after('crazy_path', 'test.yml')
+
     sos_config_file = os.path.join(
         os.path.expanduser('~'), '.sos', 'config.yml')
     shutil.copy(sos_config_file, 'test.yml')
@@ -697,7 +699,7 @@ def test_pass_of_args():
 
 def test_nested_dynamic_depends(clear_now_and_after):
     '''Test the execution of nested workflow with dynamic depends'''
-    clear_now_and_after('B30.txt', 'B30.txt.p')
+    clear_now_and_after('B30.txt', 'B30.txt.p', 'B0.txt.p', 'B0.txt')
     execute_workflow('''
         [A_1]
         parameter: num = 20
