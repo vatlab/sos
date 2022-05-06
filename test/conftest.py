@@ -1,10 +1,12 @@
 import os
 import pathlib
 import shutil
+import string
 import subprocess
 import tempfile
 import textwrap
 import glob
+import random
 
 import pytest
 import yaml
@@ -71,6 +73,17 @@ def temp_factory():
                     shutil.rmtree(dir)
                 os.makedirs(dir, exist_ok=True)
                 temp_dirs.append(dir)
+        if 'size' in kwargs:
+            fsize = kwargs['size']
+            letters = string.ascii_letters
+            content = ''.join(random.choice(letters) for i in range(983)).encode()
+            ntimes = fsize // 983
+            remaining = fsize - (ntimes * 983)
+            for name in temp_fds:
+                with open(name, 'wb') as tmp:
+                    for i in range(ntimes):
+                        tmp.write(content)
+                    tmp.write(content[:remaining])
         return temp_fds, temp_dirs
 
     yield get_tempfiles

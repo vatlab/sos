@@ -156,14 +156,18 @@ def clear_output(output=None):
     Remove file targets in `_output` when a step fails to complete
     """
     for target in env.sos_dict["_output"] if output is None else output:
-        if isinstance(target, file_target) and target.exists():
+        if isinstance(target, file_target):
             try:
-                new_name = target + '.' + token_hex(3) + '.bak'
-                target.rename(new_name)
-                env.logger.warning(
-                    f"{target} removed to {new_name} due to failed step.")
-            except Exception as e:
-                env.logger.warning(f"Failed to remove {target}: {e}")
+                #new_name = target + '.' + token_hex(3) + '.bak'
+                #target.rename(new_name)
+                #env.logger.debug(
+                #    f"{target} removed to {new_name} due to failed step.")
+                target.unlink()
+                (target + '.md5').unlink()
+            except Exception:
+                # ok if file does not exist (FileNotfoundError)
+                pass
+
 
 
 def get_traceback_msg(e):
