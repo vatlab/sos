@@ -2388,8 +2388,9 @@ def test_multi_depends(clear_now_and_after, temp_factory):
 
 def test_execute_ipynb(sample_workflow):
     """Test extracting and executing workflow from .ipynb files"""
-    execute_workflow(sample_workflow)
-
+    script = SoS_Script(filename=sample_workflow)
+    wf = script.workflow()
+    Base_Executor(wf).run()
 
 @pytest.mark.skipif(
     True,
