@@ -304,7 +304,7 @@ input: something_unknown, sos_groups(output_from(['C1', 'C2']), by=2), group_by=
 
 def test_file_sig(clear_now_and_after):
     '''test save and validate of file signature'''
-    clear_now_and_after('test_sig.txt')
+    clear_now_and_after('test_sig.txt', 'test_sig.txt.zapped')
 
     with open('test_sig.txt', 'w') as ts:
         ts.write('ba')

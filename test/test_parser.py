@@ -887,8 +887,8 @@ output: (f"a{x}" for x in _input)
 
 def test_group_by(temp_factory, clear_now_and_after):
     """Test group_by parameter of step input"""
-    clear_now_and_after('a.txt', 'b.txt', 'xx.txt')
-    clear_now_and_after([f"b{x+1}.txt"for x in range(5)])
+    clear_now_and_after('a.txt', 'b.txt', 'c.txt' 'xx.txt')
+    clear_now_and_after([f"b{x+1}.txt" for x in range(6)])
     # group_by = 'all'
     temp_factory([f"a{x}.txt" for x in range(15)])
     #
@@ -1508,16 +1508,15 @@ def test_help_message(sample_workflow):
     assert "this comment will not be included in exported workflow" not in msg
 
 
-def test_help_on_multi_workflow():
+def test_help_on_multi_workflow(script_factory):
     """Test help message of sos file (#985)"""
-    with open("test_msg.sos", "w") as script:
-        script.write("""\
-[workflow_a_10,workflow_b]
-[workflow_a_20]
-[default]
-""")
+    test_sos = script_factory("""\
+        [workflow_a_10,workflow_b]
+        [workflow_a_20]
+        [default]
+        """)
     msg = subprocess.check_output(
-        "sos run test_msg.sos -h", shell=True).decode()
+        f"sos run {test_sos} -h", shell=True).decode()
     assert "workflow_a" in msg
     assert "workflow_b" in msg
     # when introducing sections
@@ -1543,8 +1542,9 @@ def test_parameter_abbreviation(clear_now_and_after):
     assert os.path.isfile("0914.txt")
 
 
-def test_named_input(temp_factory):
+def test_named_input(temp_factory, clear_now_and_after):
     """Test named input"""
+    clear_now_and_after('c.txt')
     temp_factory('a.txt', content='a.txt' + '\n')
     temp_factory('b.txt', content='b.txt' + '\n')
     execute_workflow("""
@@ -1560,8 +1560,9 @@ def test_named_input(temp_factory):
     assert open("c.txt").read() == "a.txt\nb.txt\n"
 
 
-def test_named_output_in_depends():
+def test_named_output_in_depends(clear_now_and_after):
     """Test named_output in depends statement"""
+    clear_now_and_after('a.txt')
     execute_workflow("""
         [A]
         output: A='a.txt'
@@ -1572,8 +1573,9 @@ def test_named_output_in_depends():
         """)
 
 
-def test_output_from_in_depends():
+def test_output_from_in_depends(clear_now_and_after):
     """Test output_from in depends statement"""
+    clear_now_and_after('a.txt')
     execute_workflow("""
         [A]
         output: A='a.txt'
@@ -1584,8 +1586,9 @@ def test_output_from_in_depends():
         """)
 
 
-def test_named_output_in_output():
+def test_named_output_in_output(clear_now_and_after):
     """Test named_output in output statement"""
+    clear_now_and_after('a.txt')
     with pytest.raises(Exception):
         execute_workflow("""
             [A]
@@ -1664,27 +1667,28 @@ def test_sos_variable_with_keywordargument():
 def test_wide_card_step_name():
     """test resolving step name with *"""
     execute_workflow("""
-[A_1]
+        [A_1]
 
-[*_2]
-assert step_name == 'A_2', f'step_name is {step_name}, A_2 expected'
-""")
+        [*_2]
+        assert step_name == 'A_2', f'step_name is {step_name}, A_2 expected'
+        """)
 
 
-def test_outfrom_prev_step():
+def test_outfrom_prev_step(clear_now_and_after):
     """Test output_from(-1) from output_from """
+    clear_now_and_after('A_1.txt')
     execute_workflow("""
-[A_1]
-output: 'A_1.txt'
-_output.touch()
+        [A_1]
+        output: 'A_1.txt'
+        _output.touch()
 
-[A_2]
-input: output_from(-1)
+        [A_2]
+        input: output_from(-1)
 
-[default]
-depends: sos_step('A_2')
+        [default]
+        depends: sos_step('A_2')
 
-""")
+        """)
 
 
 def test_step_from_numeric_step():
@@ -1794,14 +1798,11 @@ def test_depends_on_step_with_unspecified_input(clear_now_and_after):
     assert not os.path.isfile("A_4.txt")
 
 
-def test_output_from_workflow():
+def test_output_from_workflow(clear_now_and_after):
     """Test output from workflow"""
     #
     #
-    for file in ("A_1.txt", "A_2.txt"):
-        if os.path.isfile(file):
-            os.remove(file)
-    #
+    clear_now_and_after("A_1.txt", "A_2.txt")
     execute_workflow(r"""
         [A_1]
         output: f'{step_name}.txt'

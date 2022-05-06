@@ -14,7 +14,7 @@ from sos import execute_workflow
 @pytest.mark.skipif(
     not shutil.which('singularity'),
     reason='Skip test because docker is not installed.')
-def test_bash_in_singularity(self):
+def test_bash_in_singularity():
     '''Test action bash in singularity environment'''
     execute_workflow(r'''
         [0]
