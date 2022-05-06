@@ -151,24 +151,23 @@ def __named_output__(
     return targets._remove_empty_groups() if remove_empty_groups else targets
 
 
-def clear_output(output=None, backup_existing=True):
+def clear_output(output=None):
     """
     Remove file targets in `_output` when a step fails to complete
     """
     for target in env.sos_dict["_output"] if output is None else output:
-        if isinstance(target, file_target) and target.exists():
+        if isinstance(target, file_target):
             try:
-                if backup_existing:
-                    new_name = target + '.' + token_hex(3) + '.bak'
-                    target.rename(new_name)
-                    env.logger.warning(
-                        f"{target} removed to {new_name} due to failed step.")
-                else:
-                    target.unlink()
-                    env.logger.debug(f"Existing {target} removed.")
-                (target + '.md5').unlink(missing_ok=True)
+                #new_name = target + '.' + token_hex(3) + '.bak'
+                #target.rename(new_name)
+                #env.logger.debug(
+                #    f"{target} removed to {new_name} due to failed step.")
+                target.unlink()
+                (target + '.md5').unlink()
             except Exception as e:
-                env.logger.warning(f"Failed to remove {target}: {e}")
+                # ok if file does not exist (FileNotfoundError)
+                pass
+
 
 
 def get_traceback_msg(e):

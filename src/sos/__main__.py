@@ -836,6 +836,7 @@ def get_dryrun_parser(desc_only=False):
 
 def cmd_dryrun(args, workflow_args):
     args.__sig_mode__ = "ignore"
+    args.__sig_type__ = "default"
     args.__worker_procs__ = ["1"]
     args.__max_running_jobs__ = 1
     args.dryrun = True
