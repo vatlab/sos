@@ -200,8 +200,6 @@ def test_remote_execute(clear_now_and_after, script_factory):
     assert 0 == subprocess.call(
         "sos remote push docker --files local.txt -c ~/docker.yml", shell=True)
 
-    with open("test_remote.sos", "w") as tr:
-        tr.write()
     assert 0 == subprocess.call(
         f"sos run {test_remote_sos} -c ~/docker.yml -r docker -s force",
         shell=True,
@@ -245,7 +243,7 @@ def test_remote_workflow_remote_queue(script_factory):
         sh: expand=True
             echo `pwd` > {_output}
             echo I am {i} >> {_output}
-        '''
+        ''')
     assert 0 == subprocess.call(
         f"sos run {test_r_q} -c ~/docker.yml -r ts -q ts", shell=True)
 
