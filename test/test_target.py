@@ -63,8 +63,9 @@ def test_remove_targets():
     assert len(a._groups[1]._labels) == 1
 
 
-def test_sos_targets_signature():
+def test_sos_targets_signature(clear_now_and_after):
     """Test save and validate signatures of sos_targets"""
+    clear_now_and_after('a.txt', 'b.txt')
     with open("a.txt", "w") as a:
         a.write("text1")
     with open("b.txt", "w") as b:
@@ -383,10 +384,11 @@ touch a.txt
 @pytest.mark.skipif(
     sys.platform == "win32",
     reason="Windows executable cannot be created with chmod.")
-def test_output_executable():
+def test_output_executable(clear_now_and_after):
     """Testing target executable."""
     # change $PATH so that lls can be found at the current
     # directory.
+    clear_now_and_after('lls')
     os.environ["PATH"] += os.pathsep + "."
     script = SoS_Script("""
 [0]
@@ -496,7 +498,7 @@ touch {data1[0]} {_output}
 
 def test_shared_var_in_for_each(temp_factory, clear_now_and_after):
     temp_factory("1.txt", "2.txt")
-    clear_now_and_after("1.out", "2.out", "1.out2", "2.out2")
+    clear_now_and_after("1.out", "2.out", "1.out2", "2.out2", '2.out_2.out2', '1.out_1.out2', '1.out_2.out2', '2.out_1.out2')
     script = SoS_Script("""
 [work_1: shared = {'data': 'step_output'}]
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
@@ -516,67 +518,65 @@ touch {_output}
     Base_Executor(wf).run()
 
 
-def test_removed_depends():
+def test_removed_depends(clear_now_and_after):
     """Test a case where a dependent file has signature, but
     gets removed before the next run."""
-    script = SoS_Script("""
-[tet: provides='a.txt']
-run:
-echo "something" > a.txt
+    clear_now_and_after('a.txt', 'b.txt')
+    script = """
+        [tet: provides='a.txt']
+        run:
+        echo "something" > a.txt
 
-[20]
-depends: 'a.txt'
-output: 'b.txt'
-run:
-cat a.txt > b.txt
-""")
-    wf = script.workflow()
+        [20]
+        depends: 'a.txt'
+        output: 'b.txt'
+        run:
+        cat a.txt > b.txt
+        """
     # this should be ok.
-    Base_Executor(wf).run()
+    execute_workflow(script)
     # now let us remove a.txt (but the signature is still there)
-    os.remove("a.txt")
-    os.remove("b.txt")
-    Base_Executor(wf).run()
+    clear_now_and_after('a.txt', 'b.txt')
+    execute_workflow(script)
 
 
 def test_sos_step(clear_now_and_after):
     """Test target sos_step"""
     clear_now_and_after("t1.txt", "t2.txt", "5.txt", "10.txt", "20.txt")
 
-    script = SoS_Script("""
-[t1]
-run:
-touch t1.txt
+    script = """
+        [t1]
+        run:
+        touch t1.txt
 
-[t2: provides='t2.txt']
-depends: sos_step('t1')
-run:
-touch t2.txt
+        [t2: provides='t2.txt']
+        depends: sos_step('t1')
+        run:
+        touch t2.txt
 
-[5]
-run:
-touch 5.txt
+        [5]
+        run:
+        touch 5.txt
 
-[10]
-depends: sos_step('t2')
-run:
-touch 10.txt
+        [10]
+        depends: sos_step('t2')
+        run:
+        touch 10.txt
 
-[20]
-depends: sos_step('t1')
-run:
-touch 20.txt
-""")
-    wf = script.workflow()
-    env.config["sig_mode"] = "force"
+        [20]
+        depends: sos_step('t1')
+        run:
+        touch 20.txt
+        """
     # this should be ok.
-    Base_Executor(wf).run()
+    execute_workflow(script, options={'sig_mode': 'force'})
     for file in ["t1.txt", "t2.txt", "5.txt", "10.txt", "20.txt"]:
         assert file_target(file).target_exists(), file + " should exist"
 
 
-def test_zap():
+def test_zap(clear_now_and_after):
     """Test zap"""
+    clear_now_and_after('testzap1.txt.zapped', 'testzap.txt.zapped')
     with open("testzap.txt", "w") as sf:
         sf.write("some text")
     path("testzap.txt").zap()
@@ -614,8 +614,9 @@ def test_zap():
     assert not os.path.isfile("testzap1.txt")
 
 
-def test_zap_run():
+def test_zap_run(clear_now_and_after):
     """Test run with zapped input files"""
+    clear_now_and_after('zap1.txt.zapped')
     with open("zap1.txt", "w") as sf:
         sf.write("seomething")
     script = """\

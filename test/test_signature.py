@@ -49,15 +49,13 @@ def _testSignature(script, steps):
     assert res['__completed__']['__step_completed__'] == 0
     # all of them
     res = execute_workflow(
-        script,
-        options={
+        script, options={
             'sig_mode': 'default',
             'default_queue': 'localhost',
         })
     # now, rerun in build mode
     res = execute_workflow(
-        script,
-        options={
+        script, options={
             'sig_mode': 'build',
             'default_queue': 'localhost',
         })
@@ -74,8 +72,7 @@ def _testSignature(script, steps):
     #
     # now in assert mode, the signature should be there
     res = execute_workflow(
-        script,
-        options={
+        script, options={
             'sig_mode': 'assert',
             'default_queue': 'localhost',
         })
@@ -83,8 +80,7 @@ def _testSignature(script, steps):
 
     #
     res = execute_workflow(
-        script,
-        options={
+        script, options={
             'sig_mode': 'default',
             'default_queue': 'localhost',
         })
@@ -93,7 +89,7 @@ def _testSignature(script, steps):
     #
     # change script a little bit
     res = execute_workflow(
-        ' '*(len(script) - len(script.lstrip())) + '# comment\n' + script,
+        ' ' * (len(script) - len(script.lstrip())) + '# comment\n' + script,
         options={
             'sig_mode': 'assert',
             'default_queue': 'localhost',
@@ -297,11 +293,10 @@ def test_signature_after_removal_of_files(clear_signatures,
 @pytest.mark.skipif(
     sys.platform == 'win32',
     reason='Windows executable cannot be created with chmod.')
-def test_removal_of_intermediate_files(clear_signatures):
+def test_removal_of_intermediate_files(clear_signatures, clear_now_and_after):
     # if we zap the file, it
-    for f in ['midfile.txt', 'finalfile.txt', 'midfile.txt.zapped']:
-        if os.path.isfile(f):
-            os.remove(f)
+    clear_now_and_after('midfile.txt', 'finalfile.txt', 'midfile.txt.zapped')
+
     script = r'''
         [10]
 
@@ -532,8 +527,9 @@ def test_signature_with_vars(temp_factory, clear_now_and_after):
     assert ts == os.path.getmtime('b1.out')
 
 
-def test_action_signature(clear_signatures):
+def test_action_signature(clear_signatures, clear_now_and_after):
     '''Test action signature'''
+    clear_now_and_after('test_action.txt', 'lc.txt')
     with open('test_action.txt', 'w') as ta:
         ta.write('#something\n')
     script = r'''
@@ -589,11 +585,10 @@ def test_signature_with_without_task(clear_now_and_after):
     assert res['__completed__']['__step_completed__'] == 0
 
 
-def test_signature_with_dynamic_output(clear_signatures):
+def test_signature_with_dynamic_output(clear_signatures, clear_now_and_after):
     '''Test return of output from dynamic output'''
-    for i in range(5):
-        if os.path.exists(f'rep_{i}'):
-            shutil.rmtree(f'rep_{i}')
+    clear_now_and_after([f'rep_{i}' for i in range(5)])
+
     script = r'''
         [1: shared={'step1': 'step_output'}]
         input: for_each={'i': range(5)}, concurrent=True
@@ -614,21 +609,23 @@ def test_signature_with_dynamic_output(clear_signatures):
     assert res['__completed__']['__substep_completed__'] == 0
 
 
-def test_ignore_signature(clear_signatures):
+def test_ignore_signature(clear_signatures, clear_now_and_after):
     '''Test ignore signature mode #1028 '''
-    script = r'''
+    clear_now_and_after([f'out_{i}.txt' for i in range(3)])
+
+    execute_workflow(
+        r'''
         input: for_each={'i': range(3)}, concurrent=True
         output: f'out_{i}.txt'
         sh: expand=True
         touch {_output}
-        '''
-    execute_workflow(script, options={'sig_mode': 'ignore'})
+        ''',
+        options={'sig_mode': 'ignore'})
 
 
-def test_rebuid_signature(clear_signatures):
+def test_rebuid_signature(clear_signatures, clear_now_and_after):
     '''Test rebuilding signature'''
-    if os.path.isfile('a.txt'):
-        os.remove('a.txt')
+    clear_now_and_after('a.txt')
     script = r'''
         [A_1]
         output: 'a.txt'
@@ -658,11 +655,9 @@ def test_rebuid_signature(clear_signatures):
     assert res['__completed__']['__substep_completed__'] == 1
 
 
-def test_rebuid_signature_with_substeps(clear_signatures):
+def test_rebuid_signature_with_substeps(clear_signatures, clear_now_and_after):
     '''Test rebuilding signature'''
-    for i in range(4):
-        if os.path.isfile(f'a_{i}.txt'):
-            os.remove(f'a_{i}.txt')
+    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
     script = r'''
         [A_1]
         input: for_each=dict(i=range(4))

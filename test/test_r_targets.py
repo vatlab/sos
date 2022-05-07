@@ -11,6 +11,7 @@ import pytest
 from sos import execute_workflow
 
 
+@pytest.mark.xfail(reason="Sometimes there is no permission to install to R")
 @pytest.mark.skipif(
     not shutil.which("Rscript") or "TRAVIS" in os.environ,
     reason="R not installed")
@@ -41,8 +42,9 @@ def test_depends_r_library():
 
 
 @pytest.mark.skipif(not shutil.which("Rscript"), reason="R not installed")
-def test_reexecution():
+def test_reexecution(clear_now_and_after):
     """Test re-execution of steps with R_library"""
+    clear_now_and_after('1.txt')
     subprocess.call("R CMD REMOVE xtable", shell=True)
     wf = """
     [1]
