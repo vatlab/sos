@@ -360,7 +360,8 @@ def test_cycle():
     '''))
     # the workflow should call step K for step C_2, but not C_3
     wf = script.workflow()
-    pytest.raises(RuntimeError, Base_Executor(wf).initialize_dag)
+    with pytest.raises(RuntimeError):
+        Base_Executor(wf).initialize_dag()
 
 
 def test_long_chain(clear_now_and_after):
@@ -772,75 +773,65 @@ def test_literal_connection(clear_now_and_after):
 
 def test_variable_target():
     '''Test dependency caused by variable usage.'''
-    script = SoS_Script(
-        textwrap.dedent(r'''
-    [A: shared='b']
-    b = 1
+    execute_workflow(
+        r'''
+        [A: shared='b']
+        b = 1
 
-    [C: shared={'c':'k'}]
-    k = 2
+        [C: shared={'c':'k'}]
+        k = 2
 
-    [all: shared='p']
-    depends: sos_variable('c'), sos_variable('b')
+        [all: shared='p']
+        depends: sos_variable('c'), sos_variable('b')
 
-    p = c + b
+        p = c + b
 
-    '''))
-    wf = script.workflow('all')
-    Base_Executor(wf).run()
+        ''',
+        workflow='all')
     assert env.sos_dict['p'] == 3
 
 
 def test_reverse_shared_variable(clear_now_and_after):
     '''Test shared variables defined in auxiliary steps'''
     clear_now_and_after('a.txt')
-    script = SoS_Script(
-        textwrap.dedent(r'''
-    [A: shared='b', provides='a.txt']
-    b = 1
-    run:
-    touch a.txt
+    execute_workflow(
+        r'''
+        [A: shared='b', provides='a.txt']
+        b = 1
+        run:
+        touch a.txt
 
-    [B_1]
-    depends: 'a.txt'
+        [B_1]
+        depends: 'a.txt'
 
-    [B_2]
-    print(b)
+        [B_2]
+        print(b)
 
-    '''))
-    wf = script.workflow('B')
-    Base_Executor(wf).run()
+        ''',
+        workflow='B')
     assert env.sos_dict['b'] == 1
 
 
 def test_chained_depends(temp_factory):
     '''Test chain dependent'''
     temp_factory('a.bam', 'a.bam.bai', 'a.vcf')
-    script = SoS_Script(
-        textwrap.dedent(r'''
-    # this step provides variable `var`
-    [index: provides='{filename}.bam.bai']
-    input: f"{filename}.bam"
-    run: expand=True
-    echo "Generating {_output}"
-    touch {_output}
+    execute_workflow(
+        r'''
+        # this step provides variable `var`
+        [index: provides='{filename}.bam.bai']
+        input: f"{filename}.bam"
+        run: expand=True
+        echo "Generating {_output}"
+        touch {_output}
 
-    [call: provides='{filename}.vcf']
-    input:   f"{filename}.bam"
-    depends: f"{_input}.bai"
-    run: expand=True
-    echo "Calling variants from {_input} with {_depends} to {_output}"
-    touch {_output}
-    '''))
-    # if file_target('a.bam.bai').exists():
-    #     file_target('a.bam.bai').unlink()
-    # if file_target('a.vcf').exists():
-    #     file_target('a.vcf').unlink()
-    # self.touch('a.bam')
-    Base_Executor(script.workflow()).run(targets=['a.vcf'])
-    # for f in ('a.vcf', 'a.bam', 'a.bam.bai'):
-    #     if file_target(f).exists():
-    #         file_target(f).unlink()
+        [call: provides='{filename}.vcf']
+        input:   f"{filename}.bam"
+        depends: f"{_input}.bai"
+        run: expand=True
+        echo "Calling variants from {_input} with {_depends} to {_output}"
+        touch {_output}
+        ''',
+        targets=['a.vcf'])
 
 
 @pytest.mark.skipif(True, reason='This test is failing')
@@ -1008,8 +999,9 @@ def test_step_with_multiple_output(clear_now_and_after):
     clear_now_and_after('test.dot')
 
 
-def test_auxiliary_sos_step():
+def test_auxiliary_sos_step(clear_now_and_after):
     '''Testing the use of sos_step with auxiliary step. #736'''
+    clear_now_and_after('1.txt')
     execute_workflow('''
         [default]
         depends: '1.txt'
@@ -1111,6 +1103,7 @@ def test_sos_step_miniworkflow(clear_now_and_after):
 
 def test_compound_workflow(clear_now_and_after):
     '''Test the DAG of compound workflow'''
+    clear_now_and_after('test.dot')
     script = SoS_Script(
         textwrap.dedent('''
     [A_1]

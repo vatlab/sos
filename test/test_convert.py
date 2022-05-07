@@ -9,8 +9,9 @@ import textwrap
 from sos.converter import extract_workflow
 
 
-def test_script_to_html(temp_factory):
+def test_script_to_html(temp_factory, clear_now_and_after):
     '''Test sos show script --html'''
+    clear_now_and_after('temp1.sos.html', 'temp2.sos.html')
     script1 = textwrap.dedent('''
     [0]
     seq = range(3)
@@ -46,8 +47,7 @@ def test_script_to_html(temp_factory):
 
 def test_extract_workflow(sample_workflow):
     '''Test extract workflow from ipynb file'''
-    content = extract_workflow('sample_workflow.ipynb')
-    print(content)
+    content = extract_workflow(sample_workflow)
     assert content == textwrap.dedent('''\
     #!/usr/bin/env sos-runner
     #fileformat=SOS1.0

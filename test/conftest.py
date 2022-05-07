@@ -292,6 +292,9 @@ def sample_workflow():
 }
 ''')
 
+    yield 'sample_workflow.ipynb'
+
+    os.remove('sample_workflow.ipynb')
 
 @pytest.fixture
 def fastq_files():
@@ -504,6 +507,11 @@ AGGGTGGGGAGAATTACAAAGAACCTTCTTAAGAGTGGGGGAGATTACAAAGAACATTCTTAAGGGTGAGGGAGATTACA
 <A<FAF7A(<AFFKKA<KKKAFKF7<FKFKKKKK7,7,,(AFAKFKKFKAKKAKAFK7A,,FFA,<F7,,AAFFFK<FFAKKAFKF<,AAAFAFAK7FKK
 ''')
 
+    yield
+
+    shutil.rmtree('data')
+
+
 @pytest.fixture
 def test_workflow(clear_now_and_after):
     clear_now_and_after('temp')
@@ -535,3 +543,21 @@ run:
     for f in ('ut_f1', 'ut_d1/ut_f2', 'ut_d2/ut_d3/ut_f3'):
         with open(f, 'w') as tf:
             tf.write(f)
+
+#
+# We do not apply this automatically for now.
+#
+#@pytest.fixture(autouse=True)
+def check_extra_files(request, output_file='extra_files.txt'):
+    file_list = os.listdir('.') + [output_file]
+
+    yield
+
+    with open(output_file, 'a') as ofile:
+        for item in os.listdir('.'):
+            if item not in file_list:
+                ofile.write(f'{request.node.name}:\t{item}\n')
+                if os.path.isfile(item):
+                    os.remove(item)
+                elif os.path.isdir(item):
+                    shutil.rmtree(item)

@@ -887,8 +887,9 @@ def test_output_pattern(temp_factory):
     ]
 
 
-def test_output_from_input(temp_factory):
+def test_output_from_input(temp_factory, clear_now_and_after):
     """Test deriving output files from input files"""
+    clear_now_and_after("a.txt.bak", "b.txt.bak")
     temp_factory("a.txt", "b.txt")
     execute_workflow(
         r"""
@@ -1330,7 +1331,7 @@ def test_non_existent_dependent_target():
 
 def test_output_report(clear_now_and_after):
     """Test generation of report"""
-    clear_now_and_after("report.html")
+    clear_now_and_after("report.html", "1.txt", "2.txt", "3.txt")
     script = SoS_Script(r"""
 [1: shared = {'dfile':'_output'}]
 output: '1.txt'
@@ -1355,12 +1356,14 @@ cat {_input} > {_output}
     assert os.path.isfile("report.html")
 
 
+@pytest.mark.xfail(reason='dot may segfault')
 @pytest.mark.skipif(
     not shutil.which("dot") or sys.platform == "win32",
     reason="Graphviz not available under windows")
 def test_output_report_with_dag(clear_now_and_after):
     # test dag
-    clear_now_and_after("report.html")
+    clear_now_and_after("report.dag", "report.html", "1.txt", "2.txt", "4.txt")
+
     execute_workflow(
         r"""
         [1: shared = {'dfile':'_output'}]
@@ -1390,8 +1393,9 @@ def test_output_report_with_dag(clear_now_and_after):
     assert "Execution DAG" in content
 
 
-def test_sos_step_with_output():
+def test_sos_step_with_output(clear_now_and_after):
     """Test checking output of sos_step #981"""
+    clear_now_and_after('a')
     execute_workflow("""
         [step]
         output: 'a'
@@ -1427,11 +1431,9 @@ def test_multi_sos_step(clear_now_and_after):
         assert a1.read() == a2.read()
 
 
-def test_depends_auxi_and_forward():
+def test_depends_auxi_and_forward(clear_now_and_after):
     """Test depends on auxiliary, which then depends on a forward-workflow #983"""
-    for f in ("a_1", "a_2"):
-        if file_target(f).exists():
-            file_target(f).unlink()
+    clear_now_and_after("a_1", "a_2")
     res = execute_workflow("""
 
     [hg_1]
@@ -1456,11 +1458,10 @@ def test_depends_auxi_and_forward():
         assert a1.read() == a2.read()
 
 
-def test_depends_auxi_and_single_step_forward():
+def test_depends_auxi_and_single_step_forward(clear_now_and_after):
     """Test depends on auxiliary, which then depends on a single-step forward-workflow"""
-    for f in ("a_1", "a_2"):
-        if file_target(f).exists():
-            file_target(f).unlink()
+    clear_now_and_after("a_1", "a_2")
+
     res = execute_workflow("""
 
     [hg_1]
@@ -1548,12 +1549,13 @@ def test_group_by_with_emtpy_input():
         """)
 
 
-def test_depends_to_concurrent_substep():
+def test_depends_to_concurrent_substep(clear_now_and_after):
     """Testing forward style example"""
     # sos_variable('data') is passed to step [2]
     # but it is not passed to concurrent substep because
     # the variable is not used in the substep. This test
     # should fail at least under windows
+    clear_now_and_after('a.txt')
     execute_workflow("""
         [1: shared={'data': 'step_output'}]
         output: 'a.txt'
@@ -1639,8 +1641,8 @@ def test_return_output_in_step_output(clear_now_and_after):
 
 def test_output_from(clear_now_and_after):
     """Testing output_from input function"""
-    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
-    clear_now_and_after([f'g_{i}.txt' for i in range(4)])
+    clear_now_and_after([f'a_{i}.txt' for i in range(5)])
+    clear_now_and_after([f'g_{i}.txt' for i in range(5)])
     for wf in ("B", "C", "D", "E", "F", "G", "H"):
         execute_workflow(
             """\
@@ -2384,12 +2386,11 @@ def test_multi_depends(clear_now_and_after, temp_factory):
         assert os.path.isfile(file)
 
 
-def test_execute_ipynb():
+def test_execute_ipynb(sample_workflow):
     """Test extracting and executing workflow from .ipynb files"""
-    script = SoS_Script(filename="sample_workflow.ipynb")
+    script = SoS_Script(filename=sample_workflow)
     wf = script.workflow()
     Base_Executor(wf).run()
-
 
 @pytest.mark.skipif(
     True,

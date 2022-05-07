@@ -181,29 +181,27 @@ def test_worker_procs_with_task():
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
-def test_remote_execute(clear_now_and_after):
-    clear_now_and_after("result_remote.txt", "local.txt")
+def test_remote_execute(clear_now_and_after, script_factory):
+    clear_now_and_after("result_remote.txt", "result_remote1.txt", "local.txt")
 
+    test_remote_sos = script_factory("""
+        [10]
+        input: 'local.txt'
+        output: 'result_remote.txt'
+        task:
+
+        run:
+            cp local.txt result_remote.txt
+            echo 'adf' >> 'result_remote.txt'
+        """)
     with open("local.txt", "w") as w:
         w.write("something")
 
     assert 0 == subprocess.call(
         "sos remote push docker --files local.txt -c ~/docker.yml", shell=True)
 
-    with open("test_remote.sos", "w") as tr:
-        tr.write("""
-[10]
-input: 'local.txt'
-output: 'result_remote.txt'
-task:
-
-run:
-cp local.txt result_remote.txt
-echo 'adf' >> 'result_remote.txt'
-
-""")
     assert 0 == subprocess.call(
-        "sos run test_remote.sos -c ~/docker.yml -r docker -s force",
+        f"sos run {test_remote_sos} -c ~/docker.yml -r docker -s force",
         shell=True,
     )
 
@@ -236,26 +234,26 @@ echo 'adf' >> 'result_remote.txt'
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
-def test_remote_workflow_remote_queue(clear_now_and_after):
-    with open('test_r_q.sos', 'w') as script:
-        script.write('''
-input: for_each=dict(i=range(2))
-output: f'test_r_q_{i}.txt'
+def test_remote_workflow_remote_queue(script_factory):
+    test_r_q = script_factory('''
+        input: for_each=dict(i=range(2))
+        output: f'test_r_q_{i}.txt'
 
-task: walltime='10m', cores=1, mem='1G'
-sh: expand=True
-    echo `pwd` > {_output}
-    echo I am {i} >> {_output}
-    ''')
+        task: walltime='10m', cores=1, mem='1G'
+        sh: expand=True
+            echo `pwd` > {_output}
+            echo I am {i} >> {_output}
+        ''')
     assert 0 == subprocess.call(
-        "sos run test_r_q.sos -c ~/docker.yml -r ts -q ts", shell=True)
+        f"sos run {test_r_q} -c ~/docker.yml -r ts -q ts", shell=True)
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_signature_of_remote_target(clear_now_and_after, monkeypatch):
     """Test remote() target"""
     monkeypatch.setenv("SOS_DEBUG", "TASK,-")
-    clear_now_and_after("remote_file.txt")  # , "result.txt")
+    clear_now_and_after("remote_file.txt", "result.txt")
+
     with open("remote_file.txt", "w") as rf:
         rf.write("""line1
         line2

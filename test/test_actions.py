@@ -590,7 +590,7 @@ def test_report_2(clear_now_and_after):
 
 def test_report_3(clear_now_and_after):
     """Test action report"""
-    clear_now_and_after("report.txt")
+    clear_now_and_after("report.txt", "out.txt", "a.txt", "b.txt")
     #
     execute_workflow(r"""
         [A_1]
@@ -676,8 +676,9 @@ def test_option_workdir(temp_factory):
         assert "hello" == tmp.read()
 
 
-def test_action_script():
+def test_action_script(clear_now_and_after):
     """Test action script"""
+    clear_now_and_after("something.txt")
     execute_workflow(r"""
         [A_1]
         script: interpreter='python'
@@ -693,7 +694,7 @@ def test_action_script():
 def test_regenerate_report(clear_now_and_after):
     """Testing the regeneration of report once is needed. The problem
     here is the 'input' parameter of report."""
-    clear_now_and_after("a1.md", "a2.md", "out.md")
+    clear_now_and_after("a1.md", "a2.md", "out.md", "a1.txt", "a2.txt")
     script = r"""
         [A_1]
         output: 'a1.txt', 'a1.md'
