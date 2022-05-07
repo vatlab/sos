@@ -794,8 +794,17 @@ class file_target(path, BaseTarget):
 
     def target_signature(self):
         """Return file signature"""
+        full_md5 = env.config['sig_type'] == 'md5'
         if self.exists():
-            if not self._md5:
+            if full_md5:
+                md5_file = self + '.md5'
+                if not md5_file.exists(
+                ) or os.path.getmtime(self) > os.path.getmtime(md5_file):
+                    self._md5, md5 = fileMD5(self, sig_type='both')
+                    # write md5 file
+                    with open(md5_file, 'w') as mfile:
+                        mfile.write(f'MD5 ({self.name}) = {md5}\n')
+            elif not self._md5:
                 self._md5 = fileMD5(self)
             return (os.path.getmtime(self), os.path.getsize(self), self._md5)
         if (self + ".zapped").is_file():
@@ -815,6 +824,12 @@ class file_target(path, BaseTarget):
 
     def validate(self, sig=None):
         """Check if file matches its signature"""
+        if env.config['sig_type'] == 'md5':
+            md5_file = self + '.md5'
+            if md5_file.exists():
+                # validate against md5
+                with open(md5_file, 'r') as mfile:
+                    return mfile.readline().strip().split()[-1] == fileMD5(self, sig_type='full')
         if sig is not None:
             sig_mtime, sig_size, sig_md5 = sig
         else:
