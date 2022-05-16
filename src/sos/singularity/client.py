@@ -328,8 +328,8 @@ class SoS_SingularityClient:
                 exec_opts.extend([f"-B {x}" for x in binds])
                 kwargs.pop('bind', None)
 
-            for opt in ['disable_cache', 'nohttps', 'nonet', 'vm_err']:
-                if opt in kwargs and kwargs['opt']:
+            for opt in ['nv', 'disable_cache', 'nohttps', 'nonet', 'vm_err']:
+                if opt in kwargs and kwargs[opt]:
                     exec_opts.append('--' + opt.replace('_', '-'))
                     kwargs.pop(opt)
 
