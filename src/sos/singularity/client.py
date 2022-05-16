@@ -321,12 +321,22 @@ class SoS_SingularityClient:
                 args = '{filename:pq}'
             #
             # under mac, we by default share /Users within Singularity
+            exec_opts = []
             if 'bind' in kwargs:
                 binds = [kwargs['bind']] if isinstance(kwargs['bind'],
                                                        str) else kwargs['bind']
-                bind_opt = ' '.join(f"-B {x}" for x in binds)
-            else:
-                bind_opt = ''
+                exec_opts.extend([f"-B {x}" for x in binds])
+                kwargs.pop('bind', None)
+
+            for opt in ['disable_cache', 'nohttps', 'nonet', 'vm_err']:
+                if opt in kwargs and kwargs['opt']:
+                    exec_opts.append('--' + opt.replace('_', '-'))
+                    kwargs.pop(opt)
+
+            for opt in ['home', 'vm_cpu', 'vm_ip', 'vm_ram']:
+                if opt in kwargs:
+                    exec_opts.append('--' + opt.replace('_', '-') + ' ' + kwargs[opt])
+                    kwargs.pop(opt)
 
             cmd_opt = interpolate(
                 f'{interpreter if isinstance(interpreter, str) else interpreter[0]} {args}',
@@ -335,7 +345,8 @@ class SoS_SingularityClient:
                     'script': script
                 })
 
-            cmd = f"singularity exec {bind_opt} {self._image_file(image)} {cmd_opt}"
+            cmd = f"singularity exec {' '.join(exec_opts)} {self._image_file(image)} {cmd_opt}"
+
             env.logger.debug(cmd)
             if env.config['run_mode'] == 'dryrun':
                 print(f'HINT: {cmd}')
