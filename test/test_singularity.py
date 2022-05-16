@@ -19,7 +19,7 @@ def test_bash_in_singularity():
     execute_workflow(r'''
         [0]
         #run:  container='shub://singularityhub/ubuntu'
-        run:  container='docker://ubuntu'
+        run:  container='docker://ubuntu', engine='singularity'
         echo 'Echo'
         ''')
 
