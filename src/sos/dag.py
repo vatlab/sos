@@ -404,6 +404,7 @@ class SoS_DAG(nx.DiGraph):
             elif x._status is not None:
                 env.logger.warning(f'Unmarked step status {x._status}')
 
+        out = None
         try:
             out = nx.drawing.nx_pydot.to_pydot(self).to_string()
         except Exception as e:
