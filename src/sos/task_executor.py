@@ -751,7 +751,7 @@ class BaseTaskExecutor(object):
             "end_time": time.time(),
             "signature": {
                 task_id: signature.write()
-            } if signature else {},
+            } if signature and sos_dict["_output"] else {},
         }
 
     def _validate_task_signature(self, sig, saved_sig, task_id, is_subtask):
