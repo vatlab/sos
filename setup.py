@@ -91,7 +91,7 @@ setup(
         'pyyaml',
         'pygments',
         # for DAG, some version requires pydot, some requires pydotplus
-        'networkx',
+        'networkx!=2.8.3',
         'pydot',
         'pydotplus',
         'pexpect',
