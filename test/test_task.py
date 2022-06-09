@@ -628,7 +628,7 @@ echo 0.1
         assert "00:02:00" in out.decode()
 
 
-def test_task_signature(purge_tasks):
+def test_task_no_signature(purge_tasks):
     """Test re-execution of tasks"""
     with cd_new("temp_signature"):
         with open("test.sos", "w") as tst:
@@ -640,12 +640,40 @@ sh:
         subprocess.call("sos run test -s force -q localhost", shell=True)
         tasks = get_tasks()
         tf = TaskFile(tasks[0])
+        assert not tf.has_signature()
+        assert tf.status == "completed"
+        #
+        st = time.time()
+        subprocess.call("sos run test -q localhost", shell=True)
+        assert time.time() - st > 1
+
+
+def test_task_with_signature(purge_tasks, clear_now_and_after):
+    """Test re-execution of tasks"""
+    # now with a real signature
+    with cd_new("temp_signature"):
+        with open("test.sos", "w") as tst:
+            tst.write("""
+output: 'a.txt'
+task:
+sh: expand=True
+    sleep 3
+    touch {_output}
+""")
+        subprocess.call("sos run test -s force -q localhost", shell=True)
+        tasks = get_tasks()
+        tf = TaskFile(tasks[0])
         assert tf.has_signature()
         assert tf.status == "completed"
-        tf.tags_created_start_and_duration()
         #
+        st = time.time()
         subprocess.call("sos run test -q localhost", shell=True)
-        assert tf.tags_created_start_and_duration()[3] < 1
+        assert time.time() - st < 2
+        #
+        clear_now_and_after('a.txt')
+        st = time.time()
+        subprocess.call("sos run test -q localhost", shell=True)
+        assert time.time() - st > 2
 
 
 def test_wrong_host():
