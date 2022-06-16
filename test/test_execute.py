@@ -2614,3 +2614,35 @@ def test_concurrent_running_tasks(script_factory):
     ret2.wait()
     assert ret1.returncode == 0
     assert ret2.returncode == 0
+
+
+def test_reexecute_task_with_missing_output(clear_now_and_after):
+    '''Issue #1493'''
+    clear_now_and_after([f'a_{i}.txt' for i in range(10)])
+    clear_now_and_after([f'a_{i}.bak' for i in range(10)])
+    script = '''
+        [get_input: provides='{base}.txt']
+        sh: expand=True
+        echo {_output} > {_output}
+
+        [test]
+        input: [f'a_{i}.txt' for i in range(10)], group_by=1
+        output: _input.with_suffix('.bak')
+        task: trunk_size=3
+
+        run: expand = True
+            cp {_input} {_output}
+    '''
+    execute_workflow(script,
+        options={"default_queue": "localhost"})
+    assert file_target('a_2.bak').exists()
+    assert file_target('a_4.bak').exists()
+
+    file_target('a_2.bak').unlink()
+    file_target('a_4.bak').unlink()
+    assert not file_target('a_2.bak').exists()
+    assert not file_target('a_4.bak').exists()
+    execute_workflow(script,
+        options={"default_queue": "localhost"})
+    assert file_target('a_2.bak').exists()
+    assert file_target('a_4.bak').exists()
