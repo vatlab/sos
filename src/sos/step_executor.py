@@ -135,7 +135,7 @@ class TaskManager:
                 if slot:
                     for x in slot:
                         if x[1] is not None:
-                            to_be_submitted.extend(x[1])
+                            to_be_submitted.append(x[1])
 
         else:
             # save complete blocks
