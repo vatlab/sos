@@ -1109,11 +1109,12 @@ class SoS_Script:
                             cursect.extend(line)
                             continue
 
-                    # not script, or a the script has been wrapped
-                    action_name = mo.group("action_name")
-                    # newline should be kept in case of multi-line directive
-                    action_value = mo.group("action_value") + "\n"
-                    cursect.add_script(action_name, action_value, lineno)
+                    # # not script, or a the script has been wrapped
+                    # action_name = mo.group("action_name")
+                    # # newline should be kept in case of multi-line directive
+                    # action_value = mo.group("action_value") + "\n"
+                    # cursect.add_script(action_name, action_value, lineno)
+                    cursect.extend(line)
                 elif cursect.indented_script() > re.search(r"\S", line).start():
                     # case of wrapping previous script with NO indented action
                     #
