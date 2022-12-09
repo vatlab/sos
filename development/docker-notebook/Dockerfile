@@ -9,9 +9,9 @@
 #
 
 # tag created in Fev 2019
-FROM jupyter/datascience-notebook:r-3.6.3
+FROM jupyter/datascience-notebook:aarch64-lab-3.4.5
 
-MAINTAINER Bo Peng <Bo.Peng@bcm.edu>
+LABEL maintainer="Bo Peng <Bo.Peng@bcm.edu>"
 
 USER    root
 
@@ -26,6 +26,7 @@ RUN     apt-get install -y npm vim libgmp3-dev software-properties-common
 RUN     apt-get install -y libtool libffi-dev ruby ruby-dev make  libzmq3-dev libczmq-dev
 
 # Install some packages for our examples
+RUN     conda update conda -y
 RUN     conda install -c conda-forge -y r-arrow r-glmnet r-biocmanager
 #  ruby
 RUN     gem install ffi-rzmq
