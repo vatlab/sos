@@ -9,7 +9,7 @@
 #
 
 # tag created in Fev 2019
-FROM jupyter/datascience-notebook:aarch64-lab-3.4.5
+FROM jupyter/datascience-notebook:python-3.10
 
 LABEL maintainer="Bo Peng <Bo.Peng@bcm.edu>"
 
@@ -64,14 +64,13 @@ RUN     pip install docker markdown wand graphviz imageio pillow nbformat
 
 ## trigger rerun for sos updates
 ARG	    DUMMY=unknown
-RUN     DUMMY=${DUMMY} conda install -c conda-forge sos sos-notebook sos-r sos-julia sos-python sos-matlab sos-bash
-RUN     pip install sos-ruby sos-javascript sos-bioinfo
-RUN     conda install -c conda-forge jupyterlab-transient-display-data jupyterlab-sos
+RUN     DUMMY=${DUMMY} pip install sos sos-notebook sos-r sos-julia sos-python sos-matlab sos-bash sos-ruby sos-javascript sos-bioinfo markdown-kernel
+RUN     pip install jupyter-contrib-core transient-display-data jupyterlab-sos
 RUN     jupyter lab build --dev-build=False --minimize=False
 
 #       Markdown kernel
-RUN     pip install markdown-kernel
 RUN     python -m markdown_kernel.install --prefix /opt/conda/
+RUN     python -m sos_notebook.install --prefix /opt/conda/
 
 ENV     JUPYTER_ENABLE_LAB TRUE
 
