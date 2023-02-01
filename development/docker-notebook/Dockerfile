@@ -9,7 +9,7 @@
 #
 
 # tag created in Fev 2019
-FROM jupyter/datascience-notebook:aarch64-lab-3.4.5
+FROM jupyter/datascience-notebook:lab-3.4.7
 
 LABEL maintainer="Bo Peng <Bo.Peng@bcm.edu>"
 
@@ -25,15 +25,15 @@ RUN     octave --eval 'pkg install -forge dataframe'
 RUN     apt-get install -y npm vim libgmp3-dev software-properties-common
 RUN     apt-get install -y libtool libffi-dev ruby ruby-dev make  libzmq3-dev libczmq-dev
 
-# Install some packages for our examples
-RUN     conda update conda -y
-RUN     conda install -c conda-forge -y r-arrow r-glmnet r-biocmanager
 #  ruby
 RUN     gem install ffi-rzmq
 RUN     gem install iruby --pre
 RUN     gem install daru nmatrix
-
 RUN     iruby register --force
+
+# Install some packages for our examples
+RUN     conda update conda -y
+RUN     conda install -c conda-forge -y r-arrow r-glmnet r-biocmanager
 
 RUN     cd /home/jovyan; chown -R jovyan ../jovyan
 USER    jovyan
