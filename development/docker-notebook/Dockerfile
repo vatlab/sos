@@ -32,8 +32,11 @@ RUN     conda install -c conda-forge -y r-arrow r-glmnet r-biocmanager
 RUN     gem install ffi-rzmq
 RUN     gem install iruby --pre
 RUN     gem install daru nmatrix
-
 RUN     iruby register --force
+
+# Install some packages for our examples
+RUN     conda update conda -y
+RUN     conda install -c conda-forge -y r-arrow r-glmnet r-biocmanager
 
 RUN     cd /home/jovyan; chown -R jovyan ../jovyan
 USER    jovyan
