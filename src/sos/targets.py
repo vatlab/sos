@@ -1047,8 +1047,11 @@ class _sos_group(BaseTarget):
         return ret
 
     def __getstate__(self):
-        return dict(
-            indexes=self._indexes, labels=self._labels, properties=self._dict)
+        return {
+            'indexes': self._indexes,
+            'labels': self._labels,
+            'properties': self._dict
+        }
 
     def __setstate__(self, sdict):
         self._indexes = sdict["indexes"]

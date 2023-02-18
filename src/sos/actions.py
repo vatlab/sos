@@ -290,6 +290,7 @@ def SoS_Action(
                     )
                 os.environ.update(kwargs["env"])
             # workdir refers to directory inside of docker image
+            res = None
             if "workdir" in kwargs:
                 if not kwargs["workdir"] or not isinstance(
                         kwargs["workdir"], (str, os.PathLike)):
