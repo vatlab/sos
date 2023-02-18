@@ -8,15 +8,15 @@ import sys
 __all__ = ["__version__", "SOS_FULL_VERSION"]
 
 _py_ver = sys.version_info
-if _py_ver.major == 2 or (_py_ver.major == 3 and
-                          (_py_ver.minor, _py_ver.micro) < (6, 0)):
+if _py_ver.major == 2 or (_py_ver.major == 3 and (_py_ver.minor, _py_ver.micro) < (8, 0)):
     raise SystemError(
-        f"SOS requires Python 3.6 or higher. Please upgrade your Python {_py_ver.major}.{_py_ver.minor}.{_py_ver.micro}")
+        f"SOS requires Python 3.8 or higher. Please upgrade your Python {_py_ver.major}.{_py_ver.minor}.{_py_ver.micro}"
+    )
 
 # version of the SoS language
 __sos_version__ = "1.0"
 # version of the sos command
-__version__ = "0.23.5"
+__version__ = "0.24.0"
 __py_version__ = f"{_py_ver.major}.{_py_ver.minor}.{_py_ver.micro}"
 
 #

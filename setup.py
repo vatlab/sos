@@ -10,11 +10,9 @@ from setuptools import find_packages, setup
 from setuptools.command.bdist_egg import bdist_egg
 
 _py_ver = sys.version_info
-if _py_ver.major == 2 or (_py_ver.major == 3 and
-                          (_py_ver.minor, _py_ver.micro) < (6, 0)):
-    raise SystemError(
-        'sos requires Python 3.6 or higher. Please upgrade your Python {}.{}.{}.'
-        .format(_py_ver.major, _py_ver.minor, _py_ver.micro))
+if _py_ver.major == 2 or (_py_ver.major == 3 and (_py_ver.minor, _py_ver.micro) < (6, 0)):
+    raise SystemError('sos requires Python 3.6 or higher. Please upgrade your Python {}.{}.{}.'.format(
+        _py_ver.major, _py_ver.minor, _py_ver.micro))
 
 # obtain version of SoS
 with open('src/sos/_version.py') as version:
@@ -44,9 +42,7 @@ class bdist_egg_disabled(bdist_egg):
         )
 
 
-cmdclass = {
-    'bdist_egg': bdist_egg if 'bdist_egg' in sys.argv else bdist_egg_disabled
-}
+cmdclass = {'bdist_egg': bdist_egg if 'bdist_egg' in sys.argv else bdist_egg_disabled}
 
 setup(
     name="sos",
@@ -108,7 +104,6 @@ setup(
 [console_scripts]
 sos = sos.__main__:main
 sos-runner = sos.__main__:sosrunner
-
 
 [pygments.lexers]
 sos = sos.converter:SoS_Lexer
