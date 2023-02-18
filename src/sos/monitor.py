@@ -93,13 +93,13 @@ class TaskMonitor(threading.Thread):
             os.path.expanduser("~"), ".sos", "tasks", self.task_id + ".soserr")
         with open(err_file, "a") as err:
             err.write(msg + "\n")
-        tf = TaskFile(self.task_id)
-        tf.add_outputs()
-        tf.status = "aborted"
-        env.logger.warning(f"{self.task_id} ``aborted``: {msg}")
-        # kill the task
-        p = psutil.Process(self.pid)
-        p.kill()
+        # tf = TaskFile(self.task_id)
+        # tf.add_outputs()
+        # tf.status = "aborted"
+        env.logger.warning(f"{self.task_id} may be ``aborted``: {msg}")
+        # # kill the task
+        # p = psutil.Process(self.pid)
+        # p.kill()
 
     def run(self):
         counter = 0
@@ -141,17 +141,17 @@ class TaskMonitor(threading.Thread):
                         )
                     if self.max_procs is not None and cpu + ch_cpu > self.max_procs:
                         self._exceed_resource(
-                            f"Task {self.task_id} exits because of excessive use of procs (used {cpu + ch_cpu}, limit {self.max_procs})"
+                            f"Task {self.task_id} may be killed because of excessive use of procs (used {cpu + ch_cpu}, limit {self.max_procs})"
                         )
                     if self.max_mem is not None and mem + ch_mem > self.max_mem:
                         self._exceed_resource(
-                            f"Task {self.task_id} exits because of excessive use of max_mem (used {mem + ch_mem}, limit {self.max_mem})"
+                            f"Task {self.task_id} may be killed because of excessive use of max_mem (used {mem + ch_mem}, limit {self.max_mem})"
                         )
                 # walltime can be checked more frequently and does not have to wait for resource option
                 elapsed = time.time() - start_time
                 if self.max_walltime is not None and elapsed > self.max_walltime:
                     self._exceed_resource(
-                        f"Task {self.task_id} exits because of excessive run time (used {format_HHMMSS(int(elapsed))}, limit {format_HHMMSS(self.max_walltime)})"
+                        f"Task {self.task_id} may be killed because of excessive run time (used {format_HHMMSS(int(elapsed))}, limit {format_HHMMSS(self.max_walltime)})"
                     )
                 time.sleep(self.monitor_interval)
                 counter += 1
@@ -222,10 +222,10 @@ class WorkflowMonitor(threading.Thread):
             self.workflow_id + ".soserr")
         with open(err_file, "a") as err:
             err.write(msg + "\n")
-        env.logger.warning(f"{self.workflow_id} ``aborted``: {msg}")
-        # kill the workflow
-        p = psutil.Process(self.pid)
-        p.kill()
+        env.logger.warning(f"{self.workflow_id} may be ``aborted``: {msg}")
+        # # kill the workflow
+        # p = psutil.Process(self.pid)
+        # p.kill()
 
     def write(self, msg):
         with open(self.pulse_file, "a") as pd:
@@ -261,17 +261,17 @@ class WorkflowMonitor(threading.Thread):
                         )
                     if self.max_procs is not None and cpu + ch_cpu > self.max_procs:
                         self._exceed_resource(
-                            f"Workflow {self.workflow_id} exits because of excessive use of procs (used {cpu + ch_cpu}, limit {self.max_procs})"
+                            f"Workflow {self.workflow_id} may be killed because of excessive use of procs (used {cpu + ch_cpu}, limit {self.max_procs})"
                         )
                     if self.max_mem is not None and mem + ch_mem > self.max_mem:
                         self._exceed_resource(
-                            f"Workflow {self.workflow_id} exits because of excessive use of max_mem (used {mem + ch_mem}, limit {self.max_mem})"
+                            f"Workflow {self.workflow_id} may be killed because of excessive use of max_mem (used {mem + ch_mem}, limit {self.max_mem})"
                         )
                 # walltime can be checked more frequently and does not have to wait for resource option
                 elapsed = time.time() - start_time
                 if self.max_walltime is not None and elapsed > self.max_walltime:
                     self._exceed_resource(
-                        f"Workflow {self.workflow_id} exits because of excessive run time (used {format_HHMMSS(int(elapsed))}, limit {format_HHMMSS(self.max_walltime)})"
+                        f"Workflow {self.workflow_id} may be killed because of excessive run time (used {format_HHMMSS(int(elapsed))}, limit {format_HHMMSS(self.max_walltime)})"
                     )
                 time.sleep(self.monitor_interval)
                 counter += 1

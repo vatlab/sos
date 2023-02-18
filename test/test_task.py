@@ -483,20 +483,20 @@ def test_max_mem():
 
 def test_local_runtime_max_walltime():
     """Test server max_walltime option"""
-    with pytest.raises(Exception):
-        execute_workflow(
-            """
-            [10]
-            task:
-            import time
-            time.sleep(15)
-            """,
-            options={
-                "config_file": "~/docker.yml",
-                "default_queue": "local_limited",
-                "sig_mode": "force",
-            },
-        )
+    # gives warning, but do not kill
+    execute_workflow(
+        """
+        [10]
+        task:
+        import time
+        time.sleep(15)
+        """,
+        options={
+            "config_file": "~/docker.yml",
+            "default_queue": "local_limited",
+            "sig_mode": "force",
+        },
+    )
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
