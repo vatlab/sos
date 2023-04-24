@@ -89,7 +89,7 @@ class UnavailableLock(Error):
 #
 
 
-class BaseTarget(object):
+class BaseTarget:
     """A base class for all targets (e.g. a file)"""
 
     def __init__(self, *args, **kwargs):
@@ -828,7 +828,7 @@ class file_target(path, BaseTarget):
             md5_file = self + '.md5'
             if md5_file.exists():
                 # validate against md5
-                with open(md5_file, 'r') as mfile:
+                with open(md5_file) as mfile:
                     return mfile.readline().strip().split()[-1] == fileMD5(self, sig_type='full')
         if sig is not None:
             sig_mtime, sig_size, sig_md5 = sig
@@ -1076,15 +1076,15 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         pattern=None,
         group_with=None,
         for_each=None,
-        _undetermined: Union[bool, str] = None,
+        _undetermined: bool | str = None,
         _source="",
         _verify_existence=False,
         **kwargs,
     ):
         super().__init__()
-        self._targets: List = []
-        self._labels: List = []
-        self._groups: List = []
+        self._targets: list = []
+        self._labels: list = []
+        self._groups: list = []
         if isinstance(_undetermined, (bool, str)):
             self._undetermined = _undetermined
         else:
@@ -2329,7 +2329,7 @@ class RuntimeInfo(InMemorySignature):
             "sig_id": self.sig_id,
         }
 
-    def __setstate__(self, sdict: Dict[str, Any]):
+    def __setstate__(self, sdict: dict[str, Any]):
         if not sdict:
             self.sig_id = ""
             return

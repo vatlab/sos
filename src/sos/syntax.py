@@ -5,7 +5,8 @@
 
 import keyword
 import re
-from typing import Callable, List
+from typing import List
+from collections.abc import Callable
 
 SOS_TARGETS_OPTIONS = [
     "group_by",
@@ -17,7 +18,7 @@ SOS_TARGETS_OPTIONS = [
 ]
 SOS_INPUT_OPTIONS = ["concurrent"]
 SOS_OUTPUT_OPTIONS = []
-SOS_DEPENDS_OPTIONS: List = []
+SOS_DEPENDS_OPTIONS: list = []
 SOS_RUNTIME_OPTIONS = [
     "workdir",
     "walltime",
@@ -99,7 +100,7 @@ See online documentation for details of variables.
 #
 
 
-class LazyRegex(object):
+class LazyRegex:
     """A proxy around a real regex, which won't be compiled until accessed."""
 
     # These are the parameters on a real _sre.SRE_Pattern object, which we

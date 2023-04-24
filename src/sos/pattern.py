@@ -53,8 +53,8 @@ def regex(filepattern: str) -> str:
 
 def glob_wildcards(
     pattern: str,
-    files: Optional[List[str]] = None
-) -> Dict[str, Union[List[Any], List[str]]]:
+    files: list[str] | None = None
+) -> dict[str, list[Any] | list[str]]:
     """
     Glob the values of the wildcards by matching the given pattern to the filesystem.
     Returns a named tuple with a list of values for each wildcard.
@@ -90,7 +90,7 @@ def glob_wildcards(
 
 def apply_wildcards(
     pattern: str,
-    wildcards: Dict[str, Union[int, str]],
+    wildcards: dict[str, int | str],
     fill_missing: bool = False,
     fail_dynamic: bool = False,
     dynamic_fill: None = None,
@@ -114,7 +114,7 @@ def apply_wildcards(
     return SOS_WILDCARD.sub(format_match, pattern)
 
 
-def extract_pattern(pattern: str, ifiles: List[str]) -> Dict[str, any]:
+def extract_pattern(pattern: str, ifiles: list[str]) -> dict[str, any]:
     """This function match pattern to a list of input files, extract and return
     pieces of filenames as a list of variables with keys defined by pattern."""
     res = glob_wildcards(pattern, [])
@@ -129,7 +129,7 @@ def extract_pattern(pattern: str, ifiles: List[str]) -> Dict[str, any]:
     return res
 
 
-def expand_pattern(pattern: str) -> List[str]:
+def expand_pattern(pattern: str) -> list[str]:
     """This function expand patterns against the current namespace
     and return a list of filenames"""
     ofiles = []
@@ -141,7 +141,7 @@ def expand_pattern(pattern: str) -> List[str]:
         if key not in env.sos_dict:
             raise ValueError(f"Undefined variable {key} in pattern {pattern}")
         if not isinstance(env.sos_dict[key], str) and isinstance(
-                env.sos_dict[key], collections.Sequence):
+                env.sos_dict[key], collections.abc.Sequence):
             if sz is None:
                 sz = len(env.sos_dict[key])
                 wildcard = [copy.deepcopy(wildcard[0]) for x in range(sz)]

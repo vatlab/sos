@@ -92,7 +92,7 @@ class DaemonizedProcess(mp.Process):
         sys.stdout.flush()
         sys.stderr.flush()
         try:
-            si = open(os.devnull, "r")
+            si = open(os.devnull)
             so = open(os.devnull, "w")
             se = open(os.devnull, "w")
             os.dup2(si.fileno(), sys.stdin.fileno())
@@ -127,12 +127,12 @@ def _show_err_and_out(task_id, res) -> None:
             sys.stderr.write("\n")
 
 
-class LocalHost(object):
+class LocalHost:
     """For local host, no path map, send and receive ..."""
 
     def __init__(
         self,
-        config: Dict[str, Union[str, int, List[str]]],
+        config: dict[str, str | int | list[str]],
         test_connection: bool = True,
     ) -> None:
         super().__init__()
@@ -268,7 +268,7 @@ class LocalHost(object):
             p.start()
             p.join()
 
-    def receive_result(self, task_id: str) -> Dict[str, Any]:
+    def receive_result(self, task_id: str) -> dict[str, Any]:
         tf = TaskFile(task_id)
 
         res = tf.result
@@ -297,12 +297,12 @@ class LocalHost(object):
         return res
 
 
-class RemoteHost(object):
+class RemoteHost:
     """A remote host class that manages how to communicate with remote host"""
 
     def __init__(
         self,
-        config: Dict[str, Union[str, int, List[str]]],
+        config: dict[str, str | int | list[str]],
         test_connection: bool = True,
     ) -> None:
         self.config = config
@@ -358,7 +358,7 @@ class RemoteHost(object):
             return textMD5(targets.target_name())
         return msg
 
-    def _get_shared_dirs(self) -> List[Any]:
+    def _get_shared_dirs(self) -> list[Any]:
         value = self.config.get("shared", [])
         if isinstance(value, str):
             return [value]
@@ -367,8 +367,8 @@ class RemoteHost(object):
         raise ValueError(
             "Option shared can only be a string or a list of strings")
 
-    def _get_path_map(self) -> Dict[str, str]:
-        res: Dict = {}
+    def _get_path_map(self) -> dict[str, str]:
+        res: dict = {}
         # if user-specified path_map, it overrides CONFIG
         path_map = self.config.get("path_map", [])
         #
@@ -988,7 +988,7 @@ class RemoteHost(object):
             p.start()
             p.join()
 
-    def receive_result(self, task_id: str) -> Dict[str, int]:
+    def receive_result(self, task_id: str) -> dict[str, int]:
         # for filetype in ('res', 'status', 'out', 'err'):
         sys_task_dir = os.path.join(os.path.expanduser("~"), ".sos", "tasks")
         # use -p to preserve modification times so that we can keep the job status locally.
@@ -1109,11 +1109,11 @@ class RemoteHost(object):
 
 
 class Host:
-    host_instances: Dict = {}
+    host_instances: dict = {}
 
     def __init__(
         self,
-        alias: Optional[str] = "",
+        alias: str | None = "",
         start_engine: bool = True,
         test_connection: bool = True,
     ) -> None:
@@ -1186,7 +1186,7 @@ class Host:
         env.sos_dict["CONFIG"]["localhost"] = "localhost"
         return "localhost"
 
-    def _get_remote_host(self, alias: Optional[str]) -> str:
+    def _get_remote_host(self, alias: str | None) -> str:
         # get a remote host specified by Alias
         if "CONFIG" not in env.sos_dict or "hosts" not in env.sos_dict["CONFIG"]:
             from .utils import load_config_files
@@ -1210,7 +1210,7 @@ class Host:
         }
         return alias
 
-    def _get_config(self, alias: Optional[str]) -> None:
+    def _get_config(self, alias: str | None) -> None:
         LOCAL = self._get_local_host()
         DETECTED = self._detect_host()
         REMOTE = self._get_remote_host(alias)
@@ -1451,11 +1451,11 @@ class Host:
             )
         return self._task_engine.submit_task(task_id)
 
-    def check_status(self, tasks: List[str]) -> List[str]:
+    def check_status(self, tasks: list[str]) -> list[str]:
         # find the task engine
         return [self._task_engine.check_task_status(task) for task in tasks]
 
-    def retrieve_results(self, tasks: List[str]):
+    def retrieve_results(self, tasks: list[str]):
         return self._task_engine.get_results(tasks)
 
     def execute_workflow(self, script, cmd, **template_args):

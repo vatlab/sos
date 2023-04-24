@@ -25,7 +25,7 @@ monitor_interval = 5
 resource_monitor_interval = 60
 
 
-class TaskParams(object):
+class TaskParams:
     """A parameter object that encaptulates parameters sending to
     task executors. This would makes the output of workers, especially
     in the web interface much cleaner (issue #259)"""
@@ -295,7 +295,7 @@ class TaskStatus(Enum):
     completed = 6
 
 
-class TaskFile(object):
+class TaskFile:
     """
     The task file has the following format:
 
@@ -524,7 +524,7 @@ class TaskFile(object):
             params = self._get_params()
             # this is a master task, get all sub task IDs
             if hasattr(params, "task_stack"):
-                missing_tasks = set([x[0] for x in params.task_stack])
+                missing_tasks = {x[0] for x in params.task_stack}
                 #
                 cache_file = os.path.join(os.path.expanduser("~"), ".sos", "tasks", self.task_id + ".cache")
                 results = []
@@ -1007,7 +1007,7 @@ def remove_task_files(task: str, exts: list):
                     pass
 
 
-def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
+def check_task(task, hint={}) -> dict[str, str | dict[str, float]]:
     # when testing. if the timestamp is 0, the file does not exist originally, it should
     # still does not exist. Otherwise the file should exist and has the same timestamp
     if (hint and hint["status"] not in ("pending", "running") and all(
@@ -1166,7 +1166,7 @@ def check_tasks(tasks, is_all: bool):
         return {}
     cache_file: str = os.path.join(os.path.expanduser("~"), ".sos", "tasks", "status_cache.pickle")
     #
-    status_cache: Dict = {}
+    status_cache: dict = {}
     if os.path.isfile(cache_file):
         try:
             with fasteners.InterProcessLock(cache_file + "_"):
@@ -1213,7 +1213,7 @@ def print_task_status(
     #     ]
     import glob
 
-    all_tasks: List = []
+    all_tasks: list = []
     if check_all:
         tasks = glob.glob(os.path.join(os.path.expanduser("~"), ".sos", "tasks", "*.task"))
         all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x)) for x in tasks]
@@ -1723,7 +1723,7 @@ def purge_tasks(tasks, purge_all=None, age=None, status=None, tags=None, verbosi
         all_tasks = [x for x in all_tasks if any(x in tags for x in TaskFile(x[0]).tags.split())]
     #
     # remoe all task files
-    all_tasks = set([x[0] for x in all_tasks])
+    all_tasks = {x[0] for x in all_tasks}
     if all_tasks:
         #
         # find all related files, including those in nested directories

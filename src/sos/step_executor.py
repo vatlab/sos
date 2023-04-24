@@ -28,7 +28,7 @@ from .tasks import MasterTaskParams, TaskFile
 from .utils import (ArgumentError, ProcessKilled, StopInputGroup, TerminateExecution, env, get_localhost_ip,
                     get_traceback, short_repr, textMD5)
 
-__all__: List = []
+__all__: list = []
 
 
 class TaskManager:
@@ -510,8 +510,8 @@ class Base_Step_Executor:
 
         # create directory
         if ofiles.valid():
-            parents = set(
-                [os.path.abspath(os.path.join(ofile, os.pardir)) for ofile in ofiles if isinstance(ofile, file_target)])
+            parents = {
+                os.path.abspath(os.path.join(ofile, os.pardir)) for ofile in ofiles if isinstance(ofile, file_target)}
             for parent_dir in parents:
                 if parent_dir and not os.path.isdir(parent_dir):
                     os.makedirs(parent_dir, exist_ok=True)

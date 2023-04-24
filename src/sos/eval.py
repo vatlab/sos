@@ -220,7 +220,7 @@ def get_accessed(node):
     return names
 
 
-def accessed_vars(statement: str, mode: str = "exec") -> Set[str]:
+def accessed_vars(statement: str, mode: str = "exec") -> set[str]:
     """Parse a Python statement and analyze the symbols used. The result
     will be used to determine what variables a step depends upon."""
     try:
@@ -273,7 +273,7 @@ def _is_expr(expr):
         return False
 
 
-class StatementHash(object):
+class StatementHash:
     stmt_hash = {}
 
     def __init__(self) -> None:
@@ -388,7 +388,7 @@ def SoS_exec(script: str,
 #
 
 
-class Undetermined(object):
+class Undetermined:
 
     def __init__(self, expr: str = "") -> None:
         if not isinstance(expr, str):
@@ -411,10 +411,10 @@ class Undetermined(object):
         return self
 
 
-class on_demand_options(object):
+class on_demand_options:
     """Expression that will be evaluated upon request."""
 
-    def __init__(self, items: Optional[Dict[str, Any]]) -> None:
+    def __init__(self, items: dict[str, Any] | None) -> None:
         self._expressions = {}
         if items:
             self._expressions.update(items)
@@ -505,4 +505,3 @@ def analyze_global_statements(global_stmt):
                     f"Variable {key} cannot be defined in global section because it cannot be pickled to workers."
                 ) from e
     return global_def, global_vars
-    

@@ -31,7 +31,7 @@ def signal_handler(*args, **kwargs):
     raise ProcessKilled()
 
 
-class BaseTaskExecutor(object):
+class BaseTaskExecutor:
     """Task executor used to execute specified tasks. Any customized task executor
     should derive from this class.
     """
@@ -263,7 +263,7 @@ class BaseTaskExecutor(object):
                     if not os.path.isfile(logfile):
                         raise ValueError(f"logfile {logfile} does not exist after the completion of task")
                     try:
-                        with open(logfile, "r") as log:
+                        with open(logfile) as log:
                             my_stdout.write(f"logfile: {logfile}\n")
                             my_stdout.write(log.read())
                     except Exception as e:

@@ -614,11 +614,11 @@ def get_output_from_steps(stmt, last_step):
 
 def analyze_section(
     section: SoS_Step,
-    default_input: Optional[sos_targets] = None,
-    default_output: Optional[sos_targets] = None,
+    default_input: sos_targets | None = None,
+    default_output: sos_targets | None = None,
     context=None,
     analysis_type="initial",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc."""
 

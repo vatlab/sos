@@ -14,7 +14,7 @@ from .controller import request_answer_from_controller
 from .utils import dot_to_gif, env, format_duration
 
 
-class WorkflowSig(object):
+class WorkflowSig:
 
     def __init__(self, workflow_id):
         self.data = defaultdict(lambda: defaultdict(list))

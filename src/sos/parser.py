@@ -45,7 +45,7 @@ class ParsingError(Error):
             f'File contains parsing errors: {filename if filename != "<string>" else ""}',
         )
         self.filename = filename
-        self.errors: List[Tuple[int, str]] = []
+        self.errors: list[tuple[int, str]] = []
         self.args = (filename,)
 
     def append(self, lineno: int, line: str, msg: str) -> None:
@@ -87,13 +87,13 @@ def is_type_hint(stmt: str) -> bool:
     # input: variable
     #
     if "=" not in stmt:
-        action, par = [x.strip() for x in stmt.split(":", 1)]
+        action, par = (x.strip() for x in stmt.split(":", 1))
     else:
         # one parameter?
         #
         # action: input={'a': b}
         #
-        action, par = [x.strip() for x in stmt.split("=", 1)[0].split(":", 1)]
+        action, par = (x.strip() for x in stmt.split("=", 1)[0].split(":", 1))
 
     if action in SOS_DIRECTIVES:
         return False
@@ -133,7 +133,7 @@ def is_type_hint(stmt: str) -> bool:
 
 
 def extract_option_from_arg_list(options: str, optname: str,
-                                 default_value: None) -> Tuple[Any, str]:
+                                 default_value: None) -> tuple[Any, str]:
     if not options:
         return default_value, options
     try:
@@ -241,10 +241,10 @@ class SoS_Step:
         # it initially hold multiple names with/without wildcard characters
         self.names = [] if names is None else names
         # everything before step process
-        self.statements: List = []
-        self.global_parameters: Dict = {}
-        self.parameters: Dict = {}
-        self.substep_parameters: Set = set()
+        self.statements: list = []
+        self.global_parameters: dict = {}
+        self.parameters: dict = {}
+        self.substep_parameters: set = set()
         # step processes
         self.global_stmts = ""
         self.global_def = ""
@@ -257,10 +257,10 @@ class SoS_Step:
         # will be inserted to each step of the workflow.
         self.is_global = is_global
         # indicate the type of input of the last line
-        self.values: List = []
+        self.values: list = []
         self.lineno = 0
         #
-        self.runtime_options: Dict = {}
+        self.runtime_options: dict = {}
         self.options = on_demand_options(options)
         #
         # string mode to collect all strings as part of an action
@@ -306,7 +306,7 @@ class SoS_Step:
         leading = INDENTED.match(self._script)
         return 0 if leading is None else len(leading.group(2))
 
-    def category(self) -> Optional[str]:
+    def category(self) -> str | None:
         """Determine the category of existing statement"""
         if self.statements:
             if self.statements[-1][0] == ":":
@@ -409,9 +409,9 @@ class SoS_Step:
 
     def add_directive(
         self,
-        key: Optional[str],
+        key: str | None,
         value: str,
-        lineno: Optional[int] = None,
+        lineno: int | None = None,
         comment: str = "",
     ) -> None:
         """Assignments are items with ':' type """
@@ -431,7 +431,7 @@ class SoS_Step:
     def add_script(self,
                    key: str,
                    value: str,
-                   lineno: Optional[int] = None) -> None:
+                   lineno: int | None = None) -> None:
         """script starts with key: value"""
         # we need a fake directive here because the : directive can be multi-line and
         # we need to borrow the syntax checking of directives here.
@@ -442,7 +442,7 @@ class SoS_Step:
         if lineno:
             self.lineno = lineno
 
-    def add_statement(self, line: str, lineno: Optional[int] = None) -> None:
+    def add_statement(self, line: str, lineno: int | None = None) -> None:
         """statements are regular python statements"""
         # there can be only one statement block
         if self.category() != "statements":
@@ -507,7 +507,7 @@ class SoS_Step:
                 if x[1] not in ("", "\n")
             ]
 
-        tokens: List = []
+        tokens: list = []
         for statement in self.statements:
             tokens.extend(
                 _get_tokens(statement[2] if statement[0] ==
@@ -664,15 +664,15 @@ class SoS_Workflow:
         self,
         content: "SoS_ScriptContent",
         workflow_name: str,
-        allowed_steps: Optional[str],
-        sections: List[SoS_Step],
+        allowed_steps: str | None,
+        sections: list[SoS_Step],
         global_stmts: str,
     ) -> None:
         """create a workflow from its name and a list of SoS_Sections (using name matching)"""
         self.content = content
         self.name = workflow_name if workflow_name else "default"
-        self.sections: List = []
-        self.auxiliary_sections: List = []
+        self.sections: list = []
+        self.auxiliary_sections: list = []
         self.global_stmts = global_stmts
         #
         for section in sections:
@@ -785,9 +785,9 @@ class SoS_Workflow:
         return any(x.has_external_task() for x in self.sections) or any(
             x.has_external_task() for x in self.auxiliary_sections)
 
-    def parameters(self) -> Dict[str, str]:
+    def parameters(self) -> dict[str, str]:
         # collect parameters defined by `parameter:` of steps
-        par: Dict = {}
+        par: dict = {}
         for x in self.sections + self.auxiliary_sections:
             par.update(x.parameters)
         return {x: y[0] for x, y in par.items()}
@@ -806,7 +806,7 @@ class SoS_ScriptContent:
 
     def __init__(self,
                  content: str = "",
-                 filename: Optional[str] = None) -> None:
+                 filename: str | None = None) -> None:
         self.content = content
         self.filename = filename
         self.included = []
@@ -839,8 +839,8 @@ class SoS_ScriptContent:
 class SoS_Script:
 
     def __init__(self,
-                 content: Optional[str] = "",
-                 filename: Optional[str] = None) -> None:
+                 content: str | None = "",
+                 filename: str | None = None) -> None:
         """Parse a sectioned SoS script file. Please refer to the SoS manual
         for detailed specification of this format.
 
@@ -932,7 +932,7 @@ class SoS_Script:
             if section.is_global:
                 section.names = self.workflows
 
-    def _find_include_file(self, sos_file: str) -> Tuple[str, str]:
+    def _find_include_file(self, sos_file: str) -> tuple[str, str]:
         # we could almost use SoS_script directly but we need to be able to start searching
         # from path of the master file.
         try:
@@ -973,7 +973,7 @@ class SoS_Script:
         self._last_comment = ""
 
     def _read(self, fp: TextIOBase) -> None:
-        self.sections: List = []
+        self.sections: list = []
         self.format_version: str = "1.0"
         self.gloal_def: str = ""
         #
@@ -1386,7 +1386,7 @@ class SoS_Script:
         #
         # if there is no section in the script, we create a default section with global
         # definition being the content.
-        global_parameters: Dict = {}
+        global_parameters: dict = {}
         if not [x for x in self.sections if not x.is_global]:
             self.sections.append(
                 SoS_Step(self.content, [("default", None, None)]))
@@ -1432,7 +1432,7 @@ class SoS_Script:
             section.md5 = textMD5(section.get_tokens())
 
     def workflow(self,
-                 workflow_name: Optional[str] = None,
+                 workflow_name: str | None = None,
                  use_default: bool = True) -> SoS_Workflow:
         """Return a workflow with name_step+name_step specified in wf_name
         This function might be called recursively because of nested
