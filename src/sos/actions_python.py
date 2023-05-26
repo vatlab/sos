@@ -6,30 +6,29 @@
 from sos.actions import SoS_Action, SoS_ExecuteScript
 
 
-@SoS_Action(acceptable_args=["script", "args"])
-def python(script, args="", **kwargs):
+@SoS_Action(acceptable_args=["script", "interpreter", "args", "entrypoint"])
+def python(script, interpreter="", args="", entrypoint="", **kwargs):
     """Execute specified script using python (which can be python 2 or 3 depending on
     system configuration. This action accepts common action arguments such as
     input, active, workdir, docker_image and args. In particular, content of one or more files
     specified by option input would be prepended before the specified script."""
-    return SoS_ExecuteScript(script, "python", ".py", args).run(**kwargs)
+    return SoS_ExecuteScript(script, interpreter or "python", ".py", args, entrypoint).run(**kwargs)
 
 
-@SoS_Action(acceptable_args=["script", "args"])
-def python2(script, args="", **kwargs):
+@SoS_Action(acceptable_args=["script", "interpreter", "args", "entrypoint"])
+def python2(script, interpreter="", args="", entrypoint="", **kwargs):
     """Execute specified script using python2, and python if python2 does
     not exist. This action accepts common action arguments such as
     input, active, workdir, docker_image and args. In particular, content of one or more files
     specified by option input would be prepended before the specified script."""
-    return SoS_ExecuteScript(script, ["python2", "python2.7", "python"], ".py",
-                             args).run(**kwargs)
+    return SoS_ExecuteScript(script, interpreter or ["python2", "python2.7", "python"], ".py", args,
+                             entrypoint).run(**kwargs)
 
 
-@SoS_Action(acceptable_args=["script", "args"])
-def python3(script, args="", **kwargs):
+@SoS_Action(acceptable_args=["script", "interpreter", "args", "entrypoint"])
+def python3(script, interpreter="", args="", entrypoint="", **kwargs):
     """Execute specified script using python3, and python if python3 does
     not exist. This action accepts common action arguments such as
     input, active, workdir, docker_image and args. In particular, content of one or more files
     specified by option input would be prepended before the specified script."""
-    return SoS_ExecuteScript(script, ["python3", "python"], ".py",
-                             args).run(**kwargs)
+    return SoS_ExecuteScript(script, interpreter or ["python3", "python"], ".py", args, entrypoint).run(**kwargs)

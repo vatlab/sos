@@ -6,9 +6,9 @@
 from sos.actions import SoS_Action, SoS_ExecuteScript
 
 
-@SoS_Action(acceptable_args=["script", "args"])
-def ruby(script, args="", **kwargs):
+@SoS_Action(acceptable_args=["script", "interpreter", "args", "entrypoint"])
+def ruby(script, interpreter="", args="", entrypoint="", **kwargs):
     """Execute specified script using ruby. This action accepts common action arguments such as
     input, active, workdir, docker_image and args. In particular, content of one or more files
     specified by option input would be prepended before the specified script."""
-    return SoS_ExecuteScript(script, "ruby", ".rb", args).run(**kwargs)
+    return SoS_ExecuteScript(script, interpreter or "ruby", ".rb", args, entrypoint).run(**kwargs)

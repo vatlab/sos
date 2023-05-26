@@ -18,15 +18,12 @@ from .targets_r import R_library
 
 
 @SoS_Action(
-    acceptable_args=["script", "args"],
-    default_args={
-        "default_env": {
-            "R_DEFAULT_PACKAGES":
-                "datasets,methods,utils,stats,grDevices,graphics"
-        }
-    },
+    acceptable_args=["script", "interpreter", "args", "entrypoint"],
+    default_args={"default_env": {
+        "R_DEFAULT_PACKAGES": "datasets,methods,utils,stats,grDevices,graphics"
+    }},
 )
-def R(script, args="", **kwargs):
+def R(script, interpreter="", args="", entrypoint="", **kwargs):
     """Execute specified script with command Rscript, with default options
     "--default-packages=datasets,methods,utils,stats,grDevices,graphics". This action accepts
     common action arguments such as input, active, workdir, docker_image and args.
@@ -35,17 +32,17 @@ def R(script, args="", **kwargs):
     """
     # > getOption('defaultPackages')
     # [1] "datasets"  "utils"     "grDevices" "graphics"  "stats"     "methods"
-    return SoS_ExecuteScript(script, "Rscript", ".R", args).run(**kwargs)
+    return SoS_ExecuteScript(script, interpreter or "Script", ".R", args, entrypoint).run(**kwargs)
 
 
-@SoS_Action(acceptable_args=["script", "args"])
-def Rmarkdown(
-    script=None,
-    input=None,
-    output=None,
-    args="{input:r}, output_file={output:ar}",
-    **kwargs,
-):
+@SoS_Action(acceptable_args=["script", "interpreter", "args", "entrypoint"])
+def Rmarkdown(script=None,
+              input=None,
+              output=None,
+              interpreter="",
+              entrypoint="",
+              args="{input:r}, output_file={output:ar}",
+              **kwargs):
     """Convert input file to output using Rmarkdown
 
     The input can be specified in three ways:
@@ -76,9 +73,7 @@ def Rmarkdown(
     output = sos_targets(output)
     if len(output) == 0:
         write_to_stdout = True
-        output = sos_targets(
-            tempfile.NamedTemporaryFile(
-                mode="w+t", suffix=".html", delete=False).name)
+        output = sos_targets(tempfile.NamedTemporaryFile(mode="w+t", suffix=".html", delete=False).name)
     else:
         write_to_stdout = False
     #
@@ -90,19 +85,17 @@ def Rmarkdown(
         #        clean = TRUE, params = NULL, knit_meta = NULL, envir = parent.frame(),
         #        run_Rmarkdown = TRUE, quiet = FALSE, encoding = getOption("encoding"))
         cmd = interpolate(
-            f'Rscript -e "rmarkdown::render({args})"',
+            f'{entrypoint} {interpreter or "Rscript"} -e "rmarkdown::render({args})"',
             {
                 "input": input,
                 "output": output
             },
         )
-        if "ACTION" in env.config["SOS_DEBUG"] or "ALL" in env.config[
-                "SOS_DEBUG"]:
+        if "ACTION" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
             env.log_to_file("ACTION", f'Running command "{cmd}"')
         if env.config["run_mode"] == "interactive":
             # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
-            p = subprocess.Popen(
-                cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             # pid = p.pid
             out, err = p.communicate()
             sys.stdout.write(out.decode())
@@ -124,9 +117,7 @@ def Rmarkdown(
                 "output": sos_targets(temp_file)
             },
         )
-        raise RuntimeError(
-            f'Failed to execute script. Please use command \n"{cmd}"\nunder {os.getcwd()} to test it.'
-        )
+        raise RuntimeError(f'Failed to execute script. Please use command \n"{cmd}"\nunder {os.getcwd()} to test it.')
     if write_to_stdout:
         with open(str(output[0])) as out:
             sys.stdout.write(out.read())
