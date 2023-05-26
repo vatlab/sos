@@ -298,6 +298,7 @@ class SoS_SingularityClient:
             interpreter='',
             args='',
             suffix='.sh',
+            entrypoint='',
             **kwargs):
         self._ensure_singularity()
         #
@@ -339,7 +340,7 @@ class SoS_SingularityClient:
                     kwargs.pop(opt)
 
             cmd_opt = interpolate(
-                f'{interpreter if isinstance(interpreter, str) else interpreter[0]} {args}',
+                f'{entrypoint} {interpreter if isinstance(interpreter, str) else interpreter[0]} {args}'.strip(),
                 {
                     'filename': path(tempdir) / tempscript,
                     'script': script

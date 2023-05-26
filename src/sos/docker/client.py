@@ -320,6 +320,7 @@ class SoS_DockerClient:
             interpreter='',
             args='',
             suffix='.sh',
+            entrypoint='',
             **kwargs):
         if self.client is None:
             raise RuntimeError(
@@ -368,7 +369,7 @@ class SoS_DockerClient:
             if script:
                 volumes_opt += f' -v {path(tempdir)/tempscript:p}:/var/lib/sos/{tempscript}'
             cmd_opt = interpolate(
-                f'{interpreter if isinstance(interpreter, str) else interpreter[0]} {args}',
+                f'{entrypoint} {interpreter if isinstance(interpreter, str) else interpreter[0]} {args}'.strip(),
                 {
                     'filename': sos_targets(f'/var/lib/sos/{tempscript}'),
                     'script': script

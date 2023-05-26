@@ -378,6 +378,7 @@ class SoS_ExecuteScript:
                 self.interpreter,
                 self.args,
                 self.suffix,
+                self.entrypoint,
                 **kwargs,
             )
         elif "engine" in kwargs and kwargs["engine"] == "singularity":
@@ -390,6 +391,7 @@ class SoS_ExecuteScript:
                 self.interpreter,
                 self.args,
                 self.suffix,
+                self.entrypoint,
                 **kwargs,
             )
         else:
@@ -432,7 +434,7 @@ class SoS_ExecuteScript:
                 #
                 if env.config["run_mode"] == "dryrun":
                     cmd = interpolate(
-                        f"{self.interpreter} {self.args}",
+                        f"{self.entrypoint} {self.interpreter} {self.args}".strip(),
                         {
                             "filename": path("SCRIPT"),
                             "script": self.script
@@ -445,14 +447,14 @@ class SoS_ExecuteScript:
                         print(f"HINT: {cmd}\n{self.script}\n")
                     return None
                 cmd = interpolate(
-                    f"{self.interpreter} {self.args}",
+                    f"{self.entrypoint} {self.interpreter} {self.args}".strip(),
                     {
                         "filename": sos_targets(script_file),
                         "script": self.script
                     },
                 )
                 transcript_cmd = interpolate(
-                    f"{self.interpreter} {self.args}",
+                    f"{self.entrypoint} {self.interpreter} {self.args}".strip(),
                     {
                         "filename": sos_targets("SCRIPT"),
                         "script": self.script
