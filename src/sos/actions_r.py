@@ -32,7 +32,7 @@ def R(script, interpreter="", args="", entrypoint="", **kwargs):
     """
     # > getOption('defaultPackages')
     # [1] "datasets"  "utils"     "grDevices" "graphics"  "stats"     "methods"
-    return SoS_ExecuteScript(script, interpreter or "RScript", ".R", args, entrypoint).run(**kwargs)
+    return SoS_ExecuteScript(script, interpreter or "Rscript", ".R", args, entrypoint).run(**kwargs)
 
 
 @SoS_Action(acceptable_args=["script", "interpreter", "args", "entrypoint"])
