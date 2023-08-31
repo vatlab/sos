@@ -77,7 +77,7 @@ class DaemonizedProcess(mp.Process):
             sys.exit(1)
 
         os.setsid()
-        os.umask(0)
+        os.umask(os.umask(0))
         # do second fork
         try:
             pid = os.fork()
