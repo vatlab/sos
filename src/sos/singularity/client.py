@@ -329,12 +329,18 @@ class SoS_SingularityClient:
                 exec_opts.extend([f"-B {x}" for x in binds])
                 kwargs.pop('bind', None)
 
-            for opt in ['nv', 'disable_cache', 'nohttps', 'nonet', 'vm_err']:
+            for opt in ['nv', 'nvccli', 'disable_cache', 'nohttps', 'nonet', 'vm_err', 'writable',
+                        'writable_tmpfs', 'vm', 'uts', 'userns', 'rocm', 'pid', 'passphrase',
+                        'no_mark', 'no_privs', 'no_init', 'no_https', 'no_home', 'net',
+                        'keep_privs', 'fakeroot'', disable_cache', 'containall', 'contain',
+                        'compat', 'cleanenv', 'allow_setuid']:
                 if opt in kwargs and kwargs[opt]:
                     exec_opts.append('--' + opt.replace('_', '-'))
                     kwargs.pop(opt)
 
-            for opt in ['home', 'vm_cpu', 'vm_ip', 'vm_ram']:
+            for opt in ['home', 'vm_cpu', 'vm_ip', 'vm_ram', 'security', 'scratch', 'pwd', 'pem_path',
+                        'overlay', 'network', 'network_args', 'mount', 'hostname', 'fusemount', 'env_file', 'env'
+                        'drop_caps', 'dns', 'apply_cgroups', 'app', 'add_caps' ]:
                 if opt in kwargs:
                     exec_opts.append('--' + opt.replace('_', '-') + ' ' + kwargs[opt])
                     kwargs.pop(opt)
