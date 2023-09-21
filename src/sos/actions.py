@@ -126,16 +126,17 @@ def SoS_Action(
                             "file",
                             "library",
                             "shub",
+                            "orab",
                     ):
-                        raise ValueError(
-                            f"singularity engine only allows docker, file, library, and shub container {cty} specified")
+                        env.logger.warning(
+                            f"Container type {cty} might not be supported.")
                 elif engine is not None and engine != "local":
                     raise ValueError(f"Only docker and singularity container engines are supported: {engine} specified")
                 else:
                     # engine is none, need to be refered
                     if cty == "docker":
                         engine = "docker"
-                    elif cty in ("file", "shub", "library"):
+                    elif cty in ("file", "shub", "library", "oras"):
                         engine = "singularity"
                     elif cty == "local":
                         engine = "local"
