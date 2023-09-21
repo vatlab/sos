@@ -126,7 +126,7 @@ def SoS_Action(
                             "file",
                             "library",
                             "shub",
-                            "orab",
+                            "oras",
                     ):
                         env.logger.warning(
                             f"Container type {cty} might not be supported.")
