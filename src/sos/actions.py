@@ -739,7 +739,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
         env.sos_dict.set("step_name", my_name)
 
 
-@SoS_Action(acceptable_args=["script", "interpreter", "suffix", "args"])
+@SoS_Action(acceptable_args=["script", "interpreter", "entrypoint", "suffix", "args"])
 def script(script, interpreter="", suffix="", args="", entrypoint="", **kwargs):
     """Execute specified script using specified interpreter. This action accepts common
     action arguments such as input, active, workdir, docker_image and args. In particular,
