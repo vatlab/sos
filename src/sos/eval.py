@@ -298,6 +298,9 @@ def SoS_exec(script: str,
     if _dict is None:
         _dict = env.sos_dict.dict()
 
+    if not 'sos_tagets' in _dict:
+        exec('from sos.runtime import *', _dict)
+
     if not return_result:
         if env.verbosity == 0:
             with contextlib.redirect_stdout(None):
