@@ -1772,6 +1772,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     raise ValueError(
                         f"Customized grouping method should return a list. {idx} of type {idx.__class__.__name__} is returned."
                     ) from e
+                _target_index = None
                 for grp in by(self):
                     if isinstance(grp, Sequence) and all(
                             isinstance(x, int) for x in grp):
@@ -1784,7 +1785,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                         index = []
                         for x in sos_targets(grp):
                             try:
-                                index.append(self._targets.index(x))
+                                if _target_index is None:
+                                    _target_index = {v:k for k,v in enumerate(self._targets)}
+                                index.append(_target_index[x])
                             except Exception as e:
                                 raise ValueError(
                                     f"Returned target is not one of the targets. {x}"
