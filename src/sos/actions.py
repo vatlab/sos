@@ -590,6 +590,9 @@ class SoS_ExecuteScript:
 
                     p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
                     ret = p.wait()
+                    if ret != 0:
+                        # write an error message to stderr
+                        se.write(f'\nError occured when executing the following code chunk, saved to script:\n{debug_script_file}\n\n')
 
                     if so is not None and so != subprocess.DEVNULL:
                         so.close()
