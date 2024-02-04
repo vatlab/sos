@@ -589,6 +589,11 @@ class SoS_ExecuteScript:
                     p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
 
                     ret = p.wait()
+
+                    if ret != 0:
+                        # write an error message to stderr
+                        se.write('\nError occured when executing the following script:\n\n{self.script}\n\n')
+
                     if so is not None and so != subprocess.DEVNULL:
                         so.close()
                     if se is not None and se != subprocess.DEVNULL:
