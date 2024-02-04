@@ -59,6 +59,9 @@ if you have helped fixing bugs or making improvements to the source code. In add
 
 ### Change Log of SoS Workflow and SoS Notebook
 
+SoS 0.24.5:
+* [sos#1530](https://github.com/vatlab/sos/issues/1530): Outputcontent of script to stderr when the script fails to execute.
+
 SoS 0.22.5:
 * [sos#1420](https://github.com/vatlab/sos/issues/1420): Allow checking the status, killing, and purge of remote workflows.
 
