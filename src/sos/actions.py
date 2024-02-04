@@ -411,12 +411,14 @@ class SoS_ExecuteScript:
             else:
                 raise RuntimeError(f"Unacceptable interpreter {self.interpreter}")
 
-            debug_script_path = os.path.dirname(os.path.abspath(kwargs["stderr"])) if ("stderr" in kwargs and kwargs["stderr"] is not False and 
+            debug_script_path = os.path.dirname(os.path.abspath(kwargs["stderr"])) if ("stderr" in kwargs and kwargs["stderr"] is not False and
                                 os.path.isdir(os.path.dirname(os.path.abspath(kwargs["stderr"])))) else env.exec_dir
             debug_script_file = os.path.join(
                 debug_script_path,
                 f'{env.sos_dict["step_name"]}_{env.sos_dict["_index"]}_{str(uuid.uuid4())[:8]}{self.suffix}',
             )
+            debug_script_msg = f'\n>>> START SCRIPT ({debug_script_file}) <<<\n\n{self.script.strip()}\n\n>>> END SCRIPT <<<\n'
+
             # with open(debug_script_file, 'w') as sfile:
             #    sfile.write(self.script)
             # env.log_to_file('ACTION', self.script)
@@ -525,6 +527,7 @@ class SoS_ExecuteScript:
 
                         ret = pexpect_run(cmd.strip())
                 elif "__std_out__" in env.sos_dict and "__std_err__" in env.sos_dict:
+                    # task execution
                     if "stdout" in kwargs or "stderr" in kwargs:
                         if "stdout" in kwargs:
                             if kwargs["stdout"] is False:
@@ -549,6 +552,9 @@ class SoS_ExecuteScript:
                         p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
                         ret = p.wait()
 
+                        if ret != 0:
+                            se.write(debug_script_msg.encode())
+
                         if so != subprocess.DEVNULL:
                             so.close()
                         if se != subprocess.DEVNULL:
@@ -559,6 +565,9 @@ class SoS_ExecuteScript:
                                                                                  "ab") as se:
                             p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
                             ret = p.wait()
+
+                            if ret != 0:
+                                se.write(debug_script_msg.encode())
                     else:
                         p = subprocess.Popen(
                             cmd,
@@ -567,6 +576,9 @@ class SoS_ExecuteScript:
                             stdout=subprocess.DEVNULL,
                         )
                         ret = p.wait()
+
+                        if ret != 0:
+                            sys.stderr.write(debug_script_msg)
                 else:
                     if "stdout" in kwargs:
                         if kwargs["stdout"] is False:
@@ -590,9 +602,12 @@ class SoS_ExecuteScript:
 
                     p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
                     ret = p.wait()
+
                     if ret != 0:
-                        # write an error message to stderr
-                        se.write(f'\nError occured when executing the following code chunk, saved to script:\n{debug_script_file}\n\n')
+                        if se:
+                            se.write(debug_script_msg.encode())
+                        else:
+                            sys.stderr.write(debug_script_msg)
 
                     if so is not None and so != subprocess.DEVNULL:
                         so.close()
