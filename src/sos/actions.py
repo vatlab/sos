@@ -411,8 +411,10 @@ class SoS_ExecuteScript:
             else:
                 raise RuntimeError(f"Unacceptable interpreter {self.interpreter}")
 
+            debug_script_path = os.path.dirname(os.path.abspath(kwargs["stderr"])) if ("stderr" in kwargs and kwargs["stderr"] is not False and 
+                                os.path.isdir(os.path.dirname(os.path.abspath(kwargs["stderr"])))) else env.exec_dir
             debug_script_file = os.path.join(
-                env.exec_dir,
+                debug_script_path,
                 f'{env.sos_dict["step_name"]}_{env.sos_dict["_index"]}_{str(uuid.uuid4())[:8]}{self.suffix}',
             )
             # with open(debug_script_file, 'w') as sfile:
@@ -587,12 +589,7 @@ class SoS_ExecuteScript:
                         se = subprocess.DEVNULL
 
                     p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
-
                     ret = p.wait()
-
-                    if ret != 0:
-                        # write an error message to stderr
-                        se.write('\nError occured when executing the following script:\n\n{self.script}\n\n')
 
                     if so is not None and so != subprocess.DEVNULL:
                         so.close()
