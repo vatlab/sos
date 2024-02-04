@@ -332,7 +332,7 @@ class SoS_SingularityClient:
             for opt in ['nv', 'nvccli', 'disable_cache', 'nohttps', 'nonet', 'vm_err', 'writable',
                         'writable_tmpfs', 'vm', 'uts', 'userns', 'rocm', 'pid', 'passphrase',
                         'no_mark', 'no_privs', 'no_init', 'no_https', 'no_home', 'net',
-                        'keep_privs', 'fakeroot'', disable_cache', 'containall', 'contain',
+                        'keep_privs', 'fakeroot', 'disable_cache', 'containall', 'contain',
                         'compat', 'cleanenv', 'allow_setuid']:
                 if opt in kwargs and kwargs[opt]:
                     exec_opts.append('--' + opt.replace('_', '-'))

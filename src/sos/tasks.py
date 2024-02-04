@@ -479,6 +479,8 @@ class TaskFile(object):
         with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + ".lck")):
             with open(self.task_file, "r+b") as fh:
                 header = self._read_header(fh)
+                result = ''
+                signature = ''
                 if header.result_size != 0:
                     if not keep_result:
                         result_size = 0
@@ -514,9 +516,9 @@ class TaskFile(object):
                     fh.write(stdout)
                 if stderr:
                     fh.write(stderr)
-                if result_size > 0:
+                if result_size > 0 and result:
                     fh.write(result)
-                if signature_size > 0:
+                if signature_size > 0 and signature:
                     fh.write(signature)
 
     def add_result(self, result: dict = {}):
