@@ -508,4 +508,3 @@ def analyze_global_statements(global_stmt):
                     f"Variable {key} cannot be defined in global section because it cannot be pickled to workers."
                 ) from e
     return global_def, global_vars
-    

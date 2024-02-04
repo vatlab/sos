@@ -376,7 +376,8 @@ class TaskEngine(threading.Thread):
         self.engine_ready.wait()
 
         # submit tasks simply add task_id to pending task list
-        with threading.Lock():
+        lock = threading.Lock()
+        with lock:
             # if already in
             # if task_id in self.running_tasks or task_id in self.pending_tasks:
             #    self.notify_controller('{} ``{}``'.format(task_id, self.task_status[task_id]))
