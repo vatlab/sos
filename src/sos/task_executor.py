@@ -150,8 +150,7 @@ class BaseTaskExecutor(object):
                 "_depends",
         ]:
             if key in sos_dict and isinstance(sos_dict[key], sos_targets):
-                # resolve remote() target
-                env.sos_dict.set(key, sos_dict[key].remove_targets(type=sos_step).resolve_remote())
+                env.sos_dict.set(key, sos_dict[key].remove_targets(type=sos_step))
 
         # when no output is specified, we just treat the task as having no output (determined)
         env.sos_dict["_output"]._undetermined = False
