@@ -476,99 +476,13 @@ class path(type(Path())):
         except ValueError:
             return False
 
-    @staticmethod
-    def names(host=None):
-        if host is None:
-            if "__host__" not in env.sos_dict:
-                env.logger.debug('Incomplete sos environment: missing __host__ definition, assuming "localhost".')
-            host = env.sos_dict.get("__host__", "localhost")
-        if "CONFIG" not in env.sos_dict or "hosts" not in env.sos_dict["CONFIG"]:
-            raise RuntimeError("Incomplete sos environment: missing hosts definition.")
-        if host not in env.sos_dict["CONFIG"]["hosts"]:
-            raise RuntimeError("Incomplete sos environment: undefined host {host}")
-        if "paths" not in env.sos_dict["CONFIG"]["hosts"][host]:
-            return []
-        return list(get_config(["hosts", host, "paths"]).keys())
-
     # the PathLike interface defines __fspath__ as str()
     def __str__(self):
-        return super(path, self.expandname().expanduser()).__str__()
+        return super(path, self.expanduser()).__str__()
 
     def __repr__(self):
         raw_str = super().__str__().replace(self._flavour.sep, '/')
         return f"{self.__class__.__name__}({raw_str})"
-
-    def to_named_path(self, host=None):
-        try:
-            if self._parts[0].startswith("#"):
-                return self
-            #
-            p = self if self.is_absolute() else self.resolve()
-            host = env.sos_dict.get("__host__", "localhost") if host is None else host
-            cfg = get_config("hosts", host, expected_type=dict, allowed_keys=["shared", "paths"])
-            if "paths" not in cfg:
-                raise ValueError("No path is defined in host defintion.")
-            relative_paths = [(name, path) for name, path in cfg["paths"].items() if p.is_relative_to(path)]
-            if not relative_paths:
-                raise ValueError(f"{self} is not relative to any of the pre-defined paths for host {host}.")
-            if len(relative_paths) > 1:
-                env.logger.debug(f"{self} is relative to more than one pre-defined paths for host {host}")
-                max_length = max(len(str(x[1])) for x in relative_paths)
-                relative_paths = [x for x in relative_paths if len(str(x[1])) == max_length]
-            # return the anchored
-            related = str(p)[len(relative_paths[0][1]):]
-            if related and not related.startswith("/"):
-                related = "/" + related
-            return "#" + relative_paths[0][0] + related
-        except Exception as e:
-            raise ValueError(f"Failed to relate {self} with any of the named paths: {e}") from e
-
-    def expandname(self, host=None):
-        if not self._parts or self._parts[0][:1] != "#":
-            return self
-        try:
-            # this is the case for task execution where paths is directly specified in
-            # _runtime.
-            if "_runtime" in env.sos_dict and "localhost" in env.sos_dict["_runtime"]:
-                cfg = env.sos_dict["_runtime"]["localhost"]
-            # this is the case for the main program, or when the task is executed
-            else:
-                cfg = get_config(
-                    "hosts",
-                    env.sos_dict.get("__host__", "localhost") if host is None else host,
-                    expected_type=dict,
-                )
-            try:
-                return self._from_parts([cfg["paths"][self._parts[0][1:]]] + self._parts[1:])
-            except KeyError:
-                return self._from_parts([cfg["shared"][self._parts[0][1:]]] + self._parts[1:])
-        except Exception as e:
-            # if self._parts[0] == '#cwd':
-            #     return self._from_parts(
-            #         [self.cwd()] + self._parts[1:]
-            #     )
-            if host is None and "__host__" not in env.sos_dict:
-                return self
-                # raise RuntimeError(
-                #     "Incomplete sos environment: missing __host__ definition."
-                # )
-            if "CONFIG" not in env.sos_dict or "hosts" not in env.sos_dict["CONFIG"]:
-                raise RuntimeError("Incomplete sos environment: missing hosts definition.") from e
-            if host is not None and host not in env.sos_dict["CONFIG"]["hosts"]:
-                raise RuntimeError(f"Incomplete sos environment: undefined host {host}") from e
-            if (env.sos_dict.get("__host__", "localhost") not in env.sos_dict["CONFIG"]["hosts"]):
-                raise RuntimeError(
-                    f'Incomplete sos environment: undefined host {env.sos_dict.get("__host__", "locahost")}') from e
-            if ("paths" not in env.sos_dict["CONFIG"]["hosts"][env.sos_dict.get("__host__", "localhost")]):
-                raise RuntimeError(
-                    f'Incomplete sos environment: paths not defined for host {env.sos_dict.get("__host__", "localhost")}'
-                ) from e
-            name = self._parts[0][1:]
-            if (name not in env.sos_dict["CONFIG"]["hosts"]
-                [env.sos_dict.get("__host__", "localhost") if host is None else host]["paths"]):
-                raise ValueError(
-                    f'Named path "{name}" not defined for host {env.sos_dict.get("__host__", "localhost") if host is None else host}'
-                ) from e
 
     def fullname(self):
         return os.path.abspath(str(self))
