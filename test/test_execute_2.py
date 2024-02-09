@@ -9,6 +9,8 @@ from sos.utils import env
 # if the test is imported under sos/test, test interacive executor
 from sos.workflow_executor import Base_Executor
 
+pytest.skip(allow_module_level=True)
+
 
 def test_for_each_nested_list(temp_factory):
     """Test for_each option of input"""

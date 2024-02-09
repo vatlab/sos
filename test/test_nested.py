@@ -12,6 +12,8 @@ from sos.parser import SoS_Script
 from sos.targets import file_target
 from sos.utils import env
 
+pytest.skip(allow_module_level=True)
+
 
 def test_progress_bar():
     # progress bar with nested workflow

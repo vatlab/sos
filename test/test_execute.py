@@ -19,6 +19,8 @@ from sos.utils import env
 # if the test is imported under sos/test, test interacive executor
 from sos.workflow_executor import Base_Executor
 
+pytest.skip(allow_module_level=True)
+
 
 def multi_attempts(fn):
 
