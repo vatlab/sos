@@ -197,8 +197,6 @@ class sos_variable(BaseTarget):
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
-        if format_spec and format_spec[0] == "R":
-            return self._var.__format__(format_spec[1:])
         return str(self).__format__(format_spec)
 
 
@@ -226,8 +224,6 @@ class env_variable(BaseTarget):
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
-        if format_spec and format_spec[0] == "R":
-            return self._var.__format__(format_spec[1:])
         return str(self).__format__(format_spec)
 
 
@@ -318,8 +314,6 @@ class sos_step(BaseTarget):
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
-        if format_spec and format_spec[0] == "R":
-            return self._step_name.__format__(format_spec[1:])
         return str(self).__format__(format_spec)
 
 
@@ -385,8 +379,6 @@ class dynamic(BaseTarget):
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
-        if format_spec and format_spec[0] == "R":
-            return sos_targets(self._target).__format__(format_spec[1:])
         return str(self).__format__(format_spec)
 
 
@@ -448,9 +440,6 @@ class remote(BaseTarget):
         return [remote(x) for x in self._target]
 
     def __format__(self, format_spec):
-        # handling special !q conversion flag
-        if format_spec and format_spec[0] == "R":
-            return sos_targets(self._target).__format__(format_spec[1:])
         return str(self).__format__(format_spec)
 
 
@@ -510,8 +499,6 @@ class executable(BaseTarget):
 
     def __format__(self, format_spec):
         # handling special !q conversion flag
-        if format_spec and format_spec[0] == "R":
-            return self._cmd.__format__(format_spec[1:])
         return str(self).__format__(format_spec)
 
 
@@ -560,6 +547,7 @@ class path(type(Path())):
             lambda x: x,
         "!":
             lambda x: x,
+        # this is deprecated $1535
         "R":
             lambda x: x,
     }
