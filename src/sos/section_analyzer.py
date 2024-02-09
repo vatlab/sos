@@ -11,7 +11,7 @@ from .eval import SoS_eval, SoS_exec, accessed_vars, used_in_func
 from .executor_utils import __null_func__, prepare_env, strip_param_defs
 from .parser import SoS_Step
 from .syntax import SOS_TARGETS_OPTIONS
-from .targets import (dynamic, file_target, named_output, remote, sos_step,
+from .targets import (dynamic, file_target, named_output, sos_step,
                       sos_targets)
 from .utils import env
 

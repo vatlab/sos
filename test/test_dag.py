@@ -27,16 +27,12 @@ def assertDAG(dag, content):
         dot = out.getvalue()
 
     def sorted_dot(dot):
-        return sorted([
-            x.strip()
-            for x in dot.split('\n')
-            if x.strip() and not 'digraph' in x
-        ])
+        return sorted([x.strip() for x in dot.split('\n') if x.strip() and not 'digraph' in x])
 
     if isinstance(content, str):
-        assert sorted_dot(dot) == sorted_dot(content)
+        assert sorted_dot(dot) == sorted_dot(content), f'expect {content}, got {dot}'
     else:
-        assert sorted_dot(dot) in [sorted_dot(x) for x in content]
+        assert sorted_dot(dot) in [sorted_dot(x) for x in content], f'expect {content}, got {dot}'
 
 
 def get_initial_dag(test):
@@ -47,7 +43,7 @@ def get_initial_dag(test):
     return dag
 
 
-def test_simple_dag(temp_factory):
+def test_simple_dag1(temp_factory):
     '''Test DAG with simple dependency'''
     temp_factory('a.txt', 'a1.txt')
     # basica case
@@ -72,6 +68,11 @@ def test_simple_dag(temp_factory):
             A_3 -> A_4;
             }
             '''))
+
+
+def test_simple_dag2(temp_factory):
+    '''Test DAG with simple dependency'''
+    temp_factory('a.txt', 'a1.txt')
     # basica case
     # 1 -> 2 -> 3 -> 4
     assertDAG(
@@ -93,6 +94,11 @@ def test_simple_dag(temp_factory):
             A_3 -> A_4;
             }
             '''))
+
+
+def test_simple_dag3(temp_factory):
+    '''Test DAG with simple dependency'''
+    temp_factory('a.txt', 'a1.txt')
     #
     # 1 -> 2 -> 3 -> 4
     #
@@ -124,7 +130,11 @@ def test_simple_dag(temp_factory):
             A_3 -> A_4;
             }
             '''))
-    #
+
+
+def test_simple_dag4(temp_factory):
+    '''Test DAG with simple dependency'''
+    temp_factory('a.txt', 'a1.txt')
     # 1 -> 2
     # 3 -> 4 (3 does not have any input)
     #
@@ -155,7 +165,11 @@ def test_simple_dag(temp_factory):
             B_3 -> B_4;
             }
             '''))
-    #
+
+
+def test_simple_dag5(temp_factory):
+    '''Test DAG with simple dependency'''
+    temp_factory('a.txt', 'a1.txt')
     # 1 -> 2
     # 3 -> 4 (3 depends on something else)
     #
@@ -186,7 +200,11 @@ def test_simple_dag(temp_factory):
             B_3 -> B_4;
             }
             '''))
-    #
+
+
+def test_simple_dag6(temp_factory):
+    '''Test DAG with simple dependency'''
+    temp_factory('a.txt', 'a1.txt')
     # (1) -> 2
     # (1) -> 3 -> 4
     #
@@ -367,8 +385,7 @@ def test_cycle():
 def test_long_chain(clear_now_and_after):
     '''Test long make file style dependencies.'''
     #
-    clear_now_and_after('A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt',
-                        'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt')
+    clear_now_and_after('A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt')
 
     #
     #  A1 <- B1 <- B2 <- B3
@@ -456,8 +473,7 @@ def test_long_chain(clear_now_and_after):
 def test_target(clear_now_and_after):
     '''Test executing only part of a workflow.'''
     #
-    clear_now_and_after('A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt',
-                        'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt')
+    clear_now_and_after('A1.txt', 'A2.txt', 'C2.txt', 'B2.txt', 'B1.txt', 'B3.txt', 'C1.txt', 'C3.txt', 'C4.txt')
     #
     #  A1 <- B1 <- B2 <- B3
     #   |
@@ -581,8 +597,7 @@ def test_target(clear_now_and_after):
 def test_pattern_reuse(clear_now_and_after):
     '''Test repeated use of steps that use pattern and produce different files.'''
     #
-    clear_now_and_after('A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt',
-                        'B2.txt.p')
+    clear_now_and_after('A1.txt', 'A2.txt', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p')
     #
     #  A1 <- P <- B1
     #  A1 <- P <- B2
@@ -1104,8 +1119,7 @@ def test_sos_step_miniworkflow(clear_now_and_after):
 def test_compound_workflow(clear_now_and_after):
     '''Test the DAG of compound workflow'''
     clear_now_and_after('test.dot')
-    script = SoS_Script(
-        textwrap.dedent('''
+    script = SoS_Script(textwrap.dedent('''
     [A_1]
     [A_2]
     [B]
@@ -1122,8 +1136,7 @@ def test_compound_workflow(clear_now_and_after):
         A_2 -> B;
         }'''))
     # with empty depends
-    script = SoS_Script(
-        textwrap.dedent('''
+    script = SoS_Script(textwrap.dedent('''
     [A_1]
     [A_2]
     [B]
