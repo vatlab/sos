@@ -216,13 +216,6 @@ def test_paths(host):
                 tFile.write(f"{tID}")
         except Exception:
             return f"Failed to write to mapped directory {local}"
-        # test if file can be sent
-        try:
-            host.send_to_host(os.path.join(local, f".sos_test_{tID}.txt"))
-        except Exception as e:
-            return (
-                f"Failed to send files under {local} to remote host under {remote}: {e}"
-            )
 
         # the file should be available on remote host
         try:
@@ -584,69 +577,3 @@ def run_command_on_hosts(cfg, hosts, cmd, verbosity):
             if verbosity and verbosity > 2:
                 sys.stderr.write(get_traceback())
             env.logger.error(str(e))
-
-
-def push_to_hosts(cfg, hosts, items, verbosity):
-    env.verbosity = verbosity
-    if not hosts:
-        hosts = cfg.get("hosts", [])
-    if not hosts:
-        env.logger.warning(
-            "No remote host or task queue is defined in ~/.sos/hosts.yml.")
-        return
-    for host in hosts:
-        try:
-            env.logger.info(f'Pushing ``{" ".join(items)}`` to ``{host}``')
-
-            h = Host(host, start_engine=False)
-            #
-            sent = h.send_to_host(items)
-            #
-            env.logger.info("{} item{} sent:\n{}".format(
-                len(sent),
-                " is" if len(sent) <= 1 else "s are",
-                "\n".join([
-                    f"{x} => {sent[x]}" for x in sorted(sent.keys())
-                ]),
-            ))
-        except Exception as e:
-            from .utils import get_traceback
-
-            if verbosity and verbosity > 2:
-                sys.stderr.write(get_traceback())
-            env.logger.error(str(e))
-            sys.exit(1)
-
-
-def pull_from_host(cfg, hosts, items, verbosity):
-    env.verbosity = verbosity
-    if not hosts:
-        hosts = cfg.get("hosts", [])
-    if not hosts:
-        env.logger.warning(
-            "No remote host or task queue is defined in ~/.sos/hosts.yml.")
-        return
-    if len(hosts) > 1:
-        raise ValueError("Can only pull from a single remote host.")
-    try:
-        env.logger.info(f'Pulling ``{" ".join(items)}`` from ``{hosts[0]}``')
-
-        host = Host(hosts[0], start_engine=False)
-        #
-        received = host.receive_from_host(items)
-        #
-        print("{} item{} received:\n{}".format(
-            len(received),
-            " is" if len(received) <= 1 else "s are",
-            "\n".join([
-                f"{x} <= {received[x]}"
-                for x in sorted(received.keys())
-            ]),
-        ))
-    except Exception as e:
-        from .utils import get_traceback
-
-        if verbosity and verbosity > 2:
-            sys.stderr.write(get_traceback())
-        env.logger.error(str(e))
-        sys.exit(1)

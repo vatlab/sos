@@ -153,12 +153,6 @@ class LocalHost(object):
     def target_signature(self, targets):
         return targets.target_signature()
 
-    def send_to_host(self, items):
-        return {x: x for x in items}
-
-    def receive_from_host(self, items):
-        return {x: x for x in items}
-
     def prepare_task(self, task_id):
         task_file = os.path.join(
             os.path.expanduser("~"), ".sos", "tasks", task_id + ".task")
@@ -623,148 +617,6 @@ class RemoteHost(object):
             return path
         return os.path.join(self._map_var(os.getcwd()), path)
 
-    def send_to_host(self, items):
-        # we only copy files and directories, not other types of targets
-        if isinstance(items, str):
-            p = [path(items)]
-        elif isinstance(items, path):
-            p = [items]
-        elif isinstance(items, Sequence):
-            ignored = [x for x in items if not isinstance(x, (str, path))]
-            if ignored:
-                env.logger.info(f"``Ignore`` {ignored}")
-            p = [path(x) for x in items if isinstance(x, (str, path))]
-        else:
-            env.logger.warning(
-                f"Unrecognized items to be sent to host: {items}")
-            return {}
-
-        items = sum(
-            [list(x.parent.glob(x.name)) for x in p],
-            [],
-        )
-
-        from .utils import find_symbolic_links
-
-        new_items = []
-        for item in items:
-            links = find_symbolic_links(item)
-            for link, realpath in links.items():
-                env.logger.info(f"Adding {realpath} for symbolic link {link}")
-            new_items.extend(links.values())
-        items.extend(new_items)
-
-        sending = self._map_path(items)
-
-        sent = {}
-        for source in sorted(sending.keys()):
-            dest = self._remote_abs(sending[source])
-            if self.is_shared(source):
-                if ("TASK" in env.config["SOS_DEBUG"] or
-                        "ALL" in env.config["SOS_DEBUG"]):
-                    env.log_to_file(
-                        "TASK", f"Skip sending {source} on shared file system")
-            else:
-                if ("TASK" in env.config["SOS_DEBUG"] or
-                        "ALL" in env.config["SOS_DEBUG"]):
-                    env.log_to_file(
-                        "TASK", f"Sending ``{source}`` to {self.alias}:{dest}")
-                cmd = cfg_interpolate(
-                    self._get_send_cmd(
-                        rename=os.path.basename(source) != os.path.basename(
-                            dest)),
-                    {
-                        "source": sos_targets(str(source).rstrip("/")),
-                        "dest": sos_targets(dest),
-                        "host": self.address,
-                        "port": self.port,
-                    },
-                )
-                if ("TASK" in env.config["SOS_DEBUG"] or
-                        "ALL" in env.config["SOS_DEBUG"]):
-                    env.log_to_file("TASK", cmd)
-                ret = subprocess.call(
-                    cmd,
-                    shell=True,
-                    stderr=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL,
-                )
-                if ret != 0:
-                    raise RuntimeError(
-                        f'Failed to copy {source} to {self.alias} using command "{cmd}". The remote host might be unavailable.'
-                    )
-            sent[source] = dest
-        return sent
-
-    def receive_from_host(self, items):
-        if isinstance(items, str):
-            items = [items]
-        elif isinstance(items, path):
-            items = [str(items)]
-        elif isinstance(items, Sequence):
-            ignored = [x for x in items if not isinstance(x, (str, path))]
-            if ignored:
-                env.logger.info(f"``Ignore`` {ignored}")
-            items = [x for x in items if isinstance(x, (str, path))]
-        else:
-            env.logger.warning(
-                f"Unrecognized items to be retrieved from host: {items}")
-            return {}
-
-        # y could be path
-        receiving = {
-            self._remote_abs(y): str(x)
-            for x, y in self._map_path(items).items()
-        }
-        #
-        received = {}
-        for source in sorted(receiving.keys()):
-            dest = receiving[source]
-            dest_dir = os.path.dirname(dest)
-            if dest_dir and not os.path.isdir(dest_dir):
-                try:
-                    os.makedirs(dest_dir)
-                except Exception as e:
-                    env.logger.error(
-                        f"Failed to create destination directory {dest_dir}: {e}"
-                    )
-            if self.is_shared(dest) and os.path.basename(
-                    source) == os.path.basename(dest):
-                env.logger.debug(
-                    f"Skip retrieving ``{dest}`` from shared file system")
-                received[dest] = source
-            else:
-                cmd = cfg_interpolate(
-                    self._get_receive_cmd(
-                        rename=os.path.basename(source) != os.path.basename(
-                            dest)),
-                    {
-                        "source": sos_targets(str(source).rstrip("/")),
-                        "dest": sos_targets(dest),
-                        "host": self.address,
-                        "port": self.port,
-                    },
-                )
-                if ("TASK" in env.config["SOS_DEBUG"] or
-                        "ALL" in env.config["SOS_DEBUG"]):
-                    env.log_to_file("TASK", cmd)
-                try:
-                    ret = subprocess.call(
-                        cmd,
-                        shell=True,
-                        stderr=subprocess.DEVNULL,
-                        stdout=subprocess.DEVNULL,
-                    )
-                    if ret != 0:
-                        raise RuntimeError(f"command return {ret}")
-                    received[dest] = source
-                except Exception as e:
-                    raise RuntimeError(
-                        f'Failed to copy {source} from {self.alias} using command "{cmd}": {e}'
-                    ) from e
-        return received
-
-    #
     # Interface
     #
     def prepare_task(self, task_id):
@@ -816,37 +668,6 @@ class RemoteHost(object):
             raise ValueError(
                 f'Task {task_id} requested more walltime ({task_vars["_runtime"]["walltime"]}) than allowed max_walltime ({self.config["max_walltime"]})'
             )
-
-        if task_vars["_input"] and not isinstance(task_vars["_input"],
-                                                  Undetermined):
-            sent = self.send_to_host(task_vars["_input"])
-            if sent:
-                env.logger.info(
-                    f"{task_id} ``sent`` {short_repr(sent.keys())} to {self.alias}"
-                )
-        if task_vars["_depends"] and not isinstance(task_vars["_depends"],
-                                                    Undetermined):
-            sent = self.send_to_host(task_vars["_depends"])
-            if sent:
-                env.logger.info(
-                    f"{task_id} ``sent`` {short_repr(sent.keys())} to {self.alias}"
-                )
-        if "to_host" in task_vars["_runtime"]:
-            if not isinstance(
-                    task_vars["_runtime"]["to_host"],
-                (str, Sequence)) or (isinstance(
-                    task_vars["_runtime"]["to_host"], Sequence) and not all(
-                        isinstance(x, str)
-                        for x in task_vars["_runtime"]["to_host"])):
-                raise ValueError(
-                    f'Parameter to_host accepts a list of paths (strings). {task_vars["_runtime"]["to_host"]} provided'
-                )
-
-            sent = self.send_to_host(task_vars["_runtime"]["to_host"])
-            if sent:
-                env.logger.info(
-                    f"{task_id} ``sent`` {short_repr(sent.keys())} to {self.alias}"
-                )
 
         # map variables
         runtime["_runtime"]["workdir"] = (
@@ -1428,13 +1249,6 @@ class Host:
     # public interface
     #
     # based on Host definition
-    #
-    def send_to_host(self, items):
-        return self._host_agent.send_to_host(items)
-
-    def receive_from_host(self, items):
-        return self._host_agent.receive_from_host(items)
-
     def map_var(self, rvars):
         return self._host_agent._map_var(rvars)
 
