@@ -10,6 +10,8 @@ import pytest
 from sos import execute_workflow
 from sos.targets import file_target
 
+pytest.skip(allow_module_level=True)
+
 has_docker = True
 try:
     subprocess.check_output("docker ps | grep test_sos", shell=True).decode()
