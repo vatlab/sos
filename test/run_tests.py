@@ -107,11 +107,14 @@ if __name__ == '__main__':
         failed_tests.extend(run_tests(args, tests))
 
     if failed_tests:
-        failed_tests = []
+        retried_failed_tests = []
         for test in failed_tests:
             print(f'\n\nRerunning {test}\n')
-            failed_tests.extend(run_tests(args, [test], show_output=True))
+            retried_failed_tests.extend(run_tests(args, [test], show_output=True))
         #
+        failed_tests = retried_failed_tests
+
+    if failed_tests:
         print(f'Failed tests (logged to {LOGFILE}):\n' + '\n'.join(failed_tests))
     else:
         print(f'All {len(all_tests)} tests complete successfully.')
