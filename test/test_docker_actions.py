@@ -50,14 +50,14 @@ def time_limit(seconds, msg=''):
             # important: KeyboardInterrupt does not interrupt time.sleep()
             # because KeyboardInterrupt is handled by Python interpreter but
             # time.sleep() calls a system function.
-            raise TimeoutException("Timed out for operation {}".format(msg))
+            raise TimeoutException(f"Timed out for operation {msg}")
         finally:
             # if the action ends in specified time, timer is canceled
             timer.cancel()
     else:
 
         def signal_handler(signum, frame):
-            raise TimeoutException("Timed out for option {}".format(msg))
+            raise TimeoutException(f"Timed out for option {msg}")
 
         signal.signal(signal.SIGALRM, signal_handler)
         signal.alarm(seconds)

@@ -413,7 +413,7 @@ def test_task_tags():
     """Test option tags of tasks"""
     import random
 
-    tag = "tag{}".format(random.randint(1, 100000))
+    tag = f"tag{random.randint(1, 100000)}"
     with open("test_tags.sos", "w") as tt:
         tt.write("""
 [10]
@@ -434,11 +434,11 @@ echo {} {{i}}
         },
     ).run()
     ret = subprocess.check_output(
-        "sos status -t {}".format(tag), shell=True).decode()
-    assert len(ret.splitlines()) == 5, "Obtained {}".format(ret)
+        f"sos status -t {tag}", shell=True).decode()
+    assert len(ret.splitlines()) == 5, f"Obtained {ret}"
     # test multiple tags
-    tag1 = "tag{}".format(random.randint(1, 100000))
-    tag2 = "tag{}".format(random.randint(1, 100000))
+    tag1 = f"tag{random.randint(1, 100000)}"
+    tag2 = f"tag{random.randint(1, 100000)}"
     with open("test_tags.sos", "w") as tt:
         tt.write("""
 [10]
@@ -460,8 +460,8 @@ echo {} {{i}}
         },
     ).run()
     ret = subprocess.check_output(
-        "sos status -t {}".format(tag2), shell=True).decode()
-    assert len(ret.splitlines()) == 2, "Obtained {}".format(ret)
+        f"sos status -t {tag2}", shell=True).decode()
+    assert len(ret.splitlines()) == 2, f"Obtained {ret}"
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")

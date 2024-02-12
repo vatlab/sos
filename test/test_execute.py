@@ -47,7 +47,7 @@ def test_command_line(clear_now_and_after):
 a =1
 """)
     result = subprocess.check_output("sos --version", stderr=subprocess.STDOUT, shell=True).decode()
-    assert result.startswith("sos {}".format(__version__))
+    assert result.startswith(f"sos {__version__}")
     assert (subprocess.call("sos", stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True) == 0)
     assert (subprocess.call("sos -h", stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True) == 0)
     assert (subprocess.call(
@@ -1002,7 +1002,7 @@ def test_dynamic_output(temp_factory):
             with open(ff, 'w') as h:
                 h.write('a')
         """)
-    assert env.sos_dict["test"] == ["temp/something{}.html".format(x) for x in range(4)]
+    assert env.sos_dict["test"] == [f"temp/something{x}.html" for x in range(4)]
 
 
 def test_dynamic_input(temp_factory):
@@ -1028,13 +1028,13 @@ run: expand=True
     wf = script.workflow()
     Base_Executor(wf).run()
     assert env.sos_dict["test"], (
-        sos_targets([os.path.join("temp", "test_{}.txt.bak".format(x)) for x in range(5)]) ==
+        sos_targets([os.path.join("temp", f"test_{x}.txt.bak") for x in range(5)]) ==
         f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
     )
     # this time we use th existing signature
     Base_Executor(wf).run()
     assert env.sos_dict["test"], (
-        sos_targets([os.path.join("temp", "test_{}.txt.bak".format(x)) for x in range(5)]) ==
+        sos_targets([os.path.join("temp", f"test_{x}.txt.bak") for x in range(5)]) ==
         f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
     )
 
@@ -1207,7 +1207,7 @@ cat {_input} > {_output}
 
 def test_stopped_output():
     """test output with stopped step"""
-    for file in ["{}.txt".format(a) for a in range(10)]:
+    for file in [f"{a}.txt" for a in range(10)]:
         if file_target(file).exists():
             file_target(file).unlink()
     execute_workflow("""
@@ -1224,9 +1224,9 @@ def test_stopped_output():
         """)
     for idx in range(10):
         if idx % 2 == 0:
-            assert not file_target("{}.txt".format(idx)).target_exists()
+            assert not file_target(f"{idx}.txt").target_exists()
         else:
-            assert file_target("{}.txt".format(idx)).target_exists()
+            assert file_target(f"{idx}.txt").target_exists()
             file_target(f"{idx}.txt").unlink()
 
 

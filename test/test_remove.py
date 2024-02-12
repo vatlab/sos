@@ -10,11 +10,11 @@ from pathlib import Path
 
 def assertExists(fdlist):
     for fd in fdlist:
-        assert os.path.exists(fd), '{} does not exist'.format(fd)
+        assert os.path.exists(fd), f'{fd} does not exist'
 
 def assertNonExists(fdlist):
     for fd in fdlist:
-        assert not os.path.exists(fd), '{} still exists'.format(fd)
+        assert not os.path.exists(fd), f'{fd} still exists'
 
 def test_setup(test_workflow):
     assertExists([

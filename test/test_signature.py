@@ -462,7 +462,7 @@ def test_loop_wise_signature(clear_now_and_after):
     assert ts1 == os.path.getmtime('myfile_11.txt')
     #
     for t in range(10, 12):
-        with open('myfile_{}.txt'.format(t)) as tmp:
+        with open(f'myfile_{t}.txt') as tmp:
             assert tmp.read().strip() == str(t)
 
 

@@ -291,7 +291,7 @@ def test_undetermined(temp_factory):
 
 
 def test_auxiliary_steps(temp_factory, clear_now_and_after):
-    graph = textwrap.dedent(('''
+    graph = textwrap.dedent('''
         [K: provides='{name}.txt']
         output: f"{name}.txt"
 
@@ -308,7 +308,7 @@ def test_auxiliary_steps(temp_factory, clear_now_and_after):
         [C_3]
         input: 'a.txt'
 
-        '''))
+        ''')
     # a.txt exists and b.txt does not exist
     temp_factory('a.txt')
     clear_now_and_after('b.txt')
