@@ -7,6 +7,7 @@ import os
 import subprocess
 
 import pytest
+
 from sos import execute_workflow
 from sos._version import __version__
 from sos.eval import get_config

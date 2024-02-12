@@ -2,14 +2,13 @@ import os
 import subprocess
 
 import pytest
+
 from sos import execute_workflow
 from sos._version import __version__
 from sos.parser import SoS_Script
 from sos.utils import env
 # if the test is imported under sos/test, test interacive executor
 from sos.workflow_executor import Base_Executor
-
-pytest.skip(allow_module_level=True)
 
 
 def test_for_each_nested_list(temp_factory):

@@ -10,6 +10,7 @@ import threading
 from contextlib import contextmanager
 
 import pytest
+
 from sos import execute_workflow
 
 try:

@@ -11,6 +11,7 @@ import time
 from contextlib import contextmanager
 
 import pytest
+
 from sos import execute_workflow
 from sos.parser import SoS_Script
 from sos.tasks import TaskFile, TaskParams

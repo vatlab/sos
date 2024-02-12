@@ -5,12 +5,13 @@
 
 import glob
 import os
+import shutil
 import subprocess
 import sys
 import time
-import shutil
 
 import pytest
+
 from sos import execute_workflow
 from sos._version import __version__
 from sos.parser import SoS_Script
@@ -18,8 +19,6 @@ from sos.targets import file_target, sos_targets
 from sos.utils import env
 # if the test is imported under sos/test, test interacive executor
 from sos.workflow_executor import Base_Executor
-
-pytest.skip(allow_module_level=True)
 
 
 def multi_attempts(fn):
@@ -47,17 +46,10 @@ def test_command_line(clear_now_and_after):
 [L]
 a =1
 """)
-    result = subprocess.check_output(
-        "sos --version", stderr=subprocess.STDOUT, shell=True).decode()
+    result = subprocess.check_output("sos --version", stderr=subprocess.STDOUT, shell=True).decode()
     assert result.startswith("sos {}".format(__version__))
-    assert (subprocess.call(
-        "sos", stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-        shell=True) == 0)
-    assert (subprocess.call(
-        "sos -h",
-        stderr=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        shell=True) == 0)
+    assert (subprocess.call("sos", stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True) == 0)
+    assert (subprocess.call("sos -h", stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True) == 0)
     assert (subprocess.call(
         "sos run -h",
         stderr=subprocess.DEVNULL,
@@ -1010,9 +1002,7 @@ def test_dynamic_output(temp_factory):
             with open(ff, 'w') as h:
                 h.write('a')
         """)
-    assert env.sos_dict["test"] == [
-        "temp/something{}.html".format(x) for x in range(4)
-    ]
+    assert env.sos_dict["test"] == ["temp/something{}.html".format(x) for x in range(4)]
 
 
 def test_dynamic_input(temp_factory):
@@ -1038,17 +1028,13 @@ run: expand=True
     wf = script.workflow()
     Base_Executor(wf).run()
     assert env.sos_dict["test"], (
-        sos_targets([
-            os.path.join("temp", "test_{}.txt.bak".format(x)) for x in range(5)
-        ]) ==
+        sos_targets([os.path.join("temp", "test_{}.txt.bak".format(x)) for x in range(5)]) ==
         f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
     )
     # this time we use th existing signature
     Base_Executor(wf).run()
     assert env.sos_dict["test"], (
-        sos_targets([
-            os.path.join("temp", "test_{}.txt.bak".format(x)) for x in range(5)
-        ]) ==
+        sos_targets([os.path.join("temp", "test_{}.txt.bak".format(x)) for x in range(5)]) ==
         f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
     )
 
@@ -1359,9 +1345,7 @@ cat {_input} > {_output}
 
 
 @pytest.mark.xfail(reason='dot may segfault')
-@pytest.mark.skipif(
-    not shutil.which("dot") or sys.platform == "win32",
-    reason="Graphviz not available under windows")
+@pytest.mark.skipif(not shutil.which("dot") or sys.platform == "win32", reason="Graphviz not available under windows")
 def test_output_report_with_dag(clear_now_and_after):
     # test dag
     clear_now_and_after("report.dag", "report.html", "1.txt", "2.txt", "4.txt")
@@ -1868,8 +1852,7 @@ def test_error_handling_of_step(clear_now_and_after):
     st = time.time()
     with pytest.raises(Exception):
         execute_workflow(script)
-    assert (time.time() - st >=
-            8), "Test test should fail only after step 10 is completed"
+    assert (time.time() - st >= 8), "Test test should fail only after step 10 is completed"
     assert os.path.isfile("10.txt")
     assert os.path.isfile("11.txt")
     #
@@ -1879,8 +1862,7 @@ def test_error_handling_of_step(clear_now_and_after):
     #
     st = time.time()
     execute_workflow(script, options={"error_mode": "ignore"})
-    assert (time.time() - st >=
-            8), "Test test should fail only after step 10 is completed"
+    assert (time.time() - st >= 8), "Test test should fail only after step 10 is completed"
     assert os.path.isfile("10.txt")
     assert os.path.isfile("11.txt")
     #
@@ -2190,16 +2172,14 @@ def test_error_handling_of_missing_input(clear_now_and_after):
     with pytest.raises(Exception):
         execute_workflow(script)
 
-    assert (time.time() - st >=
-            8), "Test test should fail only after step 10 is completed"
+    assert (time.time() - st >= 8), "Test test should fail only after step 10 is completed"
     assert os.path.isfile("11.txt")
 
     clear_now_and_after("11.txt", "22.txt")
 
     execute_workflow(script, options={"error_mode": "ignore"})
 
-    assert (time.time() - st >=
-            8), "Test test should fail only after step 10 is completed"
+    assert (time.time() - st >= 8), "Test test should fail only after step 10 is completed"
     assert not os.path.isfile("22.txt")
 
 
@@ -2394,6 +2374,7 @@ def test_execute_ipynb(sample_workflow):
     wf = script.workflow()
     Base_Executor(wf).run()
 
+
 @pytest.mark.skipif(
     True,
     reason="Skip test because travis fails on this test for unknown reason, also due to a bug in psutil under windows",
@@ -2473,8 +2454,7 @@ def test_kill_substep_worker(script_factory):
     ret.wait()
 
 
-@pytest.mark.skipif(
-    True, reason="This test needs to be improved to make it consistent")
+@pytest.mark.skipif(True, reason="This test needs to be improved to make it consistent")
 def test_kill_task(script_factory):
     """Test if the workflow can error out after a worker is killed"""
     subprocess.call(["sos", "purge", "--all"])
@@ -2488,8 +2468,7 @@ def test_kill_task(script_factory):
         import time
         time.sleep(10)
         """)
-    ret = subprocess.Popen(
-        ["sos", "run", script_file, "-s", "force", "-q", "localhost"])
+    ret = subprocess.Popen(["sos", "run", script_file, "-s", "force", "-q", "localhost"])
     proc = psutil.Process(ret.pid)
 
     while True:
@@ -2519,8 +2498,7 @@ def test_kill_task(script_factory):
     assert ret.returncode != 0
 
 
-@pytest.mark.skipif(
-    True, reason="This test needs to be improved to make it consistent")
+@pytest.mark.skipif(True, reason="This test needs to be improved to make it consistent")
 def test_restart_orphaned_tasks(script_factory):
     """Test restarting orphaned tasks which displays as running at first."""
     import time
@@ -2535,8 +2513,7 @@ def test_restart_orphaned_tasks(script_factory):
         import time
         time.sleep(12)
         """)
-    ret = subprocess.Popen(
-        ["sos", "run", script_file, "-s", "force", "-q", "localhost"])
+    ret = subprocess.Popen(["sos", "run", script_file, "-s", "force", "-q", "localhost"])
     proc = psutil.Process(ret.pid)
 
     while True:
@@ -2608,10 +2585,8 @@ def test_concurrent_running_tasks(script_factory):
         time.sleep(5)
         """)
 
-    ret1 = subprocess.Popen(
-        ["sos", "run", script, "-s", "force", "-q", "localhost"])
-    ret2 = subprocess.Popen(
-        ["sos", "run", script, "-s", "force", "-q", "localhost"])
+    ret1 = subprocess.Popen(["sos", "run", script, "-s", "force", "-q", "localhost"])
+    ret2 = subprocess.Popen(["sos", "run", script, "-s", "force", "-q", "localhost"])
     ret1.wait()
     ret2.wait()
     assert ret1.returncode == 0
@@ -2635,8 +2610,7 @@ def test_reexecute_task_with_missing_output(clear_now_and_after):
         run: expand = True
             cp {_input} {_output}
     '''
-    execute_workflow(script,
-        options={"default_queue": "localhost"})
+    execute_workflow(script, options={"default_queue": "localhost"})
     assert file_target('a_2.bak').exists()
     assert file_target('a_4.bak').exists()
 
@@ -2644,7 +2618,6 @@ def test_reexecute_task_with_missing_output(clear_now_and_after):
     file_target('a_4.bak').unlink()
     assert not file_target('a_2.bak').exists()
     assert not file_target('a_4.bak').exists()
-    execute_workflow(script,
-        options={"default_queue": "localhost"})
+    execute_workflow(script, options={"default_queue": "localhost"})
     assert file_target('a_2.bak').exists()
     assert file_target('a_4.bak').exists()

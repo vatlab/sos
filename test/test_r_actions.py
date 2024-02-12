@@ -7,6 +7,7 @@ import os
 import shutil
 
 import pytest
+
 from sos import execute_workflow
 from sos.targets import file_target
 from sos.targets_r import R_library

@@ -7,10 +7,9 @@ import os
 import subprocess
 
 import pytest
+
 from sos import execute_workflow
 from sos.targets import file_target
-
-pytest.skip(allow_module_level=True)
 
 has_docker = True
 try:
@@ -18,8 +17,7 @@ try:
 except subprocess.CalledProcessError:
     subprocess.call("sh build_test_docker.sh", shell=True)
     try:
-        subprocess.check_output(
-            "docker ps | grep test_sos", shell=True).decode()
+        subprocess.check_output("docker ps | grep test_sos", shell=True).decode()
     except subprocess.CalledProcessError:
         print("Failed to set up a docker machine with sos")
         has_docker = False
@@ -199,8 +197,7 @@ def test_remote_execute(clear_now_and_after, script_factory):
     with open("local.txt", "w") as w:
         w.write("something")
 
-    assert 0 == subprocess.call(
-        "sos remote push docker --files local.txt -c ~/docker.yml", shell=True)
+    assert 0 == subprocess.call("sos remote push docker --files local.txt -c ~/docker.yml", shell=True)
 
     assert 0 == subprocess.call(
         f"sos run {test_remote_sos} -c ~/docker.yml -r docker -s force",
@@ -211,9 +208,7 @@ def test_remote_execute(clear_now_and_after, script_factory):
 
     # self.assertEqual(subprocess.call('sos preview result_remote.txt -c ~/docker.yml -r docker', shell=True), 0)
     # self.assertNotEqual(subprocess.call('sos preview result_remote.txt', shell=True), 0)
-    assert 0 == subprocess.call(
-        "sos remote pull docker --files result_remote.txt -c ~/docker.yml",
-        shell=True)
+    assert 0 == subprocess.call("sos remote pull docker --files result_remote.txt -c ~/docker.yml", shell=True)
 
     assert file_target("result_remote.txt").target_exists()
 
@@ -228,9 +223,7 @@ def test_remote_execute(clear_now_and_after, script_factory):
         "sos remote run docker -c  ~/docker.yml --cmd cp result_remote.txt result_remote1.txt ",
         shell=True,
     )
-    assert 0 == subprocess.call(
-        "sos remote pull docker --files result_remote1.txt -c ~/docker.yml",
-        shell=True)
+    assert 0 == subprocess.call("sos remote pull docker --files result_remote1.txt -c ~/docker.yml", shell=True)
 
     assert file_target("result_remote1.txt").target_exists()
 
@@ -246,8 +239,7 @@ def test_remote_workflow_remote_queue(script_factory):
             echo `pwd` > {_output}
             echo I am {i} >> {_output}
         ''')
-    assert 0 == subprocess.call(
-        f"sos run {test_r_q} -c ~/docker.yml -r ts -q ts", shell=True)
+    assert 0 == subprocess.call(f"sos run {test_r_q} -c ~/docker.yml -r ts -q ts", shell=True)
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
@@ -261,9 +253,7 @@ def test_signature_of_remote_target(clear_now_and_after, monkeypatch):
         line2
         line3
         """)
-    assert 0 == subprocess.call(
-        "sos remote push docker --files remote_file.txt -c ~/docker.yml",
-        shell=True)
+    assert 0 == subprocess.call("sos remote push docker --files remote_file.txt -c ~/docker.yml", shell=True)
     os.remove("remote_file.txt")
     #
     wf = """
@@ -292,9 +282,7 @@ def test_signature_of_remote_target(clear_now_and_after, monkeypatch):
         line4
         line5
         """)
-    assert 0 == subprocess.call(
-        "sos remote push docker --files remote_file.txt -c ~/docker.yml",
-        shell=True)
+    assert 0 == subprocess.call("sos remote push docker --files remote_file.txt -c ~/docker.yml", shell=True)
     os.remove("remote_file.txt")
     os.remove("result.txt")
     #
