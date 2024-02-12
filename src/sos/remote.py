@@ -248,7 +248,7 @@ def test_paths(host):
                 f"Failed to receive file from remote host {remote}: file does not exist"
             )
         # check file content?
-        with open(os.path.join(local, f".sos_test_{tID}.txt"), "r") as tFile:
+        with open(os.path.join(local, f".sos_test_{tID}.txt")) as tFile:
             remote_content = tFile.read()
         if remote_content != str(tID):
             return f"Content of received file does not match: {tID} expected, {remote_content} received."

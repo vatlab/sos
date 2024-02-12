@@ -17,16 +17,20 @@ import zmq
 
 from .controller import close_socket, create_socket, send_message_to_controller
 from .eval import KeepOnlyImportAndDefine, SoS_eval, SoS_exec, accessed_vars
-from .executor_utils import (ExecuteError, __named_output__, __null_func__, __output_from__, __traced__, clear_output,
-                             create_task, get_traceback_msg, reevaluate_output, statementMD5, validate_step_sig,
-                             verify_input)
+from .executor_utils import (ExecuteError, __named_output__, __null_func__,
+                             __output_from__, __traced__, clear_output,
+                             create_task, get_traceback_msg, reevaluate_output,
+                             statementMD5, validate_step_sig, verify_input)
 from .messages import decode_msg, encode_msg
-from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS, SOS_TARGETS_OPTIONS)
-from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock, UnknownTarget, dynamic, file_target, invalid_target,
+from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
+                     SOS_OUTPUT_OPTIONS, SOS_TARGETS_OPTIONS)
+from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
+                      UnknownTarget, dynamic, file_target, invalid_target,
                       sos_step, sos_targets, sos_variable)
 from .tasks import MasterTaskParams, TaskFile
-from .utils import (ArgumentError, ProcessKilled, StopInputGroup, TerminateExecution, env, get_localhost_ip,
-                    get_traceback, short_repr, textMD5)
+from .utils import (ArgumentError, ProcessKilled, StopInputGroup,
+                    TerminateExecution, env, get_localhost_ip, get_traceback,
+                    short_repr, textMD5)
 
 __all__: List = []
 
@@ -510,8 +514,8 @@ class Base_Step_Executor:
 
         # create directory
         if ofiles.valid():
-            parents = set(
-                [os.path.abspath(os.path.join(ofile, os.pardir)) for ofile in ofiles if isinstance(ofile, file_target)])
+            parents = {
+                os.path.abspath(os.path.join(ofile, os.pardir)) for ofile in ofiles if isinstance(ofile, file_target)}
             for parent_dir in parents:
                 if parent_dir and not os.path.isdir(parent_dir):
                     os.makedirs(parent_dir, exist_ok=True)

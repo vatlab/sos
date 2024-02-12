@@ -332,10 +332,10 @@ parameter: b = bool
 """)
     wf = script.workflow()
     Base_Executor(wf, args=["--b"]).run(mode="dryrun")
-    assert env.sos_dict["b"] == True
+    assert env.sos_dict["b"] is True
     env.sos_dict.pop("b")
     Base_Executor(wf, args=["--no-b"]).run(mode="dryrun")
-    assert env.sos_dict["b"] == False
+    assert env.sos_dict["b"] is False
     env.sos_dict.pop("b")
     # bool with default True
     script = SoS_Script("""
@@ -344,13 +344,13 @@ parameter: b = True
 """)
     wf = script.workflow()
     Base_Executor(wf, args=[]).run(mode="dryrun")
-    assert env.sos_dict["b"] == True
+    assert env.sos_dict["b"] is True
     env.sos_dict.pop("b")
     Base_Executor(wf, args=["--b"]).run(mode="dryrun")
-    assert env.sos_dict["b"] == True
+    assert env.sos_dict["b"] is True
     env.sos_dict.pop("b")
     Base_Executor(wf, args=["--no-b"]).run(mode="dryrun")
-    assert env.sos_dict["b"] == False
+    assert env.sos_dict["b"] is False
     env.sos_dict.pop("b")
     # bool with default False
     script = SoS_Script("""
@@ -359,13 +359,13 @@ parameter: b = False
 """)
     wf = script.workflow()
     Base_Executor(wf, args=[]).run(mode="dryrun")
-    assert env.sos_dict["b"] == False
+    assert env.sos_dict["b"] is False
     env.sos_dict.pop("b")
     Base_Executor(wf, args=["--b"]).run(mode="dryrun")
-    assert env.sos_dict["b"] == True
+    assert env.sos_dict["b"] is True
     env.sos_dict.pop("b")
     Base_Executor(wf, args=["--no-b"]).run(mode="dryrun")
-    assert env.sos_dict["b"] == False
+    assert env.sos_dict["b"] is False
     env.sos_dict.pop("b")
     #
     # parameters cannot coincide with a readonly global variable

@@ -273,7 +273,7 @@ def _is_expr(expr):
         return False
 
 
-class StatementHash(object):
+class StatementHash:
     stmt_hash = {}
 
     def __init__(self) -> None:
@@ -391,7 +391,7 @@ def SoS_exec(script: str,
 #
 
 
-class Undetermined(object):
+class Undetermined:
 
     def __init__(self, expr: str = "") -> None:
         if not isinstance(expr, str):
@@ -414,7 +414,7 @@ class Undetermined(object):
         return self
 
 
-class on_demand_options(object):
+class on_demand_options:
     """Expression that will be evaluated upon request."""
 
     def __init__(self, items: Optional[Dict[str, Any]]) -> None:

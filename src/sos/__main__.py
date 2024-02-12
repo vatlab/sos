@@ -2203,7 +2203,7 @@ def cmd_remove(args, unknown_args):
         # a special case where all file and runtime signatures are removed.
         # no other options are allowed.
         if sig_files:
-            sig_ids = list(set([x[0] for x in sig_files]))
+            sig_ids = list({x[0] for x in sig_files})
             step_signatures = StepSignatures()
             num_removed_steps = step_signatures.remove_many(sig_ids)
             if not num_removed_steps:

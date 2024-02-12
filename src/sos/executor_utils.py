@@ -12,9 +12,9 @@ import sys
 import traceback
 from collections.abc import Sequence
 from io import StringIO
+from secrets import token_hex
 from tokenize import generate_tokens
 from typing import Any
-from secrets import token_hex
 
 import psutil
 

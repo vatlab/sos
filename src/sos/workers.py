@@ -24,7 +24,7 @@ def signal_handler(*args, **kwargs):
     raise ProcessKilled()
 
 
-class Runner(object):
+class Runner:
     """
     This runner class takea a generator function and run it.
     1. When the generator returns None, continue to run without yielding.
@@ -451,7 +451,7 @@ class SoS_Worker(mp.Process):
         env.result_socket.send(encode_msg(res))
 
 
-class WorkerManager(object):
+class WorkerManager:
     # manager worker processes
 
     def __init__(self, worker_procs, backend_socket):
@@ -757,4 +757,3 @@ class WorkerManager(object):
         # join all local processes
         for worker in self._local_workers:
             worker.join()
-            

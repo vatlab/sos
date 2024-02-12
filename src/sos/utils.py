@@ -184,7 +184,7 @@ def short_repr(obj, noneAsNA=False):
 #
 
 
-class WorkflowDict(object):
+class WorkflowDict:
     """A dictionary object that keeps all SoS workflow objects.
 
     IMPORTANT:
@@ -384,7 +384,7 @@ def fileMD5(filename, sig_type="partial"):
                     # read overlap_size bytes.
                     elif loc > second_stop:  # and < third_stop
                         partial_sig.update(data[-overlap_size:])
-    except IOError as e:
+    except OSError as e:
         sys.exit(f"Failed to read {filename}: {e}")
     if full_sig and partial_sig:
         return partial_sig.hexdigest(), full_sig.hexdigest()
@@ -398,7 +398,7 @@ def fileMD5(filename, sig_type="partial"):
 #
 
 
-class RuntimeEnvironments(object):
+class RuntimeEnvironments:
     """A singleton object that provides runtime environment for SoS.
     Atributes of this object include:
 
@@ -417,7 +417,7 @@ class RuntimeEnvironments(object):
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            cls._instance = super(RuntimeEnvironments, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
     def __init__(self):
@@ -512,7 +512,7 @@ class RuntimeEnvironments(object):
             "SOS_DEBUG": set(),
         })
         if "SOS_DEBUG" in os.environ:
-            self.config["SOS_DEBUG"] = set([x for x in os.environ["SOS_DEBUG"].split(",") if "." not in x and x != "-"])
+            self.config["SOS_DEBUG"] = {x for x in os.environ["SOS_DEBUG"].split(",") if "." not in x and x != "-"}
         #
         # global dictionaries used by SoS during the
         # execution of SoS workflows
@@ -1533,7 +1533,7 @@ def tail_of_file(filename, n, ansi2html=False):
         while 1:
             try:
                 f.seek(-(avg_line_length * to_read), 2)
-            except IOError:
+            except OSError:
                 # woops.  apparently file is smaller than what we want
                 # to step back, go to the beginning instead
                 f.seek(0)
@@ -1894,7 +1894,7 @@ def get_nodelist():
         env.log_to_file("WORKER", f'Using "-j {args}" on a SLURM cluster.')
         return args
     if "PBS_ENVIRONMENT" in os.environ:
-        with open(os.environ["PBS_NODEFILE"], "r") as hosts:
+        with open(os.environ["PBS_NODEFILE"]) as hosts:
             hostlist = hosts.read().split()
             from collections import Counter, OrderedDict
 
@@ -1912,7 +1912,7 @@ def get_nodelist():
         #  run on the host, the third entry the name of the queue,
         #  and  the  fourth  entry a processor range to be used in
         #  case of a multiprocessor machine.
-        with open(os.environ["PE_HOSTFILE"], "r") as hosts:
+        with open(os.environ["PE_HOSTFILE"]) as hosts:
             args = [":".join(host.split()[:2]) for host in hosts]
         env.log_to_file("WORKER", f'Using "-j {args}" on a SGE cluster.')
         return args

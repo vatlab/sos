@@ -87,13 +87,13 @@ def is_type_hint(stmt: str) -> bool:
     # input: variable
     #
     if "=" not in stmt:
-        action, par = [x.strip() for x in stmt.split(":", 1)]
+        action, par = (x.strip() for x in stmt.split(":", 1))
     else:
         # one parameter?
         #
         # action: input={'a': b}
         #
-        action, par = [x.strip() for x in stmt.split("=", 1)[0].split(":", 1)]
+        action, par = (x.strip() for x in stmt.split("=", 1)[0].split(":", 1))
 
     if action in SOS_DIRECTIVES:
         return False

@@ -116,7 +116,7 @@ codemirror_themes = [
 ]
 
 
-class ScriptToHTMLConverter(object):
+class ScriptToHTMLConverter:
 
     def __init__(self, *args, **kwargs):
         pass

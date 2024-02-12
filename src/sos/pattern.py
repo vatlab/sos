@@ -141,7 +141,7 @@ def expand_pattern(pattern: str) -> List[str]:
         if key not in env.sos_dict:
             raise ValueError(f"Undefined variable {key} in pattern {pattern}")
         if not isinstance(env.sos_dict[key], str) and isinstance(
-                env.sos_dict[key], collections.Sequence):
+                env.sos_dict[key], collections.abc.Sequence):
             if sz is None:
                 sz = len(env.sos_dict[key])
                 wildcard = [copy.deepcopy(wildcard[0]) for x in range(sz)]
