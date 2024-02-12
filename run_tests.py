@@ -15,6 +15,9 @@ def get_testcases():
     for line in output.decode('utf8').splitlines():
         if line.strip().startswith('<Module'):
             cur_module = line.strip().split()[-1].rstrip('>')
+            if not os.path.isfile(cur_module):
+                cur_module = f'test/{cur_module}'
+            assert os.path.isfile(cur_module)
         if line.strip().startswith('<Function'):
             tests.append(cur_module + '::' + line.strip().split()[-1].rstrip('>'))
     return tests
