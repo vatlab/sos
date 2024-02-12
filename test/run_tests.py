@@ -23,7 +23,7 @@ def get_testcases():
     return tests
 
 
-def run_tests(args, tests):
+def run_tests(args, tests, show_output=False):
     failed_tests = []
     if not tests:
         return failed_tests
@@ -40,7 +40,10 @@ def run_tests(args, tests):
 
     try:
         ret = subprocess.run(
-            ['pytest'] + list(tests), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60 * len(tests))
+            ['pytest'] + list(tests),
+            stdout=None if show_output else subprocess.DEVNULL,
+            stderr=None if show_output else subprocess.DEVNULL,
+            timeout=60 * len(tests))
         if ret.returncode != 0:
             if len(tests) > 1:
                 for test in tests:
@@ -105,6 +108,10 @@ if __name__ == '__main__':
 
     if failed_tests:
         print(f'Failed tests (logged to {LOGFILE}):\n' + '\n'.join(failed_tests))
+
+        for test in failed_tests:
+            print(f'\n\nRerunning {test}\n')
+            run_tests(args, [test], show_output=True)
     else:
         print(f'All {len(all_tests)} tests complete successfully.')
     sys.exit(0 if not failed_tests else 1)
