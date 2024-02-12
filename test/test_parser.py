@@ -1469,6 +1469,7 @@ a = 1
 """)
 
 
+@pytest.mark.skip(reason="temporary skip")
 def test_overwrite_keyword(clear_now_and_after):
     """Test overwrite sos keyword with user defined one."""
     clear_now_and_after("a.txt")

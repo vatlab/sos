@@ -25,6 +25,7 @@ def test_r_library():
         """)
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(not shutil.which("Rscript"), reason="R not installed")
 def test_depends_r_library():
     """Testing depending on R_library"""

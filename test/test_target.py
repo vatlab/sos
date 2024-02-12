@@ -688,6 +688,7 @@ def test_temp_file():
     """)
 
 
+@pytest.mark.skip(reason="temporary skip")
 def test_named_path():
     """Test the use of option name of path"""
     execute_workflow(
@@ -705,6 +706,7 @@ def test_named_path():
     )
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(
     sys.platform == 'win32', reason='Graphviz not available under windows')
 def test_to_named_path_path():

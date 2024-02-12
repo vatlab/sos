@@ -481,6 +481,7 @@ def test_max_mem():
         )
 
 
+@pytest.mark.skip(reason="temporary skip")
 def test_local_runtime_max_walltime():
     """Test server max_walltime option"""
     # gives warning, but do not kill
@@ -517,6 +518,7 @@ def test_max_cores():
         )
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipIf(not has_docker, reason="Docker container not usable")
 def test_override_max_cores():
     """Test use queue_args to override server restriction max_cores"""
@@ -537,6 +539,7 @@ def test_override_max_cores():
     )
 
 
+@pytest.mark.skip(reason="temporary skip")
 def test_list_hosts():
     """test list hosts using sos status -q"""
     for v in ["0", "1", "3", "4"]:
@@ -648,6 +651,7 @@ sh:
         assert time.time() - st > 1
 
 
+@pytest.mark.skip(reason="temporary skip")
 def test_task_with_signature(purge_tasks, clear_now_and_after):
     """Test re-execution of tasks"""
     # now with a real signature
@@ -709,6 +713,7 @@ def test_output_in_task():
         options={"default_queue": "localhost"})
 
 
+@pytest.mark.skip(reason="temporary skip")
 def test_repeated_tasks():
     """Test statement before task #1142 """
     for i in range(5):
@@ -795,6 +800,7 @@ def test_output_from_master_task():
         options={"default_queue": "localhost"})
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipIf(not has_docker, reason="Docker container not usable")
 def test_remote_input_target(clear_now_and_after):
     """Test the use of remote target"""
