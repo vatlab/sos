@@ -99,7 +99,7 @@ def test_simple_dag2(temp_factory):
 
 def test_simple_dag3(temp_factory):
     '''Test DAG with simple dependency'''
-    temp_factory('a.txt', 'a1.txt')
+    temp_factory('a.txt')
     #
     # 1 -> 2 -> 3 -> 4
     #
