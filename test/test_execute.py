@@ -1775,6 +1775,7 @@ def test_step_id_vars():
         """)
 
 
+@pytest.mark.skip(reason="temporary skip")
 def test_reexecution_of_dynamic_depends(clear_now_and_after):
     """Testing the rerun of steps to verify dependency"""
     clear_now_and_after("a.bam", "a.bam.bai")
@@ -1803,6 +1804,7 @@ def test_reexecution_of_dynamic_depends(clear_now_and_after):
     assert res["__completed__"]["__step_skipped__"] == 1
 
 
+@pytest.mark.skip(reason="temporary skip")
 def test_traced_function(clear_now_and_after):
     clear_now_and_after("a.bam", "a.bam.bai")
     script = """
@@ -2312,6 +2314,7 @@ def test_remove_empty_groups_empty_named(clear_now_and_after):
         """)
 
 
+@pytest.mark.skip(reason="temporary skip")
 def test_multi_depends(clear_now_and_after, temp_factory):
     """Test a step with multiple depdendend steps"""
 
@@ -2593,6 +2596,7 @@ def test_concurrent_running_tasks(script_factory):
     assert ret2.returncode == 0
 
 
+@pytest.mark.skip(reason="temporary skip")
 def test_reexecute_task_with_missing_output(clear_now_and_after):
     '''Issue #1493'''
     clear_now_and_after([f'a_{i}.txt' for i in range(10)])

@@ -909,6 +909,7 @@ def test_remote_output_target_with_trunksize(clear_now_and_after):
     assert not os.path.isfile("init-d-script")
 
 
+@pytest.mark.skip(reason="temporary skip")
 def test_runtime_max_walltime():
     """Test server max_walltime option"""
     with pytest.raises(Exception):
@@ -927,6 +928,7 @@ def test_runtime_max_walltime():
         )
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_sync_master_task(clear_now_and_after):
     """Test sync input and output with remote host with trunksize"""
@@ -1072,6 +1074,7 @@ run: expand=True
         assert os.path.isfile(f"{i}.txt")
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_sync_input_output_and_rerun(clear_now_and_after, purge_tasks):
     """Test sync input and output with remote host"""

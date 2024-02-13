@@ -91,7 +91,13 @@ if __name__ == '__main__':
                 if not line.strip():
                     continue
                 try:
-                    _, _, tst, res = line.split()
+                    fields = line.split()
+                    if len(fields) >= 2:
+                        tst = fields[-2]
+                        res = fields[-1].strip()
+                    else:
+                        tst = fields[-1]
+                        res = 'FAILED'
                 except Exception:
                     print(f'Invalid log line: {line}')
                 test_results[tst] = res.strip()

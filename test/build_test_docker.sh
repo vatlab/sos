@@ -24,7 +24,7 @@ cp ~/.ssh/id_rsa.pub authorized_keys
 # create a docker file
 #
 cat > Dockerfile << 'HERE'
-FROM python:3.6
+FROM python:3.10
 
 RUN apt-get update && apt-get install -y openssh-server rsync task-spooler
 RUN mkdir /var/run/sshd
