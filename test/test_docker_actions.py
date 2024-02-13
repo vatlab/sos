@@ -156,6 +156,7 @@ def test_docker_build_linux_image_option_label_compress():
         ''')
 
 
+@pytest.mark.xfail(reason='some version of docker may not care.')
 @pytest.mark.skipif(
     not has_docker or sys.platform == 'win32' or 'TRAVIS' in os.environ,
     reason='Skip test because docker is not installed.')

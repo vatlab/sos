@@ -43,6 +43,7 @@ def test_depends_r_library():
         """)
 
 
+@pytest.mark.xfail(reason='environment may not have permission to install package.')
 @pytest.mark.skipif(not shutil.which("Rscript"), reason="R not installed")
 def test_reexecution(clear_now_and_after):
     """Test re-execution of steps with R_library"""
