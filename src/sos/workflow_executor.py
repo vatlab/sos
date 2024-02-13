@@ -18,8 +18,10 @@ from typing import Any, Dict, List, Optional, Union
 
 import zmq
 
-from .controller import (Controller, close_socket, connect_controllers, create_socket, disconnect_controllers,
-                         request_answer_from_controller, send_message_to_controller)
+from .controller import (Controller, close_socket, connect_controllers,
+                         create_socket, disconnect_controllers,
+                         request_answer_from_controller,
+                         send_message_to_controller)
 from .dag import SoS_DAG
 from .eval import analyze_global_statements
 from .executor_utils import ExecuteError, prepare_env
@@ -28,8 +30,9 @@ from .messages import decode_msg, encode_msg
 from .parser import SoS_Workflow
 from .pattern import extract_pattern
 from .section_analyzer import analyze_section
-from .targets import (BaseTarget, RemovedTarget, UnavailableLock, UnknownTarget, file_target, invalid_target,
-                      named_output, path, paths, sos_step, sos_targets, sos_variable)
+from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
+                      UnknownTarget, file_target, invalid_target, named_output,
+                      path, paths, sos_step, sos_targets, sos_variable)
 from .utils import env, get_localhost_ip, pickleable, short_repr, textMD5
 from .workflow_report import render_report
 
@@ -53,7 +56,7 @@ class dummy_node:
         return self._name
 
 
-class ProcInfo(object):
+class ProcInfo:
 
     def __init__(self, socket, port, step) -> None:
         self.socket = socket
@@ -78,7 +81,7 @@ class ProcInfo(object):
         return self.step._status.endswith("_pending")
 
 
-class ExecutionManager(object):
+class ExecutionManager:
     """
     Execution manager that manages sockets and corresponding steps.
     For nested workflows (dummy=True), a poller will be created.

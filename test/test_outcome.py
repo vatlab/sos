@@ -6,6 +6,7 @@
 import os
 
 import pytest
+
 from sos import execute_workflow
 # if the test is imported under sos/test, test interacive executor
 from sos.workflow_executor import Base_Executor

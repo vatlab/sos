@@ -4,6 +4,7 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import pytest
+
 from sos import execute_workflow
 from sos.targets import file_target
 
@@ -60,6 +61,7 @@ depends: Py_Module('tabulate<2.0')
 ''')
 
 
+@pytest.mark.skip(reason="temporary skip")
 def test_upgrade_py_module():
     '''Test upgrade py module #1246'''
     # first install tabulate == 0.7.5

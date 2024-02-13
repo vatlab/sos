@@ -621,7 +621,7 @@ def purge_workflows(workflows,
         ]
     #
     # remoe all workflow files
-    all_workflows = set([x[0] for x in all_workflows])
+    all_workflows = {x[0] for x in all_workflows}
     if all_workflows:
         #
         # find all related files, including those in nested directories

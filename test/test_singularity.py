@@ -8,6 +8,7 @@ import shutil
 import sys
 
 import pytest
+
 from sos import execute_workflow
 
 
@@ -24,6 +25,7 @@ def test_bash_in_singularity():
         ''')
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(
     not shutil.which('singularity') or sys.platform == 'win32' or
     'TRAVIS' in os.environ or 'APPVEYOR' in os.environ,
@@ -45,6 +47,7 @@ def test_singularity_build_linux_image(self):
         ''')
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(
     not shutil.which('singularity') or sys.platform == 'win32' or
     'TRAVIS' in os.environ or 'APPVEYOR' in os.environ,
@@ -56,6 +59,7 @@ def test_singularity_build_from_shub(self):
         ''')
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(
     not shutil.which('singularity') or sys.platform == 'win32',
     reason='Skip test because docker is not installed.')

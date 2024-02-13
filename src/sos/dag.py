@@ -76,7 +76,7 @@ from .utils import ActivityNotifier, env, short_repr, textMD5
 #
 
 
-class SoS_Node(object):
+class SoS_Node:
 
     def __init__(self, step_uuid: str, node_name: str,
                  wf_index: Union[int, None], node_index: Union[int, None],
@@ -277,10 +277,10 @@ class SoS_DAG(nx.DiGraph):
                     else:
                         missing.add(x)
         else:
-            missing = set([
+            missing = {
                 x for x in self._all_depends_files.keys()
                 if x not in self._all_output_files and not x.target_exists()
-            ])
+            }
         for x in targets:
             if x not in self._all_output_files:
                 if x.target_exists('target'):

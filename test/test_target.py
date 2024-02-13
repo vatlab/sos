@@ -8,6 +8,7 @@ import os
 import sys
 
 import pytest
+
 from sos import execute_workflow
 from sos.eval import interpolate
 from sos.parser import SoS_Script
@@ -217,12 +218,12 @@ def test_target_format():
     ]:
         if isinstance(res, str):
             assert interpolate(
-                "{{target:{}}}".format(fmt), globals(),
+                f"{{target:{fmt}}}", globals(),
                 locals()) == res, "Interpolation of {}:{} should be {}".format(
                     target, fmt, res)
 
         else:
-            assert interpolate("{{target:{}}}".format(fmt), globals(), locals(
+            assert interpolate(f"{{target:{fmt}}}", globals(), locals(
             )) in res, "Interpolation of {}:{} should be one of {}".format(
                 target, fmt, res)
 
@@ -686,3 +687,36 @@ def test_temp_file():
         assert sos_tempfile(file_target('a.txt')) == sos_tempfile(file_target('a.txt'))
 
     """)
+
+
+@pytest.mark.skip(reason="temporary skip")
+def test_named_path():
+    """Test the use of option name of path"""
+    execute_workflow(
+        """
+        import os
+        # windows might not have HOME
+        if 'HOME' in os.environ:
+            assert path('#home') == os.environ['HOME']
+            assert 'home' in path.names()
+            assert 'home' in path.names('docker')
+        """,
+        options={
+            "config_file": os.path.join(os.path.expanduser("~"), "docker.yml")
+        },
+    )
+
+
+@pytest.mark.skip(reason="temporary skip")
+@pytest.mark.skipif(
+    sys.platform == 'win32', reason='Graphviz not available under windows')
+def test_to_named_path_path():
+    execute_workflow(
+        """
+        [10: shared="a"]
+        a = path('/root/xxx/whatever').to_named_path(host='docker')
+        """,
+        options={
+            "config_file": os.path.join(os.path.expanduser("~"), "docker.yml"),
+        })
+    assert env.sos_dict['a'] == '#home/xxx/whatever'

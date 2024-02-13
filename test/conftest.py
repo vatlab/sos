@@ -1,15 +1,16 @@
+import glob
 import os
 import pathlib
+import random
 import shutil
 import string
 import subprocess
 import tempfile
 import textwrap
-import glob
-import random
 
 import pytest
 import yaml
+
 from sos.utils import env
 
 

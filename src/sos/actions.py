@@ -33,7 +33,8 @@ from .messages import decode_msg, encode_msg
 from .parser import SoS_Script
 from .syntax import SOS_ACTION_OPTIONS
 from .targets import executable, file_target, path, paths, sos_targets
-from .utils import (StopInputGroup, TerminateExecution, TimeoutInterProcessLock, env, fileMD5, get_traceback,
+from .utils import (StopInputGroup, TerminateExecution,
+                    TimeoutInterProcessLock, env, fileMD5, get_traceback,
                     load_config_files, short_repr, textMD5, transcribe)
 
 __all__ = [

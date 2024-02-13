@@ -24,9 +24,9 @@ class Py_Module(BaseTarget):
                     raise ValueError(
                         f"Specifying 'version=' option in addition to '{module}' is not allowed"
                     )
-                self._module, self._version = [
+                self._module, self._version = (
                     x.strip() for x in self._module.split(opt, 1)
-                ]
+                )
                 if ',' in self._version:
                     raise ValueError(
                         f'SoS does not yet support multiple version comparisons. {self._mdoule} provided'

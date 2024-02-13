@@ -22,18 +22,13 @@ install:
   - echo $PATH
   - echo $PYTHON
   # packages required by SoS
-  - pip install fasteners pygments networkx pydot pydotplus nose
-  - pip install entrypoints numpy pandas
-  - pip install docker pyyaml psutil tqdm graphviz imageio pillow entrypoints
-  - pip install pytest coverage codacy-coverage pytest-cov python-coveralls -U
-
+  - pip install -r requirements_dev.txt
   - pip install .
-  - pip install sos-pbs
 
 test_script:
   - cd test
   - sh build_test_docker.sh
-  - sh run_tests.sh
+  - python run_tests.py
 
   #
   #on_finish:

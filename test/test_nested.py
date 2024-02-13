@@ -7,6 +7,7 @@ import shutil
 import subprocess
 
 import pytest
+
 from sos import execute_workflow
 from sos.parser import SoS_Script
 from sos.targets import file_target
@@ -92,8 +93,7 @@ def test_nested_workflow(temp_factory, clear_now_and_after):
         options={'sig_mode': 'ignore'})
 
     # order of execution is not guaranteed
-    assert sorted(env.sos_dict['executed']) == sorted(
-        ['c', 'a_1', 'a_2', 'a_3', 'a_4', 'b_1', 'b_2', 'b_3', 'b_4'])
+    assert sorted(env.sos_dict['executed']) == sorted(['c', 'a_1', 'a_2', 'a_3', 'a_4', 'b_1', 'b_2', 'b_3', 'b_4'])
     env.sos_dict.pop('executed', None)
 
 
@@ -231,9 +231,7 @@ def test_recursive_nested_workflow(temp_factory):
         ''',
         workflow='c')
 
-    assert env.sos_dict['executed'] == [
-        'c_0', 'c_1', 'a_1', 'a_2', 'a_3', 'b_1', 'b_2', 'a_1', 'a_2'
-    ]
+    assert env.sos_dict['executed'] == ['c_0', 'c_1', 'a_1', 'a_2', 'a_3', 'b_1', 'b_2', 'a_1', 'a_2']
 
     env.sos_dict.pop('executed', None)
 
@@ -378,8 +376,7 @@ def test_da_gof_dynamic_nested_workflow(clear_now_and_after):
     # until run time, the DAG should not contain nested workflow
     # until runtime.
     #
-    clear_now_and_after('B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt',
-                        'B2.txt.p')
+    clear_now_and_after('B0.txt', 'B0.txt.p', 'B1.txt', 'B1.txt.p', 'B2.txt', 'B2.txt.p')
     #
     #  A1 <- P <- B
     #  A1 <- P <- B
@@ -537,14 +534,11 @@ def test_search_path(clear_now_and_after):
     '''Test if any action should exit in five seconds in dryrun mode'''
     clear_now_and_after('crazy_path', 'test.yml')
 
-    sos_config_file = os.path.join(
-        os.path.expanduser('~'), '.sos', 'config.yml')
+    sos_config_file = os.path.join(os.path.expanduser('~'), '.sos', 'config.yml')
     shutil.copy(sos_config_file, 'test.yml')
     #
     subprocess.call(
-        'sos config --set sos_path {0}/crazy_path {0}/crazy_path/more_crazy/'
-        .format(os.getcwd()),
-        shell=True)
+        'sos config --set sos_path {0}/crazy_path {0}/crazy_path/more_crazy/'.format(os.getcwd()), shell=True)
     #
     if not os.path.isdir('crazy_path'):
         os.mkdir('crazy_path')
@@ -555,8 +549,7 @@ def test_search_path(clear_now_and_after):
 sos_run('cc', source='crazy_slave.sos')
 
 ''')
-    with open(os.path.join('crazy_path', 'more_crazy', 'crazy_slave.sos'),
-              'w') as crazy:
+    with open(os.path.join('crazy_path', 'more_crazy', 'crazy_slave.sos'), 'w') as crazy:
         crazy.write('''
 [cc_0]
 print('hay, I am crazy')
@@ -614,9 +607,7 @@ touch 'a.txt'
         [default]
         sos_run('whatever', source='another.sos')
         ''')
-    assert os.path.isfile(
-        'a.txt'
-    ), 'a.txt should have been created by nested workflow from another file'
+    assert os.path.isfile('a.txt'), 'a.txt should have been created by nested workflow from another file'
 
 
 def test_concurrent_sub_workflow():

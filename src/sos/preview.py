@@ -104,7 +104,7 @@ def preview_img(filename, kernel=None, style=None):
 
 
 def preview_svg(filename, kernel=None, style=None):
-    with open(filename, "r") as f:
+    with open(filename) as f:
         image_data = f.read()
     return {"image/svg+xml": image_data}
 
@@ -255,7 +255,7 @@ def preview_txt(filename, kernel=None, style=None):
     hint = f' ({limit} displayed, see --limit)' if nlines > limit else ''
     content = f"HINT: {nlines} line{'s' if nlines > 1 else ''}{hint}\n"
 
-    with open(filename, "r") as fin:
+    with open(filename) as fin:
         if limit < 0:
             content += fin.read()
         else:

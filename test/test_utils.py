@@ -4,18 +4,18 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import os
-import sys
 import random
+import sys
 
 import pytest
+
 from sos.eval import accessed_vars, on_demand_options
 from sos.parser import SoS_Script
 from sos.pattern import expand_pattern, extract_pattern
 from sos.targets import executable, file_target, sos_step, sos_targets
 # these functions are normally not available but can be imported
 # using their names for testing purposes
-from sos.utils import (WorkflowDict, as_fstring, env, get_logger,
-                       split_fstring, stable_repr, fileMD5)
+from sos.utils import (WorkflowDict, as_fstring, env, fileMD5, get_logger, split_fstring, stable_repr)
 from sos.workflow_executor import Base_Executor, analyze_section
 
 
@@ -23,18 +23,10 @@ def test_logger():
     '''Test logging level'''
     for verbosity in [0, 1, 2, 3, 4]:
         env.verbosity = verbosity
-        get_logger().debug(
-            'Verbosity {}:debug message with ``empahsized text`` in between'
-            .format(env.verbosity))
-        get_logger().info(
-            'Verbosity {}:info message with ``empahsized text`` in between'
-            .format(env.verbosity))
-        get_logger().warning(
-            'Verbosity {}:warning message with ``empahsized text`` in between'
-            .format(env.verbosity))
-        get_logger().error(
-            'Verbosity {}:error message with ``empahsized text`` in between'
-            .format(env.verbosity))
+        get_logger().debug(f'Verbosity {env.verbosity}:debug message with ``empahsized text`` in between')
+        get_logger().info(f'Verbosity {env.verbosity}:info message with ``empahsized text`` in between')
+        get_logger().warning(f'Verbosity {env.verbosity}:warning message with ``empahsized text`` in between')
+        get_logger().error(f'Verbosity {env.verbosity}:error message with ``empahsized text`` in between')
 
 
 def test_workflow_dict():
@@ -77,9 +69,7 @@ def test_pattern_match():
     })
     assert expand_pattern('{b}.txt') == ['file name.txt']
     assert expand_pattern('{c}.txt') == ['file1.txt', 'file2.txt', 'file 3.txt']
-    assert expand_pattern('{a}_{c}.txt') == [
-        '100_file1.txt', '100_file2.txt', '100_file 3.txt'
-    ]
+    assert expand_pattern('{a}_{c}.txt') == ['100_file1.txt', '100_file2.txt', '100_file 3.txt']
 
 
 def test_accessed_vars():
@@ -89,9 +79,7 @@ def test_accessed_vars():
     assert accessed_vars('''a = "C"''') == set()
     assert accessed_vars('''a = "C" + f"{D}"''') == {'D'}
     assert accessed_vars('''a = 1 + f"{D + 20:f}" ''') == {'D'}
-    assert accessed_vars(
-        '''k, "a.txt", "b.txt", par=f(something) ''',
-        mode='eva') == {'k', 'f', 'something'}
+    assert accessed_vars('''k, "a.txt", "b.txt", par=f(something) ''', mode='eva') == {'k', 'f', 'something'}
     # this is a complicated case because the actual variable depends on the
     # result of an expression... However, in the NO-evaluation case, this is
     # the best we can do.
@@ -126,8 +114,7 @@ echo "Hi, This is from bash"''')
     # would incorrectly be executed as bat
     if sys.platform == 'win32':
         return
-    for text in ('"""a"""', '"b"', r'"""\na\\nb"""', r"'''a\nb'''",
-                 """ "a'\\"='" """):
+    for text in ('"""a"""', '"b"', r'"""\na\\nb"""', r"'''a\nb'''", """ "a'\\"='" """):
         script = SoS_Script(r'''
 a = 1
 run: expand=True
@@ -193,8 +180,7 @@ print(f'{_output}')
             assert res['changed_vars'] == {'b'}
         elif section.names[0][1] == '2':
             assert res['step_input'] == sos_targets()
-            assert res['step_depends'] == sos_targets('some.txt',
-                                                      executable('ls'))
+            assert res['step_depends'] == sos_targets('some.txt', executable('ls'))
             assert res['step_output'].unspecified()
             # for_each will not be used for DAG
             assert res['environ_vars'] == {'b', 'for_each', 'executable'}
@@ -247,8 +233,7 @@ def test_split_fstring():
         ('hello {a+b } }} world', ['hello ', 'a+b ', ' }} world']),
         ('hello {a+b:r} }} world', ['hello ', 'a+b:r', ' }} world']),
         ('hello {{{a+b!r} }} world', ['hello {{', 'a+b!r', ' }} world']),
-        ('hello {a+b + {1,2}.pop() } }} world',
-         ['hello ', 'a+b + {1,2}.pop() ', ' }} world']),
+        ('hello {a+b + {1,2}.pop() } }} world', ['hello ', 'a+b + {1,2}.pop() ', ' }} world']),
     ]:
         if pieces is None:
             with pytest.raises(SyntaxError):
@@ -269,16 +254,12 @@ def test_as_fstring():
         ('hello {1} world', 'fr"""hello {1} world"""'),
         ('hello {a+b } }} world', 'fr"""hello {a+b } }} world"""'),
         ('hello {a+b:r} }} world', 'fr"""hello {a+b:r} }} world"""'),
-        ('''hello """ \'\'\' {a+b } }} world''',
-         'f\'hello """ \\\'\\\'\\\' {a+b } }} world\''),
+        ('''hello """ \'\'\' {a+b } }} world''', 'f\'hello """ \\\'\\\'\\\' {a+b } }} world\''),
         ('hello {{{a+b!r} }} world', 'fr"""hello {{{a+b!r} }} world"""'),
-        ('hello {a+b + {1,2}.pop() } }} world',
-         'fr"""hello {a+b + {1,2}.pop() } }} world"""'),
-        ('''hello {'a'+b !r} }} world''',
-         'fr"""hello {\'a\'+b !r} }} world"""'),
+        ('hello {a+b + {1,2}.pop() } }} world', 'fr"""hello {a+b + {1,2}.pop() } }} world"""'),
+        ('''hello {'a'+b !r} }} world''', 'fr"""hello {\'a\'+b !r} }} world"""'),
         ('''hello """ \'\'\' {'a'+"b" + {"c", "D"}.pop() } }} world''',
-         '\'hello """ \\\'\\\'\\\' {0} }} world\'.format(\'a\'+"b" + {"c", "D"}.pop() )'
-        ),
+         '\'hello """ \\\'\\\'\\\' {0} }} world\'.format(\'a\'+"b" + {"c", "D"}.pop() )'),
     ]:
         assert as_fstring(string) == fstring
 
@@ -299,8 +280,7 @@ input: something_unknown, sos_groups(output_from(['C1', 'C2']), by=2), group_by=
         if section.names[0][1] == 1:
             assert res['step_depends'] == sos_targets(sos_step('B'))
         if section.names[0][1] == 2:
-            assert res['step_depends'] == sos_targets(
-                sos_step('C1'), sos_step('C2'))
+            assert res['step_depends'] == sos_targets(sos_step('C1'), sos_step('C2'))
 
 
 def test_file_sig(clear_now_and_after):
@@ -321,11 +301,12 @@ def test_file_sig(clear_now_and_after):
 
     assert not a.validate()
 
+
 @pytest.mark.parametrize('fsize', [12354, 33554432, 34605213])
 def test_file_md5(fsize, temp_factory):
     '''test save and validate of file signature'''
     fname = 'test_md5.txt'
-    temp_factory(fname, size = fsize)
+    temp_factory(fname, size=fsize)
 
     partial_md5, full_md5 = fileMD5(fname, sig_type='both')
     assert partial_md5 == fileMD5(fname, sig_type='partial')

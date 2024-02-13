@@ -92,7 +92,7 @@ class DaemonizedProcess(mp.Process):
         sys.stdout.flush()
         sys.stderr.flush()
         try:
-            si = open(os.devnull, "r")
+            si = open(os.devnull)
             so = open(os.devnull, "w")
             se = open(os.devnull, "w")
             os.dup2(si.fileno(), sys.stdin.fileno())
@@ -127,7 +127,7 @@ def _show_err_and_out(task_id, res) -> None:
             sys.stderr.write("\n")
 
 
-class LocalHost(object):
+class LocalHost:
     """For local host, no path map, send and receive ..."""
 
     def __init__(
@@ -291,7 +291,7 @@ class LocalHost(object):
         return res
 
 
-class RemoteHost(object):
+class RemoteHost:
     """A remote host class that manages how to communicate with remote host"""
 
     def __init__(

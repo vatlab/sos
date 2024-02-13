@@ -15,23 +15,29 @@ from threading import Event
 
 import zmq
 
-from .controller import (Controller, close_socket, connect_controllers, create_socket, disconnect_controllers,
-                         request_answer_from_controller, send_message_to_controller)
+from .controller import (Controller, close_socket, connect_controllers,
+                         create_socket, disconnect_controllers,
+                         request_answer_from_controller,
+                         send_message_to_controller)
 from .eval import SoS_eval, SoS_exec
-from .executor_utils import (__null_func__, clear_output, get_traceback_msg, prepare_env)
+from .executor_utils import (__null_func__, clear_output, get_traceback_msg,
+                             prepare_env)
 from .messages import decode_msg
 from .monitor import TaskMonitor
 from .step_executor import parse_shared_vars
-from .targets import (InMemorySignature, dynamic, file_target, path, sos_step, sos_targets)
-from .tasks import (TaskFile, combine_results, monitor_interval, remove_task_files, resource_monitor_interval)
-from .utils import (ProcessKilled, StopInputGroup, env, get_localhost_ip, pickleable)
+from .targets import (InMemorySignature, dynamic, file_target, path, sos_step,
+                      sos_targets)
+from .tasks import (TaskFile, combine_results, monitor_interval,
+                    remove_task_files, resource_monitor_interval)
+from .utils import (ProcessKilled, StopInputGroup, env, get_localhost_ip,
+                    pickleable)
 
 
 def signal_handler(*args, **kwargs):
     raise ProcessKilled()
 
 
-class BaseTaskExecutor(object):
+class BaseTaskExecutor:
     """Task executor used to execute specified tasks. Any customized task executor
     should derive from this class.
     """
@@ -262,7 +268,7 @@ class BaseTaskExecutor(object):
                     if not os.path.isfile(logfile):
                         raise ValueError(f"logfile {logfile} does not exist after the completion of task")
                     try:
-                        with open(logfile, "r") as log:
+                        with open(logfile) as log:
                             my_stdout.write(f"logfile: {logfile}\n")
                             my_stdout.write(log.read())
                     except Exception as e:

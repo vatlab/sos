@@ -56,7 +56,7 @@ class R_library(BaseTarget):
                     raise ValueError(
                         f"Specifying 'version=' option in addition to '{name}' is not allowed"
                     )
-                name, version = [x.strip() for x in name.split(opt, 1)]
+                name, version = (x.strip() for x in name.split(opt, 1))
                 if "," in version:
                     raise ValueError(
                         f"SoS does not yet support multiple version comparisons. {version} provided"

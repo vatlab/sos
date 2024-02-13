@@ -18,14 +18,15 @@ from typing import Dict, List, Union
 import fasteners
 
 from .targets import sos_targets
-from .utils import (DelayedAction, env, expand_size, expand_time, format_duration, format_HHMMSS, linecount_of_file,
+from .utils import (DelayedAction, env, expand_size, expand_time,
+                    format_duration, format_HHMMSS, linecount_of_file,
                     pretty_size, sample_lines, short_repr, tail_of_file)
 
 monitor_interval = 5
 resource_monitor_interval = 60
 
 
-class TaskParams(object):
+class TaskParams:
     """A parameter object that encaptulates parameters sending to
     task executors. This would makes the output of workers, especially
     in the web interface much cleaner (issue #259)"""
@@ -295,7 +296,7 @@ class TaskStatus(Enum):
     completed = 6
 
 
-class TaskFile(object):
+class TaskFile:
     """
     The task file has the following format:
 
@@ -526,7 +527,7 @@ class TaskFile(object):
             params = self._get_params()
             # this is a master task, get all sub task IDs
             if hasattr(params, "task_stack"):
-                missing_tasks = set([x[0] for x in params.task_stack])
+                missing_tasks = {x[0] for x in params.task_stack}
                 #
                 cache_file = os.path.join(os.path.expanduser("~"), ".sos", "tasks", self.task_id + ".cache")
                 results = []
@@ -1725,7 +1726,7 @@ def purge_tasks(tasks, purge_all=None, age=None, status=None, tags=None, verbosi
         all_tasks = [x for x in all_tasks if any(x in tags for x in TaskFile(x[0]).tags.split())]
     #
     # remoe all task files
-    all_tasks = set([x[0] for x in all_tasks])
+    all_tasks = {x[0] for x in all_tasks}
     if all_tasks:
         #
         # find all related files, including those in nested directories

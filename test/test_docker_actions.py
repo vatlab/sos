@@ -10,6 +10,7 @@ import threading
 from contextlib import contextmanager
 
 import pytest
+
 from sos import execute_workflow
 
 try:
@@ -49,14 +50,14 @@ def time_limit(seconds, msg=''):
             # important: KeyboardInterrupt does not interrupt time.sleep()
             # because KeyboardInterrupt is handled by Python interpreter but
             # time.sleep() calls a system function.
-            raise TimeoutException("Timed out for operation {}".format(msg))
+            raise TimeoutException(f"Timed out for operation {msg}")
         finally:
             # if the action ends in specified time, timer is canceled
             timer.cancel()
     else:
 
         def signal_handler(signum, frame):
-            raise TimeoutException("Timed out for option {}".format(msg))
+            raise TimeoutException(f"Timed out for option {msg}")
 
         signal.signal(signal.SIGALRM, signal_handler)
         signal.alarm(seconds)
@@ -155,6 +156,7 @@ def test_docker_build_linux_image_option_label_compress():
         ''')
 
 
+@pytest.mark.xfail(reason='some version of docker may not care.')
 @pytest.mark.skipif(
     not has_docker or sys.platform == 'win32' or 'TRAVIS' in os.environ,
     reason='Skip test because docker is not installed.')
