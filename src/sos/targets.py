@@ -1815,7 +1815,7 @@ class InMemorySignature:
         """Check if ofiles and ifiles match signatures recorded in md5file"""
         if not signature:
             return "Empty signature"
-        sig_files = (self.input_files._targets + self.output_files._targets + self.dependent_files._targets)
+        sig_files = self.input_files._targets + self.output_files._targets + self.dependent_files._targets
         for x in sig_files:
             if not x.target_exists("any"):
                 return f"Missing target {x}"
@@ -2033,7 +2033,7 @@ class RuntimeInfo(InMemorySignature):
             env.log_to_file("TARGET", f"Validating {self.sig_id}")
         #
         # file not exist?
-        sig_files = (self.input_files._targets + self.output_files._targets + self.dependent_files._targets)
+        sig_files = self.input_files._targets + self.output_files._targets + self.dependent_files._targets
         for x in sig_files:
             if not x.target_exists("any"):
                 return f"Missing target {x}"
