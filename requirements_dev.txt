@@ -4,6 +4,7 @@ jinja2
 nbformat
 networkx!=2.8.3
 nose
+pandas
 pexpect
 psutil
 ptyprocess
