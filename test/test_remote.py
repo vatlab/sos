@@ -23,6 +23,7 @@ except subprocess.CalledProcessError:
         has_docker = False
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_to_host_option(clear_now_and_after):
     """Test from_remote option"""

@@ -186,90 +186,18 @@ def test_cmd(host, cmd):
         return str(e)
 
 
-def test_paths(host):
-    if host.address == "localhost":
-        return "OK"
-    # shared means, if localhost creates a file, it should be
-    # instantly available on the remote host
-    if not host.path_map:
-        return "No path_map between local and remote host."
-    import random
-
-    tID = random.randint(1, 100000)
-    for local, remote in host.path_map.items():
-        if local in host.shared_dirs:
-            # will be tested by 'shared'
-            continue
-        # now, let us see if two directory has the same files?
-        if not os.path.isdir(local):
-            return f"Mapped directory {local} does not exist."
-        # remote?
-        try:
-            host.check_output(f"ls -a {path(remote):q}")
-        except Exception:
-            return f"Failed to access shared directory {remote} on remote host."
-
-        # test if local directory is writable
-        try:
-            with open(os.path.join(local, f".sos_test_{tID}.txt"),
-                      "w") as tFile:
-                tFile.write(f"{tID}")
-        except Exception:
-            return f"Failed to write to mapped directory {local}"
-
-        # the file should be available on remote host
-        try:
-            remote_content = host.check_output(
-                f"cat {remote}/.sos_test_{tID}.txt")
-        except Exception as e:
-            return (
-                f"Failed to send files under {local} to remote host under {remote}: {e}"
-            )
-        if remote_content != str(tID):
-            return f"Content of file sent does not match: {tID} sent, {remote_content} received"
-        # test retrieving files
-        # remove local file
-        os.remove(os.path.join(local, f".sos_test_{tID}.txt"))
-        # copy file back
-        try:
-            host.receive_from_host(os.path.join(local, f".sos_test_{tID}.txt"))
-        except Exception as e:
-            return f"Failed to receive file from remote host {remote}: {e}"
-        #
-        if not os.path.isfile(os.path.join(local, f".sos_test_{tID}.txt")):
-            return (
-                f"Failed to receive file from remote host {remote}: file does not exist"
-            )
-        # check file content?
-        with open(os.path.join(local, f".sos_test_{tID}.txt")) as tFile:
-            remote_content = tFile.read()
-        if remote_content != str(tID):
-            return f"Content of received file does not match: {tID} expected, {remote_content} received."
-        # if everything ok, remove local and remote test files
-        os.remove(os.path.join(local, f".sos_test_{tID}.txt"))
-        #
-        try:
-            remote_content = host.check_output(
-                f"rm {remote}/.sos_test_{tID}.txt")
-        except Exception as e:
-            return f"Failed to remove test file on remote host: {e}"
-    return "OK"
-
-
 def test_shared(host):
     if host.address == "localhost":
         return "OK (localhost)"
     # shared means, if localhost creates a file, it should be
     # instantly available on the remote host
     for local in host.shared_dirs:
-        if local not in host.path_map:
-            return f"shared directory {local} not in path_map"
         # now, let us see if two directory has the same files?
         if not os.path.isdir(local):
             return f"shared directory {local} does not exist."
         local_files = os.listdir(local)
         # remote?
-        remote = host.path_map[local]
+        remote = local
         try:
             remote_files = host.check_output(f"ls -a {path(remote):q}")
         except Exception:
@@ -297,7 +225,7 @@ def test_queue(host, cmd=None, verbosity=1):
     except Exception as e:
         if verbosity > 2:
             env.logger.warning(e)
-        return [host, "?", "?", "-", "-", "-", "-", "-"]
+        return [host, "?", "?", "-", "-", "-", "-"]
     ssh_res = test_ssh(h._host_agent)
     return [
         h.alias,
@@ -307,7 +235,6 @@ def test_queue(host, cmd=None, verbosity=1):
         test_scp(h._host_agent) if ssh_res.startswith("OK") else "-",
         test_cmd(h._host_agent, [h.config.get("sos", "sos"), "-h"])
         if ssh_res.startswith("OK") else "-",
-        test_paths(h._host_agent) if ssh_res.startswith("OK") else "-",
         test_shared(h._host_agent) if ssh_res.startswith("OK") else "-",
     ] + ([] if cmd is None else [test_cmd(h._host_agent, cmd)])
 
