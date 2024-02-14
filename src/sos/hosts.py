@@ -782,7 +782,7 @@ class Host:
         #
         # check if a key localhost is defined
         if "localhost" in env.sos_dict["CONFIG"]:
-            if (env.sos_dict["CONFIG"]["localhost"] not in env.sos_dict["CONFIG"]["hosts"]):
+            if env.sos_dict["CONFIG"]["localhost"] not in env.sos_dict["CONFIG"]["hosts"]:
                 raise ValueError(f"Undefined localhost {env.sos_dict['CONFIG']['localhost']}")
             return env.sos_dict["CONFIG"]["localhost"]
         env.sos_dict["CONFIG"]["localhost"] = "localhost"
@@ -872,7 +872,6 @@ class Host:
                     common = set(cfg[LOCAL]["shared"].keys()) & set(cfg[REMOTE]["shared"].keys())
                     if common:
                         lcl_shrd = get_config("hosts", LOCAL, "shared", expected_type=dict)
-                        rmt_shrd = get_config("hosts", REMOTE, "shared", expected_type=dict)
                         self.config["shared"] = [normalize_value(lcl_shrd[x]) for x in common]
                 if "pem_file" in cfg[LOCAL]:
                     if isinstance(cfg[LOCAL]["pem_file"], dict):
