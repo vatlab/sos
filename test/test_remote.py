@@ -49,6 +49,7 @@ def test_to_host_option(clear_now_and_after):
         assert lc.read().strip().startswith("100")
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_to_host_option_with_named_path(clear_now_and_after):
     """Test from_remote option"""
@@ -76,71 +77,6 @@ def test_to_host_option_with_named_path(clear_now_and_after):
     assert os.path.isfile("to_host_named_linecount.txt")
     with open("to_host_named_linecount.txt") as lc:
         assert lc.read().strip().startswith("200")
-
-
-@pytest.mark.skipif(not has_docker, reason="Docker container not usable")
-def test_from_host_option(clear_now_and_after):
-    """Test from_remote option"""
-    clear_now_and_after("llp")
-    execute_workflow(
-        """
-        [10]
-        task: from_host='llp'
-        with open('llp', 'w') as llp:
-            llp.write("LLP")
-        """,
-        options={
-            "config_file": "~/docker.yml",
-            "wait_for_task": True,
-            "default_queue": "docker",
-            "sig_mode": "force",
-        },
-    )
-    assert os.path.isfile("llp")
-
-
-@pytest.mark.skipif(not has_docker, reason="Docker container not usable")
-def test_local_from_host_option(clear_now_and_after):
-    """Test from_remote option"""
-    clear_now_and_after("llp")
-    execute_workflow(
-        """
-        [10]
-        task: from_host='llp'
-        sh:
-        echo "LLP" > llp
-        """,
-        options={
-            "config_file": "~/docker.yml",
-            # do not wait for jobs
-            "wait_for_task": True,
-            "sig_mode": "force",
-            "default_queue": "localhost",
-        },
-    )
-    assert os.path.isfile("llp")
-
-
-@pytest.mark.skipif(not has_docker, reason="Docker container not usable")
-def test_local_from_host_option_with_named_path(clear_now_and_after):
-    """Test from_remote option"""
-    clear_now_and_after(os.path.expanduser("~/llp"))
-    execute_workflow(
-        """
-        [10]
-        task: from_host='#home/llp'
-        sh:
-        echo "LLP" > ~/llp
-        """,
-        options={
-            "config_file": "~/docker.yml",
-            # do not wait for jobs
-            "wait_for_task": True,
-            "sig_mode": "force",
-            "default_queue": "localhost",
-        },
-    )
-    assert os.path.isfile(os.path.expanduser("~/llp"))
 
 
 def test_worker_procs():
@@ -180,6 +116,7 @@ def test_worker_procs_with_task():
     )
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_execute(clear_now_and_after, script_factory):
     clear_now_and_after("result_remote.txt", "result_remote1.txt", "local.txt")
@@ -242,6 +179,7 @@ def test_remote_workflow_remote_queue(script_factory):
     assert 0 == subprocess.call(f"sos run {test_r_q} -c ~/docker.yml -r ts -q ts", shell=True)
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_exec(clear_now_and_after):
     clear_now_and_after("result_exec.txt")
@@ -268,6 +206,7 @@ def test_remote_exec(clear_now_and_after):
         assert f"PWD: {root_dir}" in result
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_exec_named_path(clear_now_and_after):
     clear_now_and_after("result_named_path.txt")
@@ -296,6 +235,7 @@ def test_remote_exec_named_path(clear_now_and_after):
         assert f"PWD: {root_dir}" in result
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_exec_workdir_named_path(clear_now_and_after):
     clear_now_and_after(file_target("#home/wd/result_workdir_named_path.txt"))

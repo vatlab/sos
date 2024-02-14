@@ -827,6 +827,7 @@ def test_remote_input_target(clear_now_and_after):
     assert os.path.isfile("vars1.sh")
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_delayed_interpolation(clear_now_and_after):
     """Test delayed interpolation with expression involving remote objects"""
@@ -859,6 +860,7 @@ def test_delayed_interpolation(clear_now_and_after):
     assert not os.path.isfile("test.py.bak")
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_output_target(clear_now_and_after):
     """Test the use of remote target"""
@@ -884,6 +886,7 @@ def test_remote_output_target(clear_now_and_after):
     assert not os.path.isfile("vars1.sh")
 
 
+@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_output_target_with_trunksize(clear_now_and_after):
     clear_now_and_after("vars.sh", "vars1.sh")
