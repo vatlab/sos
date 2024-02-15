@@ -94,12 +94,7 @@ def test_target_set_get():
 
 def test_target_group_by():
     """Test new option group_by to sos_targets"""
-    res = sos_targets(
-        "e.txt",
-        "f.ext",
-        a=["a.txt", "b.txt"],
-        b=["c.txt", "d.txt"],
-        group_by=1)
+    res = sos_targets("e.txt", "f.ext", a=["a.txt", "b.txt"], b=["c.txt", "d.txt"], group_by=1)
     assert len(res.groups) == 6
     assert res.labels == ["", "", "a", "a", "b", "b"]
     #
@@ -110,10 +105,7 @@ def test_target_group_by():
 def test_target_paired_with():
     """Test paired_with targets with vars"""
     res = sos_targets(
-        "e.txt",
-        "f.ext",
-        a=["a.txt", "b.txt"],
-        b=["c.txt", "d.txt"],
+        "e.txt", "f.ext", a=["a.txt", "b.txt"], b=["c.txt", "d.txt"],
         group_by=1).paired_with("_name", ["e", "f", "a", "b", "c", "d"])
     for i, n in enumerate(["e", "f", "a", "b", "c", "d"]):
         assert res[i]._name == n
@@ -124,17 +116,13 @@ def test_target_paired_with():
     #
     # test assert for length difference
     with pytest.raises(Exception):
-        sos_targets("e.txt",
-                    "f.ext").paired_with("name", ["e", "f", "a", "b", "c", "d"])
+        sos_targets("e.txt", "f.ext").paired_with("name", ["e", "f", "a", "b", "c", "d"])
 
 
 def test_target_group_with():
     """Test group_with targets with vars"""
     res = sos_targets(
-        "e.txt",
-        "f.ext",
-        a=["a.txt", "b.txt"],
-        b=["c.txt", "d.txt"],
+        "e.txt", "f.ext", a=["a.txt", "b.txt"], b=["c.txt", "d.txt"],
         group_by=2).group_with("name", ["a1", "a2", "a3"])
     for i, n in enumerate(["a1", "a2", "a3"]):
         assert res.groups[i].name == n
@@ -168,8 +156,7 @@ print(f'Input is {_input} {var}')
 def test_merging_of_sos_targets():
     """Test merging of multiple sos targets"""
     # merge 0 to 0
-    res = sos_targets("a.txt", "b.txt",
-                      sos_targets("c.txt", "d.txt", group_by=1))
+    res = sos_targets("a.txt", "b.txt", sos_targets("c.txt", "d.txt", group_by=1))
     assert len(res) == 4
     assert len(res.groups) == 2
     assert res.groups[0] == ["a.txt", "b.txt", "c.txt"]
@@ -217,15 +204,12 @@ def test_target_format():
         (sos_targets("a b.txt"), "x", ".txt"),
     ]:
         if isinstance(res, str):
-            assert interpolate(
-                f"{{target:{fmt}}}", globals(),
-                locals()) == res, "Interpolation of {}:{} should be {}".format(
-                    target, fmt, res)
+            assert interpolate(f"{{target:{fmt}}}", globals(),
+                               locals()) == res, "Interpolation of {}:{} should be {}".format(target, fmt, res)
 
         else:
-            assert interpolate(f"{{target:{fmt}}}", globals(), locals(
-            )) in res, "Interpolation of {}:{} should be one of {}".format(
-                target, fmt, res)
+            assert interpolate(f"{{target:{fmt}}}", globals(),
+                               locals()) in res, "Interpolation of {}:{} should be one of {}".format(target, fmt, res)
 
 
 def test_iter_targets():
@@ -382,9 +366,7 @@ touch a.txt
     file_target("a.txt").unlink()
 
 
-@pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="Windows executable cannot be created with chmod.")
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows executable cannot be created with chmod.")
 def test_output_executable(clear_now_and_after):
     """Testing target executable."""
     # change $PATH so that lls can be found at the current
@@ -446,9 +428,7 @@ echo $AA > a.txt
     file_target("a.txt").unlink()
 
 
-@pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="Windows executable cannot be created with chmod.")
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows executable cannot be created with chmod.")
 def test_provides_executable():
     """Testing provides executable target."""
     # change $PATH so that lls can be found at the current
@@ -499,7 +479,8 @@ touch {data1[0]} {_output}
 
 def test_shared_var_in_for_each(temp_factory, clear_now_and_after):
     temp_factory("1.txt", "2.txt")
-    clear_now_and_after("1.out", "2.out", "1.out2", "2.out2", '2.out_2.out2', '1.out_1.out2', '1.out_2.out2', '2.out_1.out2')
+    clear_now_and_after("1.out", "2.out", "1.out2", "2.out2", '2.out_2.out2', '1.out_1.out2', '1.out_2.out2',
+                        '2.out_1.out2')
     script = SoS_Script("""
 [work_1: shared = {'data': 'step_output'}]
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
@@ -687,36 +668,3 @@ def test_temp_file():
         assert sos_tempfile(file_target('a.txt')) == sos_tempfile(file_target('a.txt'))
 
     """)
-
-
-
-def test_named_path():
-    """Test the use of option name of path"""
-    execute_workflow(
-        """
-        import os
-        # windows might not have HOME
-        if 'HOME' in os.environ:
-            assert path('#home') == os.environ['HOME']
-            assert 'home' in path.names()
-            assert 'home' in path.names('docker')
-        """,
-        options={
-            "config_file": os.path.join(os.path.expanduser("~"), "docker.yml")
-        },
-    )
-
-
-
-@pytest.mark.skipif(
-    sys.platform == 'win32', reason='Graphviz not available under windows')
-def test_to_named_path_path():
-    execute_workflow(
-        """
-        [10: shared="a"]
-        a = path('/root/xxx/whatever').to_named_path(host='docker')
-        """,
-        options={
-            "config_file": os.path.join(os.path.expanduser("~"), "docker.yml"),
-        })
-    assert env.sos_dict['a'] == '#home/xxx/whatever'

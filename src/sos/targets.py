@@ -21,10 +21,12 @@ from typing import Any, Dict, List, Union
 import fasteners
 import pkg_resources
 
-from .controller import (request_answer_from_controller, send_message_to_controller)
+from .controller import (request_answer_from_controller,
+                         send_message_to_controller)
 from .eval import get_config, interpolate
 from .pattern import extract_pattern
-from .utils import (Error, env, fileMD5, objectMD5, pickleable, short_repr, stable_repr, textMD5)
+from .utils import (Error, env, fileMD5, objectMD5, pickleable, short_repr,
+                    stable_repr, textMD5)
 
 __all__ = ["dynamic", "executable", "env_variable", "sos_variable"]
 

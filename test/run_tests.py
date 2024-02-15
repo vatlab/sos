@@ -121,7 +121,7 @@ if __name__ == '__main__':
         failed_tests = retried_failed_tests
 
     if failed_tests:
-        print(f'Failed tests (logged to {LOGFILE}):\n' + '\n'.join(failed_tests))
+        print(f'\n\n{len(failed_tests)} failed tests (logged to {LOGFILE}):\n' + '\n'.join(failed_tests))
     else:
         print(f'All {len(all_tests)} tests complete successfully.')
     sys.exit(0 if not failed_tests else 1)

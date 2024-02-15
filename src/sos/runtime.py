@@ -4,13 +4,15 @@
 # Distributed under the terms of the 3-clause BSD License.
 import pkg_resources
 
+from .functions import (done_if, download, fail_if, skip_if, sos_run_script,
+                        stop_if, warn_if)
 # backward compatibility #1337
 from .pattern import expand_pattern
 from .targets import path, paths
 from .utils import get_output, sos_get_param
 
 # silent pyflakes
-sos_get_param, get_output, path, paths, expand_pattern
+sos_get_param, get_output, path, paths, expand_pattern, done_if, download, fail_if, skip_if, stop_if, warn_if
 
 
 def _load_group(group: str) -> None:
@@ -41,13 +43,10 @@ def _load_group(group: str) -> None:
                         continue
             if _name == "run":
                 # this is critical so we print the warning
-                get_logger().warning(
-                    f"Failed to load target {_entrypoint.name}: {e}")
+                get_logger().warning(f"Failed to load target {_entrypoint.name}: {e}")
             else:
-                get_logger().debug(
-                    f"Failed to load target {_entrypoint.name}: {e}")
+                get_logger().debug(f"Failed to load target {_entrypoint.name}: {e}")
 
 
 _load_group("sos_targets")
-_load_group("sos_actions")
 _load_group("sos_functions")
