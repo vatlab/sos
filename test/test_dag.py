@@ -828,7 +828,7 @@ def test_reverse_shared_variable(clear_now_and_after):
     assert env.sos_dict['b'] == 1
 
 
-@pytest.mark.skip(reason="temporary skip")
+
 def test_chained_depends(temp_factory):
     '''Test chain dependent'''
     temp_factory('a.bam', 'a.bam.bai', 'a.vcf')

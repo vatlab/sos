@@ -23,7 +23,7 @@ except subprocess.CalledProcessError:
         has_docker = False
 
 
-@pytest.mark.skip(reason="temporary skip")
+
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_to_host_option(clear_now_and_after):
     """Test from_remote option"""
@@ -50,7 +50,7 @@ def test_to_host_option(clear_now_and_after):
         assert lc.read().strip().startswith("100")
 
 
-@pytest.mark.skip(reason="temporary skip")
+
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_to_host_option_with_named_path(clear_now_and_after):
     """Test from_remote option"""
@@ -117,7 +117,7 @@ def test_worker_procs_with_task():
     )
 
 
-@pytest.mark.skip(reason="temporary skip")
+
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_execute(clear_now_and_after, script_factory):
     clear_now_and_after("result_remote.txt", "result_remote1.txt", "local.txt")
@@ -180,7 +180,7 @@ def test_remote_workflow_remote_queue(script_factory):
     assert 0 == subprocess.call(f"sos run {test_r_q} -c ~/docker.yml -r ts -q ts", shell=True)
 
 
-@pytest.mark.skip(reason="temporary skip")
+
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_exec(clear_now_and_after):
     clear_now_and_after("result_exec.txt")
@@ -207,7 +207,7 @@ def test_remote_exec(clear_now_and_after):
         assert f"PWD: {root_dir}" in result
 
 
-@pytest.mark.skip(reason="temporary skip")
+
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_exec_named_path(clear_now_and_after):
     clear_now_and_after("result_named_path.txt")
@@ -236,7 +236,7 @@ def test_remote_exec_named_path(clear_now_and_after):
         assert f"PWD: {root_dir}" in result
 
 
-@pytest.mark.skip(reason="temporary skip")
+
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_exec_workdir_named_path(clear_now_and_after):
     clear_now_and_after(file_target("#home/wd/result_workdir_named_path.txt"))

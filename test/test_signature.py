@@ -754,7 +754,7 @@ def test_signature_with_dependency_tracing_and_vars(clear_signatures,
     assert res['__completed__']['__substep_completed__'] == 2
 
 
-@pytest.mark.skip(reason="temporary skip")
+
 def test_skip_mode(clear_signatures, temp_factory, clear_now_and_after):
     '''Test skipping mode of signature'''
     clear_now_and_after([f'a_{i}.bak' for i in range(4)])
