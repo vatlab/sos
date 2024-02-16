@@ -49,4 +49,6 @@ def _load_group(group: str) -> None:
 
 
 _load_group("sos_targets")
+# for backward compatibility
+_load_group("sos_actions")
 _load_group("sos_functions")
