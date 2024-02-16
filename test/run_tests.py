@@ -66,6 +66,7 @@ def run_tests(args, tests, show_output=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('run_tests')
+    parser.add_argument('tests', nargs='*', help='Tests that will be executed instead of gathering all tests.')
     parser.add_argument('-b', '--batch', default=5, type=int, help='Group tests')
     parser.add_argument(
         '-l',
@@ -78,33 +79,36 @@ if __name__ == '__main__':
     parser.add_argument('-x', '--exitfirst', help='Stop when one test fails')
     args = parser.parse_args()
 
-    print('Collecting tests')
-    all_tests = get_testcases()
-    print(f'{len(all_tests)} tests are collected.')
+    if args.tests:
+        all_tests = args.tests
+    else:
+        print('Collecting tests')
+        all_tests = get_testcases()
+        print(f'{len(all_tests)} tests are collected.')
 
-    if args.lastfailed is not None:
-        if not os.path.isfile(LOGFILE):
-            sys.exit(f'Log file {LOGFILE} does not exists.')
-        test_results = {}
-        with open(LOGFILE) as fl:
-            for line in fl:
-                if not line.strip():
-                    continue
-                try:
-                    fields = line.split()
-                    if len(fields) >= 2:
-                        tst = fields[-2]
-                        res = fields[-1].strip()
-                    else:
-                        tst = fields[-1]
-                        res = 'FAILED'
-                except Exception:
-                    print(f'Invalid log line: {line}')
-                test_results[tst] = res.strip()
-        all_tests = [x for x, y in test_results.items() if y == 'FAILED' and x in all_tests]
-        # if args.lastfailed != 0:
-        #     all_tests = all_tests[-args.lastfailed:]
-        print(f'Running {len(all_tests)} failed tests.')
+        if args.lastfailed is not None:
+            if not os.path.isfile(LOGFILE):
+                sys.exit(f'Log file {LOGFILE} does not exists.')
+            test_results = {}
+            with open(LOGFILE) as fl:
+                for line in fl:
+                    if not line.strip():
+                        continue
+                    try:
+                        fields = line.split()
+                        if len(fields) >= 2:
+                            tst = fields[-2]
+                            res = fields[-1].strip()
+                        else:
+                            tst = fields[-1]
+                            res = 'FAILED'
+                    except Exception:
+                        print(f'Invalid log line: {line}')
+                    test_results[tst] = res.strip()
+            all_tests = [x for x, y in test_results.items() if y == 'FAILED' and x in all_tests]
+            # if args.lastfailed != 0:
+            #     all_tests = all_tests[-args.lastfailed:]
+            print(f'Running {len(all_tests)} failed tests.')
 
     failed_tests = []
     nbatch = len(all_tests) // args.batch + 1
