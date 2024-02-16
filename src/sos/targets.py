@@ -21,12 +21,10 @@ from typing import Any, Dict, List, Union
 import fasteners
 import pkg_resources
 
-from .controller import (request_answer_from_controller,
-                         send_message_to_controller)
+from .controller import (request_answer_from_controller, send_message_to_controller)
 from .eval import get_config, interpolate
 from .pattern import extract_pattern
-from .utils import (Error, env, fileMD5, objectMD5, pickleable, short_repr,
-                    stable_repr, textMD5)
+from .utils import (Error, env, fileMD5, objectMD5, pickleable, short_repr, stable_repr, textMD5)
 
 __all__ = ["dynamic", "executable", "env_variable", "sos_variable"]
 
@@ -533,10 +531,12 @@ class file_target(path, BaseTarget):
         # this is path segments
         super().__init__(*args, **kwargs)
         if len(args) == 1 and isinstance(args[0], file_target):
-            self._md5 = args[0]._md5
+            self._md5 = args[0]._md5 if hasattr(args[0], '_md5') else None
         else:
             self._md5 = None
 
+    # this only works for Python 3.9. Starting from 3.10, newly constructed file_target
+    # from calls such as file_target().with_suffix() will not have _md5
     def _init(self, template=None):
         super()._init(template)
         self._md5 = None
@@ -574,6 +574,8 @@ class file_target(path, BaseTarget):
 
     def target_signature(self):
         """Return file signature"""
+        if not hasattr(self, '_md5'):
+            self._md5 = None
         full_md5 = env.config['sig_type'] == 'md5'
         if self.exists():
             if full_md5:
@@ -602,6 +604,8 @@ class file_target(path, BaseTarget):
 
     def validate(self, sig=None):
         """Check if file matches its signature"""
+        if not hasattr(self, '_md5'):
+            self._md5 = None
         if env.config['sig_type'] == 'md5':
             md5_file = self + '.md5'
             if md5_file.exists():
@@ -632,6 +636,8 @@ class file_target(path, BaseTarget):
 
     def write_sig(self):
         """Write signature to sig store"""
+        if not hasattr(self, '_md5'):
+            self._md5 = None
         if not self._md5:
             self._md5 = fileMD5(self)
         with open(self.sig_file(), "w") as sig:
@@ -657,7 +663,7 @@ class file_target(path, BaseTarget):
             self.__class__,
             super().__reduce__()[1],
             {
-                "_md5": self._md5,
+                "_md5": self._md5 if hasattr(self, '_md5') else None,
                 "_dict": self._dict
             },
         ])
@@ -1244,7 +1250,6 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 [y for x, y in zip(grp._indexes, grp._labels) if x in kept],
             ).set(**grp._dict)
         return self
-
 
     def group_with(self, name, properties):
         if not self._groups:
