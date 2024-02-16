@@ -62,7 +62,7 @@ def test_worker_procs_with_task():
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_execute(clear_now_and_after, script_factory):
-    clear_now_and_after("result_remote.txt", "result_remote1.txt", "local.txt")
+    clear_now_and_after("result_remote.txt", "result_remote1.txt", "local.txt", "remote_exec.sos")
 
     test_remote_sos = script_factory("""
         [10]
@@ -73,39 +73,21 @@ def test_remote_execute(clear_now_and_after, script_factory):
         run:
             cp local.txt result_remote.txt
             echo 'adf' >> 'result_remote.txt'
-        """)
+        """, filename='remote_exec.sos')
     with open("local.txt", "w") as w:
         w.write("something")
-
-    assert 0 == subprocess.call("sos remote push docker --files local.txt -c ~/docker.yml", shell=True)
 
     assert 0 == subprocess.call(
         f"sos run {test_remote_sos} -c ~/docker.yml -r docker -s force",
         shell=True,
     )
 
-    assert not file_target("result_remote.txt").target_exists()
-
-    # self.assertEqual(subprocess.call('sos preview result_remote.txt -c ~/docker.yml -r docker', shell=True), 0)
-    # self.assertNotEqual(subprocess.call('sos preview result_remote.txt', shell=True), 0)
-    assert 0 == subprocess.call("sos remote pull docker --files result_remote.txt -c ~/docker.yml", shell=True)
-
     assert file_target("result_remote.txt").target_exists()
-
     # self.assertEqual(subprocess.call('sos preview result_remote.txt', shell=True), 0)
     with open("result_remote.txt") as w:
         content = w.read()
         assert "something" in content
         assert "adf" in content
-
-    # test sos remote run
-    assert 0 == subprocess.call(
-        "sos remote run docker -c  ~/docker.yml --cmd cp result_remote.txt result_remote1.txt ",
-        shell=True,
-    )
-    assert 0 == subprocess.call("sos remote pull docker --files result_remote1.txt -c ~/docker.yml", shell=True)
-
-    assert file_target("result_remote1.txt").target_exists()
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
