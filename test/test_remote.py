@@ -23,63 +23,6 @@ except subprocess.CalledProcessError:
         has_docker = False
 
 
-
-@pytest.mark.skipif(not has_docker, reason="Docker container not usable")
-def test_to_host_option(clear_now_and_after):
-    """Test from_remote option"""
-    clear_now_and_after("to_host_testfile.txt", "to_host_linecount.txt")
-    with open("to_host_testfile.txt", "w") as tf:
-        for i in range(100):
-            tf.write(f"line {i+1}\n")
-    execute_workflow(
-        """
-        [10]
-        output: 'to_host_linecount.txt'
-        task: to_host='to_host_testfile.txt'
-        sh:
-            wc -l to_host_testfile.txt > to_host_linecount.txt
-        """,
-        options={
-            "config_file": "~/docker.yml",
-            "default_queue": "docker",
-            "sig_mode": "force",
-        },
-    )
-    assert os.path.isfile("to_host_linecount.txt")
-    with open("to_host_linecount.txt") as lc:
-        assert lc.read().strip().startswith("100")
-
-
-
-@pytest.mark.skipif(not has_docker, reason="Docker container not usable")
-def test_to_host_option_with_named_path(clear_now_and_after):
-    """Test from_remote option"""
-    clear_now_and_after(
-        os.path.expanduser("~/to_host_named_testfile.txt"),
-        "to_host_named_linecount.txt",
-    )
-    with open(os.path.expanduser("~/to_host_named_testfile.txt"), "w") as tf:
-        for i in range(200):
-            tf.write(f"line {i+1}\n")
-    execute_workflow(
-        """
-        [10]
-        output: 'to_host_named_linecount.txt'
-        task: to_host='#home/to_host_named_testfile.txt'
-        sh:
-            wc -l ~/to_host_named_testfile.txt > to_host_named_linecount.txt
-        """,
-        options={
-            "config_file": "~/docker.yml",
-            "default_queue": "docker",
-            "sig_mode": "force",
-        },
-    )
-    assert os.path.isfile("to_host_named_linecount.txt")
-    with open("to_host_named_linecount.txt") as lc:
-        assert lc.read().strip().startswith("200")
-
-
 def test_worker_procs():
     # test -j option
     execute_workflow(
@@ -115,7 +58,6 @@ def test_worker_procs_with_task():
             "worker_proces": ["1", "localhost:2"],
         },
     )
-
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
@@ -180,11 +122,9 @@ def test_remote_workflow_remote_queue(script_factory):
     assert 0 == subprocess.call(f"sos run {test_r_q} -c ~/docker.yml -r ts -q ts", shell=True)
 
 
-
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_exec(clear_now_and_after):
     clear_now_and_after("result_exec.txt")
-    root_dir = "/root/build" if "TRAVIS" in os.environ else "/root"
     execute_workflow(
         """
         output: 'result_exec.txt'
@@ -204,66 +144,11 @@ def test_remote_exec(clear_now_and_after):
     with open(file_target("result_exec.txt")) as res:
         result = res.read()
         assert "Output: result_exec.txt" in result
-        assert f"PWD: {root_dir}" in result
-
-
-
-@pytest.mark.skipif(not has_docker, reason="Docker container not usable")
-def test_remote_exec_named_path(clear_now_and_after):
-    clear_now_and_after("result_named_path.txt")
-    root_dir = "/root/build" if "TRAVIS" in os.environ else "/root"
-
-    execute_workflow(
-        """
-        output: '#home/result_named_path.txt'
-
-        task:
-        sh: expand=True
-            echo Output: {_output} > {_output}
-            echo PWD: `pwd`. >> {_output}
-        """,
-        options={
-            "config_file": "~/docker.yml",
-            "default_queue": "docker",
-            "sig_mode": "force",
-        },
-    )
-    assert file_target("#home/result_named_path.txt").target_exists()
-    with open(file_target("#home/result_named_path.txt")) as res:
-        result = res.read()
-        print(result)
-        assert "Output: /root/result_named_path.txt" in result
-        assert f"PWD: {root_dir}" in result
-
+        assert f"PWD: {os.getcwd()}" in result
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
-def test_remote_exec_workdir_named_path(clear_now_and_after):
-    clear_now_and_after(file_target("#home/wd/result_workdir_named_path.txt"))
-    execute_workflow(
-        """
-        output: '#home/wd/result_workdir_named_path.txt'
-
-        task: workdir='/root'
-        sh: expand=True
-            echo Output: {_output} > {_output}
-            echo PWD: `pwd`. >> {_output}
-        """,
-        options={
-            "config_file": "~/docker.yml",
-            "default_queue": "docker",
-            "sig_mode": "force",
-        },
-    )
-    assert file_target("#home/wd/result_workdir_named_path.txt").target_exists()
-    with open(file_target("#home/wd/result_workdir_named_path.txt")) as res:
-        result = res.read()
-        assert "Output: /root/wd/result_workdir_named_path.txt" in result
-        assert "PWD: /root." in result
-
-
-@pytest.mark.skipif(not has_docker, reason="Docker container not usable")
-def test_remote_exec_workdir_wo_named_path(clear_now_and_after):
+def test_remote_exec_workdir(clear_now_and_after):
     clear_now_and_after(file_target("result_workdir_wo_named.txt"))
     with pytest.raises(Exception):
         execute_workflow(

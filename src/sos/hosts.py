@@ -496,7 +496,7 @@ class RemoteHost:
 
         # map variables
         runtime["_runtime"]["workdir"] = (
-            task_vars["_runtime"]["workdir"] if "workdir" in task_vars["_runtime"] else path.cwd().to_named_path())
+            task_vars["_runtime"]["workdir"] if "workdir" in task_vars["_runtime"] else str(path.cwd()))
 
         if runtime["_runtime"]["workdir"].startswith("#"):
             try:
@@ -679,18 +679,9 @@ class RemoteHost:
         job_dict = params.sos_dict
         if ("_output" in job_dict and job_dict["_output"] and not isinstance(job_dict["_output"], Undetermined) and
                 env.config["run_mode"] != "dryrun"):
-            received = self.receive_from_host([x for x in job_dict["_output"] if isinstance(x, (str, path))])
+            received = {x:x for x in job_dict["_output"] if isinstance(x, (str, path))}
             if received:
                 env.logger.info(f"{task_id} ``received`` {short_repr(received.keys())} from {self.alias}")
-        if "from_host" in job_dict["_runtime"] and env.config["run_mode"] != "dryrun":
-            if isinstance(job_dict["_runtime"]["from_host"], (Sequence, str)):
-                received = self.receive_from_host(job_dict["_runtime"]["from_host"])
-                if received:
-                    env.logger.info(f"{task_id} ``received`` {short_repr(received.keys())} from {self.alias}")
-            else:
-                env.logger.warning(
-                    f"Expecting a string or list of string from from_host: {job_dict['_runtime']['from_host']} received"
-                )
         # we need to translate result from remote path to local
         if "output" in res:
             if "_output" not in job_dict:

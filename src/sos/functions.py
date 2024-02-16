@@ -33,6 +33,7 @@ def _load_actions():
 
 
 def sos_run_script(action, script, *args, **kwargs):
+    '''Call script-execution actions.'''
     if not g_action_map:
         _load_actions()
     try:
