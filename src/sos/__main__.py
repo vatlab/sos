@@ -958,7 +958,7 @@ def get_remote_parser(desc_only=False):
     parser.add_argument(
         "action",
         choices=[
-            "list", "status", "setup", "test", "login", "push", "pull", "run"
+            "list", "status", "setup", "test", "login", "run"
         ],
         help="""List (list), check status of tasks (status), setup public-key
                          authentication (setup), test configuration (test), login (login), push files
@@ -2705,7 +2705,7 @@ def main():
         )
         subparsers = master_parser.add_subparsers(
             title="subcommands",
-            metavar="{install,run,dryrun,status,push,pull,execute,kill,purge,config,convert,remove}",
+            metavar="{install,run,dryrun,status,execute,kill,purge,config,convert,remove}",
         )
 
         # command install
