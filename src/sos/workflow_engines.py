@@ -88,18 +88,8 @@ class WorkflowEngine:
             # copy the files over
             self.agent.send_job_file(f"~/.sos/config_{self.alias}.yml", dir=".")
 
-        self.local_filename = filename
-
         self.job_name = workflow.calc_md5(workflow_args)
-
-        if os.path.isfile(filename):
-            ret = self.agent.send_to_host([filename])
-        elif os.path.isfile(filename + ".sos"):
-            ret = self.agent.send_to_host([filename + ".sos"])
-        elif os.path.isfile(filename + ".ipynb"):
-            ret = self.agent.send_to_host([filename + ".ipynb"])
-
-        self.filename = list(ret.values())[0]
+        self.filename = filename
         self.command = self.remove_arg(command, "-r")
         # -c only point to local config file.
         self.command = self.remove_arg(self.command, "-c")

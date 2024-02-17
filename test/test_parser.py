@@ -1470,10 +1470,10 @@ a = 1
 """)
 
 
-@pytest.mark.skip(reason="temporary skip")
+
 def test_overwrite_keyword(clear_now_and_after):
     """Test overwrite sos keyword with user defined one."""
-    clear_now_and_after("a.txt")
+    clear_now_and_after("a.txt", "b.txt")
     #
     execute_workflow("""
 def run(script):
@@ -1483,15 +1483,16 @@ def run(script):
 run:
     touch a.txt
 """)
-    assert not os.path.isfile("a.txt")
+    assert os.path.isfile("a.txt")
     #
     execute_workflow("""
 parameter: run = 5
 
 [1]
 run:
-    touch a.txt
+    touch b.txt
 """)
+    assert os.path.isfile("b.txt")
 
 
 def test_help_message(sample_workflow):

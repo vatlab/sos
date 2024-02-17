@@ -2,7 +2,6 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
-
 import os
 import shutil
 import subprocess
@@ -21,13 +20,11 @@ from sos.workflow_executor import Base_Executor
 has_docker = sys.platform != "win32"
 try:
     if sys.platform != "win32":
-        subprocess.check_output(
-            "docker ps | grep test_sos", shell=True).decode()
+        subprocess.check_output("docker ps | grep test_sos", shell=True).decode()
 except subprocess.CalledProcessError:
     subprocess.call("sh build_test_docker.sh", shell=True)
     try:
-        subprocess.check_output(
-            "docker ps | grep test_sos", shell=True).decode()
+        subprocess.check_output("docker ps | grep test_sos", shell=True).decode()
     except subprocess.CalledProcessError:
         print("Failed to set up a docker machine with sos")
         has_docker = False
@@ -48,23 +45,23 @@ def cd_new(path):
 
 def get_tasks():
     from sos.signatures import WorkflowSignatures
-    env.exec_dir = os.path.join(
-        os.path.expanduser("~"), ".sos", textMD5(os.getcwd()))
+    env.exec_dir = os.path.join(os.path.expanduser("~"), ".sos", textMD5(os.getcwd()))
     db = WorkflowSignatures()
     conn = db.conn
     #conn = sqlite3.connect(os.path.join(env.exec_dir, "workflow_signatures.db"))
     cur = conn.cursor()
     cur.execute('SELECT DISTINCT id FROM workflows WHERE entry_type = "task"')
-    return [x[0] for x in cur.fetchall() if os.path.isfile(
-        os.path.join(os.path.expanduser('~'), '.sos', 'tasks', x[0] + '.task'
-    ))]
+    return [
+        x[0]
+        for x in cur.fetchall()
+        if os.path.isfile(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', x[0] + '.task'))
+    ]
 
 
 def test_task_file():
     """Test task file handling"""
     for ext in (".pulse", ".out", ".err", ".task", ".sh"):
-        filename = os.path.join(
-            os.path.expanduser("~"), ".sos", "tasks", "ffffffffffffffff" + ext)
+        filename = os.path.join(os.path.expanduser("~"), ".sos", "tasks", "ffffffffffffffff" + ext)
         if os.path.isfile(filename):
             os.remove(filename)
     params = TaskParams(
@@ -79,9 +76,7 @@ def test_task_file():
     assert a.tags == "a b"
     for ext in (".pulse", ".out", ".err", ".sh"):
         with open(
-                os.path.join(
-                    os.path.expanduser("~"), ".sos", "tasks",
-                    "ffffffffffffffff" + ext),
+                os.path.join(os.path.expanduser("~"), ".sos", "tasks", "ffffffffffffffff" + ext),
                 "w",
         ) as fh:
             fh.write(ext)
@@ -321,13 +316,11 @@ sleep 20
         output = subprocess.check_output(["sos", "status", "-v", "1"]).decode()
         if "killed" in output or "aborted" in output or "completed" in output:
             break
-        assert i <= 10, "Task should be killed within 10 seconds, got {}".format(
-            output)
+        assert i <= 10, "Task should be killed within 10 seconds, got {}".format(output)
         time.sleep(1)
     # test purge by status
     subprocess.call(["sos", "purge", "--status", "aborted"])
-    assert "killed" not in subprocess.check_output(["sos", "status", "-v",
-                                                    "3"]).decode()
+    assert "killed" not in subprocess.check_output(["sos", "status", "-v", "3"]).decode()
     # purge by all is not tested because it is dangerous
 
 
@@ -433,8 +426,7 @@ echo {} {{i}}
             "worker_procs": ["4"],
         },
     ).run()
-    ret = subprocess.check_output(
-        f"sos status -t {tag}", shell=True).decode()
+    ret = subprocess.check_output(f"sos status -t {tag}", shell=True).decode()
     assert len(ret.splitlines()) == 5, f"Obtained {ret}"
     # test multiple tags
     tag1 = f"tag{random.randint(1, 100000)}"
@@ -459,8 +451,7 @@ echo {} {{i}}
             "workflow": "default",
         },
     ).run()
-    ret = subprocess.check_output(
-        f"sos status -t {tag2}", shell=True).decode()
+    ret = subprocess.check_output(f"sos status -t {tag2}", shell=True).decode()
     assert len(ret.splitlines()) == 2, f"Obtained {ret}"
 
 
@@ -482,7 +473,6 @@ def test_max_mem():
         )
 
 
-@pytest.mark.skip(reason="temporary skip")
 def test_local_runtime_max_walltime():
     """Test server max_walltime option"""
     # gives warning, but do not kill
@@ -519,8 +509,7 @@ def test_max_cores():
         )
 
 
-@pytest.mark.skip(reason="temporary skip")
-@pytest.mark.skipIf(not has_docker, reason="Docker container not usable")
+@pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_override_max_cores():
     """Test use queue_args to override server restriction max_cores"""
     execute_workflow(
@@ -540,12 +529,10 @@ def test_override_max_cores():
     )
 
 
-@pytest.mark.skip(reason="temporary skip")
 def test_list_hosts():
     """test list hosts using sos status -q"""
     for v in ["0", "1", "3", "4"]:
-        output = subprocess.check_output(
-            ["sos", "remote", "list", "-c", "~/docker.yml", "-v", v]).decode()
+        output = subprocess.check_output(["sos", "remote", "list", "-c", "~/docker.yml", "-v", v]).decode()
         assert "local_limited" in output, f"local_limited not in \n{output}\n for verbosity {v}"
 
 
@@ -583,25 +570,16 @@ touch {_output}
         tasks = get_tasks()
         subprocess.call("sos purge -s failed", shell=True)
     # check tasks
-    taskstatus = [
-        x.split()[0] for x in subprocess.check_output(
-            "sos status -v1", shell=True).decode().splitlines()
-    ]
+    taskstatus = [x.split()[0] for x in subprocess.check_output("sos status -v1", shell=True).decode().splitlines()]
     assert all(x in taskstatus for x in tasks)
     # purge one of them
     subprocess.call(f"sos purge {tasks[0]}", shell=True)
-    taskstatus = [
-        x.split()[0] for x in subprocess.check_output(
-            "sos status -v1", shell=True).decode().splitlines()
-    ]
+    taskstatus = [x.split()[0] for x in subprocess.check_output("sos status -v1", shell=True).decode().splitlines()]
     assert tasks[0] not in taskstatus
     assert tasks[1] in taskstatus
     #
     subprocess.call("sos purge --all", shell=True)
-    taskstatus = [
-        x.split()[0] for x in subprocess.check_output(
-            "sos status -v1", shell=True).decode().splitlines()
-    ]
+    taskstatus = [x.split()[0] for x in subprocess.check_output("sos status -v1", shell=True).decode().splitlines()]
     assert tasks[1] not in taskstatus
 
 
@@ -652,7 +630,6 @@ sh:
         assert time.time() - st > 1
 
 
-@pytest.mark.skip(reason="temporary skip")
 def test_task_with_signature(purge_tasks, clear_now_and_after):
     """Test re-execution of tasks"""
     # now with a real signature
@@ -714,7 +691,6 @@ def test_output_in_task():
         options={"default_queue": "localhost"})
 
 
-@pytest.mark.skip(reason="temporary skip")
 def test_repeated_tasks():
     """Test statement before task #1142 """
     for i in range(5):
@@ -801,47 +777,21 @@ def test_output_from_master_task():
         options={"default_queue": "localhost"})
 
 
-@pytest.mark.skip(reason="temporary skip")
-@pytest.mark.skipIf(not has_docker, reason="Docker container not usable")
-def test_remote_input_target(clear_now_and_after):
-    """Test the use of remote target"""
-    clear_now_and_after("vars.sh", "vars1.sh")
-    execute_workflow(
-        """
-        [10]
-        input: remote('/lib/init/vars.sh')
-        output: f'vars1.sh'
-
-        task:
-
-        with open(_input, 'r') as inf, open(_output, 'w') as outf:
-            outf.write(inf.read())
-        """,
-        options={
-            "config_file": "~/docker.yml",
-            "default_queue": "docker",
-            "sig_mode": "force",
-        },
-    )
-    assert not os.path.isfile("vars.sh")
-    assert os.path.isfile("vars1.sh")
-
-
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
-def test_delayed_interpolation(clear_now_and_after):
+def test_remotely_generated_output(clear_now_and_after):
     """Test delayed interpolation with expression involving remote objects"""
     # purge all previous tasks
     clear_now_and_after('test.py', 'test.py.bak')
     execute_workflow(
         """
         [10]
-        output: remote('test.py')
+        output: 'test.py'
         task:
         run:
             touch test.py
 
         [20]
-        output: remote(f"{_input:R}.bak")
+        output: f"{_input:R}.bak"
         task:
         run: expand=True
             cp {_input} {_output}
@@ -855,24 +805,30 @@ def test_delayed_interpolation(clear_now_and_after):
         },
     )
     # this file is remote only
-    assert not os.path.isfile("test.py")
-    assert not os.path.isfile("test.py.bak")
+    assert os.path.isfile("test.py")
+    assert os.path.isfile("test.py.bak")
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
-def test_remote_output_target(clear_now_and_after):
+def test_remote_output(clear_now_and_after):
     """Test the use of remote target"""
-    clear_now_and_after("vars.sh", "vars1.sh")
+    clear_now_and_after("line_cnt.txt")
+    with open("data.txt", "w") as data:
+        for i in range(100):
+            data.write(f"row {i}\n")
+    with open("line_cnt.txt", "w") as res:
+        res.write("50")
+
     execute_workflow(
         """
         [10]
-        input: remote('/lib/init/vars.sh')
-        output: remote(f'vars1.sh')
+        input: 'data.txt'
+        output: "line_cnt.txt"
 
         task:
 
         with open(_input, 'r') as inf, open(_output, 'w') as outf:
-            outf.write(inf.read())
+            outf.write(f'{len(inf.readlines())}')
         """,
         options={
             "config_file": "~/docker.yml",
@@ -880,60 +836,32 @@ def test_remote_output_target(clear_now_and_after):
             "sig_mode": "force",
         },
     )
-    assert not os.path.isfile("vars.sh")
-    assert not os.path.isfile("vars1.sh")
+    with open("line_cnt.txt") as res:
+        assert res.read() == "100"
 
 
-@pytest.mark.skipif(not has_docker, reason="Docker container not usable")
-def test_remote_output_target_with_trunksize(clear_now_and_after):
-    clear_now_and_after("vars.sh", "vars1.sh")
-
-    execute_workflow(
-        """\
-        [10]
-        import os
-        input: remote('/lib/init/vars.sh'), remote('/lib/init/init-d-script'), group_by=1
-        output: remote(os.path.basename(str(_input)))
-
-        task: trunk_size=2
-
-        with open(_input, 'r') as inf, open(_output, 'w') as outf:
-            outf.write(inf.read())""",
-        options={
-            "config_file": "~/docker.yml",
-            "default_queue": "docker",
-            "sig_mode": "force",
-        },
-    )
-    assert not os.path.isfile("vars.sh")
-    assert not os.path.isfile("init-d-script")
-
-
-@pytest.mark.skip(reason="temporary skip")
 def test_runtime_max_walltime():
     """Test server max_walltime option"""
-    with pytest.raises(Exception):
-        execute_workflow(
-            """
-        [10]
-        task:
-        import time
-        time.sleep(25)
-        """,
-            options={
-                "config_file": "~/docker.yml",
-                "default_queue": "docker_limited",
-                "sig_mode": "force",
-            },
-        )
+    # only warning messages will be yielded
+    execute_workflow(
+        """
+    [10]
+    task:
+    import time
+    time.sleep(25)
+    """,
+        options={
+            "config_file": "~/docker.yml",
+            "default_queue": "docker_limited",
+            "sig_mode": "force",
+        },
+    )
 
 
-@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_sync_master_task(clear_now_and_after):
     """Test sync input and output with remote host with trunksize"""
-    clear_now_and_after([f"test_{i}.txt" for i in range(4)],
-                        [f"test_{i}.bak" for i in range(4)])
+    clear_now_and_after([f"test_{i}.txt" for i in range(4)], [f"test_{i}.bak" for i in range(4)])
     import random
 
     val = random.randint(1, 10000)
@@ -1074,7 +1002,6 @@ run: expand=True
         assert os.path.isfile(f"{i}.txt")
 
 
-@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_sync_input_output_and_rerun(clear_now_and_after, purge_tasks):
     """Test sync input and output with remote host"""

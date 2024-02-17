@@ -490,6 +490,7 @@ class SoS_Step:
             self._script = repr(self._script)
         self.statements[-1] = [
             "!",
+            #f'sos_run_script("{self._action}", {self._script}{(", " + opt) if opt else ""})\n',
             f'{self._action}({self._script}{(", " + opt) if opt else ""})\n',
         ]
         self.values = []

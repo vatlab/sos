@@ -31,9 +31,9 @@ def assertDAG(dag, content):
         return sorted([x.strip() for x in dot.split('\n') if x.strip() and not 'digraph' in x])
 
     if isinstance(content, str):
-        assert sorted_dot(dot) == sorted_dot(content)
+        assert sorted_dot(dot) == sorted_dot(content), f'expect {content}, got {dot}'
     else:
-        assert sorted_dot(dot) in [sorted_dot(x) for x in content]
+        assert sorted_dot(dot) in [sorted_dot(x) for x in content], f'expect {content}, got {dot}'
 
 
 def get_initial_dag(test):
@@ -44,7 +44,7 @@ def get_initial_dag(test):
     return dag
 
 
-def test_simple_dag(temp_factory):
+def test_simple_dag1(temp_factory):
     '''Test DAG with simple dependency'''
     temp_factory('a.txt', 'a1.txt')
     # basica case
@@ -69,6 +69,11 @@ def test_simple_dag(temp_factory):
             A_3 -> A_4;
             }
             '''))
+
+
+def test_simple_dag2(temp_factory):
+    '''Test DAG with simple dependency'''
+    temp_factory('a.txt', 'a1.txt')
     # basica case
     # 1 -> 2 -> 3 -> 4
     assertDAG(
@@ -90,6 +95,11 @@ def test_simple_dag(temp_factory):
             A_3 -> A_4;
             }
             '''))
+
+
+def test_simple_dag3(temp_factory):
+    '''Test DAG with simple dependency'''
+    temp_factory('a.txt')
     #
     # 1 -> 2 -> 3 -> 4
     #
@@ -121,7 +131,11 @@ def test_simple_dag(temp_factory):
             A_3 -> A_4;
             }
             '''))
-    #
+
+
+def test_simple_dag4(temp_factory):
+    '''Test DAG with simple dependency'''
+    temp_factory('a.txt', 'a1.txt')
     # 1 -> 2
     # 3 -> 4 (3 does not have any input)
     #
@@ -152,7 +166,11 @@ def test_simple_dag(temp_factory):
             B_3 -> B_4;
             }
             '''))
-    #
+
+
+def test_simple_dag5(temp_factory):
+    '''Test DAG with simple dependency'''
+    temp_factory('a.txt', 'a1.txt')
     # 1 -> 2
     # 3 -> 4 (3 depends on something else)
     #
@@ -183,7 +201,11 @@ def test_simple_dag(temp_factory):
             B_3 -> B_4;
             }
             '''))
-    #
+
+
+def test_simple_dag6(temp_factory):
+    '''Test DAG with simple dependency'''
+    temp_factory('a.txt', 'a1.txt')
     # (1) -> 2
     # (1) -> 3 -> 4
     #
@@ -806,7 +828,7 @@ def test_reverse_shared_variable(clear_now_and_after):
     assert env.sos_dict['b'] == 1
 
 
-@pytest.mark.skip(reason="temporary skip")
+
 def test_chained_depends(temp_factory):
     '''Test chain dependent'''
     temp_factory('a.bam', 'a.bam.bai', 'a.vcf')
@@ -829,7 +851,6 @@ def test_chained_depends(temp_factory):
         targets=['a.vcf'])
 
 
-@pytest.mark.skipif(True, reason='This test is failing')
 def test_output_of_dag(clear_now_and_after):
     '''Test output of dag'''
     #

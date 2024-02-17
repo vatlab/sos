@@ -1057,22 +1057,6 @@ def cmd_remote(args, workflow_args):
             from .remote import run_command_on_hosts
 
             run_command_on_hosts(cfg, args.hosts, args.cmd, args.verbosity)
-        elif args.action == "push":
-            if not args.files:
-                raise ValueError(
-                    "Please specify files to push to remote host with option --files"
-                )
-            from .remote import push_to_hosts
-
-            push_to_hosts(cfg, args.hosts, args.files, args.verbosity)
-        elif args.action == "pull":
-            if not args.files:
-                raise ValueError(
-                    "Please specify files to pull from remote host with option --files"
-                )
-            from .remote import pull_from_host
-
-            pull_from_host(cfg, args.hosts, args.files, args.verbosity)
         else:
             raise ValueError(
                 "Unacceptable remote action. Use command 'sos remote -h' to check allowable actions."

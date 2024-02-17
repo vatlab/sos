@@ -11,8 +11,7 @@ from .eval import SoS_eval, SoS_exec, accessed_vars, used_in_func
 from .executor_utils import __null_func__, prepare_env, strip_param_defs
 from .parser import SoS_Step
 from .syntax import SOS_TARGETS_OPTIONS
-from .targets import (dynamic, file_target, named_output, remote, sos_step,
-                      sos_targets)
+from .targets import dynamic, file_target, named_output, sos_step, sos_targets
 from .utils import env
 
 # imported for eval, assert to reduce warning
@@ -342,7 +341,7 @@ def get_step_depends(section):
             })
             args, kwargs = SoS_eval(
                 f"__null_func__({value})", extra_dict=env.sos_dict.dict())
-            if any(isinstance(x, (dynamic, remote)) for x in args):
+            if any(isinstance(x, dynamic) for x in args):
                 dynamic_depends = True
             else:
                 step_depends.extend(sos_targets(*args, **kwargs))
@@ -398,7 +397,7 @@ def get_step_input(section, default_input):
                 step_input = sos_targets()
             else:
                 step_input = default_input
-        elif not any(isinstance(x, (dynamic, remote)) for x in args):
+        elif not any(isinstance(x, dynamic) for x in args):
             step_input = sos_targets(*args)
     except SyntaxError:
         raise
@@ -495,7 +494,7 @@ def get_step_output(section, default_output, analysis_type):
             })
             args, kwargs = SoS_eval(
                 f"__null_func__({value})", extra_dict=env.sos_dict.dict())
-            if any(isinstance(x, (dynamic, remote)) for x in args):
+            if any(isinstance(x, dynamic) for x in args):
                 raise ValueError(
                     f"Auxiliary step does not allow dynamic or remote input or output: {value} provided"
                 )

@@ -35,15 +35,15 @@ def config_factory():
 
 @pytest.fixture
 def script_factory():
-    filename = tempfile.NamedTemporaryFile(suffix='.sos', delete=False).name
+    default_filename = tempfile.NamedTemporaryFile(suffix='.sos', delete=False).name
 
-    def get_script(text):
-        with open(filename, 'w') as conf:
+    def get_script(text, filename=None):
+        with open(filename or default_filename, 'w') as conf:
             conf.write(textwrap.dedent(text))
-        return filename
+        return filename or default_filename
 
     yield get_script
-    os.remove(filename)
+    os.remove(default_filename)
 
 
 @pytest.fixture

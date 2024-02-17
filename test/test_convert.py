@@ -10,7 +10,7 @@ import pytest
 from sos.converter import extract_workflow
 
 
-@pytest.mark.skip(reason="temporary skip")
+
 def test_script_to_html(temp_factory, clear_now_and_after):
     '''Test sos show script --html'''
     clear_now_and_after('temp1.sos.html', 'temp2.sos.html')

@@ -2,7 +2,6 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
-
 import copy
 import gzip
 import os
@@ -33,18 +32,13 @@ from .messages import decode_msg, encode_msg
 from .parser import SoS_Script
 from .syntax import SOS_ACTION_OPTIONS
 from .targets import executable, file_target, path, paths, sos_targets
-from .utils import (StopInputGroup, TerminateExecution,
-                    TimeoutInterProcessLock, env, fileMD5, get_traceback,
+from .utils import (TimeoutInterProcessLock, env, fileMD5, get_traceback,
                     load_config_files, short_repr, textMD5, transcribe)
 
 __all__ = [
     "SoS_Action",
     "script",
     "sos_run",
-    "fail_if",
-    "warn_if",
-    "stop_if",
-    "download",
     "run",
     "perl",
     "report",
@@ -129,8 +123,7 @@ def SoS_Action(
                             "shub",
                             "oras",
                     ):
-                        env.logger.warning(
-                            f"Container type {cty} might not be supported.")
+                        env.logger.warning(f"Container type {cty} might not be supported.")
                 elif engine is not None and engine != "local":
                     raise ValueError(f"Only docker and singularity container engines are supported: {engine} specified")
                 else:
@@ -412,8 +405,9 @@ class SoS_ExecuteScript:
             else:
                 raise RuntimeError(f"Unacceptable interpreter {self.interpreter}")
 
-            debug_script_path = os.path.dirname(os.path.abspath(kwargs["stderr"])) if ("stderr" in kwargs and kwargs["stderr"] is not False and
-                                os.path.isdir(os.path.dirname(os.path.abspath(kwargs["stderr"])))) else env.exec_dir
+            debug_script_path = os.path.dirname(os.path.abspath(kwargs["stderr"])) if (
+                "stderr" in kwargs and kwargs["stderr"] is not False and
+                os.path.isdir(os.path.dirname(os.path.abspath(kwargs["stderr"])))) else env.exec_dir
             debug_script_file = os.path.join(
                 debug_script_path,
                 f'{env.sos_dict["step_name"]}_{env.sos_dict["_index"]}_{str(uuid.uuid4())[:8]}{self.suffix}',
@@ -767,49 +761,6 @@ def script(script, interpreter="", suffix="", args="", entrypoint="", **kwargs):
     content of one or more files specified by option input would be prepended before
     the specified script."""
     return SoS_ExecuteScript(script, interpreter, suffix, args, entrypoint).run(**kwargs)
-
-
-@SoS_Action(acceptable_args=["expr", "msg"])
-def fail_if(expr, msg=""):
-    """Raise an exception with `msg` if condition `expr` is False"""
-    if expr:
-        raise TerminateExecution(msg if msg else "error triggered by action fail_if")
-    return 0
-
-
-@SoS_Action(acceptable_args=["expr", "msg"])
-def warn_if(expr, msg=""):
-    """Yield an warning message `msg` if `expr` is False """
-    if expr:
-        env.logger.warning(msg)
-    return 0
-
-
-@SoS_Action(acceptable_args=["expr", "msg", "no_output"])
-def stop_if(expr, msg="", no_output=False):
-    """Abort the execution of the current step or loop and yield
-    an warning message `msg` if `expr` is False"""
-    if expr:
-        raise StopInputGroup(msg=msg, keep_output=not no_output)
-    return 0
-
-
-@SoS_Action(acceptable_args=["expr", "msg"])
-def done_if(expr, msg=""):
-    """Assuming that output has already been generated and stop
-    executing the rest of the substep"""
-    if expr:
-        raise StopInputGroup(msg=msg, keep_output=True)
-    return 0
-
-
-@SoS_Action(acceptable_args=["expr", "msg", "no_output"])
-def skip_if(expr, msg=""):
-    """Skip the current substep and set _output to empty. Output
-    will be removed if already generated."""
-    if expr:
-        raise StopInputGroup(msg=msg, keep_output=False)
-    return 0
 
 
 #

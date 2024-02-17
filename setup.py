@@ -112,7 +112,6 @@ sos = sos.converter:SoS_Lexer
 file_target = sos.targets:file_target
 sos_tempfile = sos.targets:sos_tempfile
 dynamic = sos.targets:dynamic
-remote = sos.targets:remote
 executable = sos.targets:executable
 sos_variable = sos.targets:sos_variable
 sos_step = sos.targets:sos_step
@@ -126,14 +125,8 @@ R_library = sos.targets_r:R_library
 [sos_actions]
 script = sos.actions:script
 sos_run = sos.actions:sos_run
-fail_if = sos.actions:fail_if
-warn_if = sos.actions:warn_if
-stop_if = sos.actions:stop_if
-done_if = sos.actions:done_if
-skip_if = sos.actions:skip_if
 download = sos.actions:download
 run = sos.actions:run
-
 bash = sos.actions_bash:bash
 csh = sos.actions_bash:csh
 tcsh = sos.actions_bash:tcsh

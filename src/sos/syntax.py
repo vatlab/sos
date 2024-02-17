@@ -28,8 +28,6 @@ SOS_RUNTIME_OPTIONS = [
     "env",
     "prepend_path",
     "queue",
-    "to_host",
-    "from_host",
     "trunk_size",
     "trunk_workers",
     "tags",

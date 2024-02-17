@@ -61,41 +61,41 @@ depends: Py_Module('tabulate<2.0')
 ''')
 
 
-@pytest.mark.skip(reason="temporary skip")
+
 def test_upgrade_py_module():
     '''Test upgrade py module #1246'''
-    # first install tabulate == 0.7.5
+    # first install tabulate == 0.8.5
     execute_workflow(r'''
 [10]
-depends: Py_Module('tabulate==0.7.5', autoinstall=True)
+depends: Py_Module('tabulate==0.8.9', autoinstall=True)
 ''')
     # test should pass
     execute_workflow(r'''
 [10]
-depends: Py_Module('tabulate'), Py_Module('tabulate==0.7.5')
+depends: Py_Module('tabulate'), Py_Module('tabulate==0.8.9')
 ''')
     # test for newer version should fail
 
     with pytest.raises(Exception):
         execute_workflow(r'''
 [10]
-depends: Py_Module('tabulate==0.8.3')
+depends: Py_Module('tabulate==0.9.0')
 ''')
 
     # auto install should work
     execute_workflow(r'''
 [10]
-depends: Py_Module('tabulate==0.8.3', autoinstall=True)
+depends: Py_Module('tabulate==0.9.0', autoinstall=True)
 ''')
 
     # test for old version should fail
     execute_workflow(r'''
         [10]
-        depends: Py_Module('tabulate'), Py_Module('tabulate==0.8.3')
+        depends: Py_Module('tabulate'), Py_Module('tabulate==0.9.0')
         ''')
     # test for old version should fail
     with pytest.raises(Exception):
         execute_workflow(r'''
         [10]
-        depends: Py_Module('tabulate==0.7.5')
+        depends: Py_Module('tabulate==0.8.9')
         ''')
