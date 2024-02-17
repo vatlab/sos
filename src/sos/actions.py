@@ -2,20 +2,29 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
-
 import copy
+import gzip
 import os
 import shlex
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import textwrap
 import time
+import urllib
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
+import zipfile
 from collections.abc import Sequence
+from concurrent.futures import ProcessPoolExecutor
 from functools import wraps
 from typing import Any, Callable, Dict, List, Tuple, Union
+
+from tqdm import tqdm as ProgressBar
 
 from .controller import send_message_to_controller
 from .eval import interpolate
@@ -23,8 +32,8 @@ from .messages import decode_msg, encode_msg
 from .parser import SoS_Script
 from .syntax import SOS_ACTION_OPTIONS
 from .targets import executable, file_target, path, paths, sos_targets
-from .utils import (TimeoutInterProcessLock, env, load_config_files,
-                    short_repr, textMD5, transcribe)
+from .utils import (TimeoutInterProcessLock, env, fileMD5, get_traceback,
+                    load_config_files, short_repr, textMD5, transcribe)
 
 __all__ = [
     "SoS_Action",
@@ -758,6 +767,7 @@ def script(script, interpreter="", suffix="", args="", entrypoint="", **kwargs):
 # download file with progress bar
 #
 
+
 def downloadURL(URL, dest, decompress=False, index=None):
     dest = os.path.abspath(os.path.expanduser(dest))
     dest_dir, filename = os.path.split(dest)
@@ -952,6 +962,7 @@ def downloadURL(URL, dest, decompress=False, index=None):
         if os.path.isfile(dest_tmp):
             os.remove(dest_tmp)
     return os.path.isfile(dest)
+
 
 @SoS_Action(acceptable_args=["URLs", "workdir", "dest_dir", "dest_file", "decompress", "max_jobs"])
 def download(URLs, dest_dir=".", dest_file=None, decompress=False, max_jobs=5):

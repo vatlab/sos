@@ -2,7 +2,6 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
-
 import os
 import shutil
 import subprocess
@@ -839,7 +838,6 @@ def test_remote_output(clear_now_and_after):
     )
     with open("line_cnt.txt") as res:
         assert res.read() == "100"
-
 
 
 def test_runtime_max_walltime():

@@ -1,20 +1,6 @@
-import gzip
-import tarfile
-import urllib
-import urllib.error
-import urllib.parse
-import urllib.request
-import zipfile
-from concurrent.futures import ProcessPoolExecutor
-
-import pkg_resources
-from tqdm import tqdm as ProgressBar
-
-from .utils import (StopInputGroup, TerminateExecution, env, fileMD5,
-                    get_traceback)
+from .utils import (StopInputGroup, TerminateExecution, env)
 
 # g_action_map = {}
-
 
 # def _load_actions():
 #     global g_action_map  # pylint: disable=global-variable-not-assigned
@@ -30,7 +16,6 @@ from .utils import (StopInputGroup, TerminateExecution, env, fileMD5,
 
 #             # look for sos version requirement
 #             get_logger().warning(f"Failed to load script running action {_entrypoint.name}: {e}")
-
 
 # def sos_run_script(action, script, *args, **kwargs):
 #     '''Call script-execution actions.'''
