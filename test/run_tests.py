@@ -105,7 +105,7 @@ if __name__ == '__main__':
                     except Exception:
                         print(f'Invalid log line: {line}')
                     test_results[tst] = res.strip()
-            all_tests = [x for x, y in test_results.items() if y == 'FAILED' and x in all_tests]
+            all_tests = [x for x, y in test_results.items() if (y == 'FAILED' and x in all_tests) or x not in test_results]
             # if args.lastfailed != 0:
             #     all_tests = all_tests[-args.lastfailed:]
             print(f'Running {len(all_tests)} failed tests.')

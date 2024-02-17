@@ -13,9 +13,7 @@ from sos import execute_workflow
 
 
 @pytest.mark.xfail(reason="Sometimes there is no permission to install to R")
-@pytest.mark.skipif(
-    not shutil.which("Rscript") or "TRAVIS" in os.environ,
-    reason="R not installed")
+@pytest.mark.skipif(not shutil.which("Rscript") or "TRAVIS" in os.environ, reason="R not installed")
 def test_r_library():
     """Test target R_Library"""
     execute_workflow("""
@@ -26,7 +24,7 @@ def test_r_library():
         """)
 
 
-
+@pytest.mark.xfail(reason="Sometimes there is no permission to install to R")
 @pytest.mark.skipif(not shutil.which("Rscript"), reason="R not installed")
 def test_depends_r_library():
     """Testing depending on R_library"""
