@@ -509,7 +509,7 @@ def test_max_cores():
         )
 
 
-@pytest.mark.skipIf(not has_docker, reason="Docker container not usable")
+@pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_override_max_cores():
     """Test use queue_args to override server restriction max_cores"""
     execute_workflow(

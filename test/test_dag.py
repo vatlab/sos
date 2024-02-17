@@ -851,7 +851,6 @@ def test_chained_depends(temp_factory):
         targets=['a.vcf'])
 
 
-@pytest.mark.skipif(True, reason='This test is failing')
 def test_output_of_dag(clear_now_and_after):
     '''Test output of dag'''
     #

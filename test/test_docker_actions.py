@@ -90,16 +90,6 @@ def test_bash_in_docker():
         ''')
 
 
-#    @pytest.mark.skipif(not has_docker or sys.platform != 'win32', reason='Skip test because docker is not installed.')
-#    def testBatchScriptInDocker():
-#        '''Test action powershell in docker environment'''
-#        script = execute_workflow(r'''
-#           [0]
-#           run:  container='docker://microsoft/windowsservercore'
-#           dir c:\
-#           ''')
-
-
 @pytest.mark.skipif(
     not has_docker or sys.platform == 'win32',
     reason='Skip test because docker is not installed.')

@@ -1775,7 +1775,6 @@ def test_step_id_vars():
         """)
 
 
-
 def test_reexecution_of_dynamic_depends(clear_now_and_after):
     """Testing the rerun of steps to verify dependency"""
     clear_now_and_after("a.bam", "a.bam.bai")
@@ -1802,7 +1801,6 @@ def test_reexecution_of_dynamic_depends(clear_now_and_after):
     res = execute_workflow(script, options={"trace_existing": True})
     assert res["__completed__"]["__step_completed__"] == 2
     assert res["__completed__"]["__step_skipped__"] == 1
-
 
 
 def test_traced_function(clear_now_and_after):
@@ -2314,7 +2312,6 @@ def test_remove_empty_groups_empty_named(clear_now_and_after):
         """)
 
 
-
 def test_multi_depends(clear_now_and_after, temp_factory):
     """Test a step with multiple depdendend steps"""
 
@@ -2378,10 +2375,7 @@ def test_execute_ipynb(sample_workflow):
     Base_Executor(wf).run()
 
 
-@pytest.mark.skipif(
-    True,
-    reason="Skip test because travis fails on this test for unknown reason, also due to a bug in psutil under windows",
-)
+@pytest.mark.skip(reason="Skip test because travis fails on this test for unknown reason, also due to a bug in psutil under windows")
 def test_kill_worker(script_factory):
     """Test if the workflow can error out after a worker is killed"""
     import time
@@ -2402,17 +2396,7 @@ def test_kill_worker(script_factory):
     while True:
         children = proc.children(recursive=True)
         if children:
-            children[0].terminate()
-            break
-        time.sleep(0.1)
-    ret.wait()
-
-    ret = subprocess.Popen(["sos", "run", script_file])
-    proc = psutil.Process(ret.pid)
-    while True:
-        children = proc.children(recursive=True)
-        if children:
-            children[0].kill()
+            children[-1].terminate()
             break
         time.sleep(0.1)
     ret.wait()
@@ -2457,7 +2441,7 @@ def test_kill_substep_worker(script_factory):
     ret.wait()
 
 
-@pytest.mark.skipif(True, reason="This test needs to be improved to make it consistent")
+@pytest.mark.skip(reason="This test needs to be improved to make it consistent")
 def test_kill_task(script_factory):
     """Test if the workflow can error out after a worker is killed"""
     subprocess.call(["sos", "purge", "--all"])
@@ -2501,7 +2485,7 @@ def test_kill_task(script_factory):
     assert ret.returncode != 0
 
 
-@pytest.mark.skipif(True, reason="This test needs to be improved to make it consistent")
+@pytest.mark.skip(reason="This test needs to be improved to make it consistent")
 def test_restart_orphaned_tasks(script_factory):
     """Test restarting orphaned tasks which displays as running at first."""
     import time
@@ -2594,7 +2578,6 @@ def test_concurrent_running_tasks(script_factory):
     ret2.wait()
     assert ret1.returncode == 0
     assert ret2.returncode == 0
-
 
 
 def test_reexecute_task_with_missing_output(clear_now_and_after):
