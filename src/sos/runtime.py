@@ -4,15 +4,14 @@
 # Distributed under the terms of the 3-clause BSD License.
 import pkg_resources
 
-from .functions import (done_if, download, fail_if, skip_if, sos_run_script,
-                        stop_if, warn_if)
+from .functions import (done_if, fail_if, skip_if, stop_if, warn_if)
 # backward compatibility #1337
 from .pattern import expand_pattern
 from .targets import path, paths
 from .utils import get_output, sos_get_param
 
 # silent pyflakes
-sos_get_param, get_output, path, paths, expand_pattern, done_if, download, fail_if, skip_if, stop_if, warn_if
+sos_get_param, get_output, path, paths, expand_pattern, done_if, fail_if, skip_if, stop_if, warn_if
 
 
 def _load_group(group: str) -> None:

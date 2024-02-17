@@ -125,6 +125,7 @@ R_library = sos.targets_r:R_library
 [sos_actions]
 script = sos.actions:script
 sos_run = sos.actions:sos_run
+download = sos.actions:download
 run = sos.actions:run
 bash = sos.actions_bash:bash
 csh = sos.actions_bash:csh
