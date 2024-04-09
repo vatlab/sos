@@ -529,7 +529,8 @@ class file_target(path, BaseTarget):
 
     def __init__(self, *args, **kwargs):
         # this is path segments
-        super().__init__(*args, **kwargs)
+        path.__init__(self, *args, **kwargs)
+        BaseTarget.__init__(self, *args, **kwargs)
         if len(args) == 1 and isinstance(args[0], file_target):
             self._md5 = args[0]._md5 if hasattr(args[0], '_md5') else None
         else:
