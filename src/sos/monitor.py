@@ -310,12 +310,10 @@ def summarizeExecution(task_id, pulses, status="Unknown"):
         accu_cpu += float(c) + float(cc)
         accu_mem += float(m) + float(cm)
         count += 1
-        if float(c) + float(cc) > peak_cpu:
-            peak_cpu = float(c) + float(cc)
-        if float(m) + float(cm) > peak_mem:
-            peak_mem = float(m) + float(cm)
-        if int(nch) > peak_nch:
-            peak_nch = int(nch)
+
+        peak_cpu = max(peak_cpu, float(c) + float(cc))
+        peak_mem = max(float(m) + float(cm), peak_mem)
+        peak_nch = max(int(nch), peak_nch)
     try:
         second_elapsed = end_time - start_time
     except Exception:
