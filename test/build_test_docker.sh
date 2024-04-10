@@ -41,8 +41,8 @@ RUN [ -d /root/.ssh ] || mkdir -p /root/.ssh
 ADD authorized_keys /root/.ssh/authorized_keys
 
 ARG  SHA=LATEST
-RUN  SHA=$SHA git clone http://github.com/vatlab/sos sos
-RUN  pip install sos sos-pbs
+RUN  pip install git+https://github.com/vatlab/sos
+RUN  pip install sos-pbs
 
 RUN  echo "export TS_SLOTS=10" >> /root/.bash_profile
 
