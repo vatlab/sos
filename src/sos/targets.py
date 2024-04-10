@@ -528,8 +528,7 @@ class file_target(path, BaseTarget):
     """A regular target for files."""
 
     def __init__(self, *args, **kwargs):
-        # this is path segments
-        path.__init__(self, *args, **kwargs)
+        path.__init__(self)
         BaseTarget.__init__(self, *args, **kwargs)
         if len(args) == 1 and isinstance(args[0], file_target):
             self._md5 = args[0]._md5 if hasattr(args[0], '_md5') else None
