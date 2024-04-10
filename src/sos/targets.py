@@ -676,7 +676,7 @@ class sos_tempfile(file_target):
         if cls is Path:
             cls = WindowsPath if os.name == "nt" else PosixPath
         filename = request_answer_from_controller(["sos_tempfile", path, name, suffix, prefix, dir])
-        return cls._from_parts([filename])
+        return file_target(filename)
 
 
 class paths(Sequence, os.PathLike):
