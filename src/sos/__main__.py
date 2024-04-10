@@ -1365,7 +1365,7 @@ def get_execute_parser(desc_only=False):
         ],
         default="default",
         metavar="SIGMODE",
-        dest="sig_mode",
+        dest="__sig_mode__",
         help="""How runtime signature would be handled, which can be "default"
             (save and use signature, default mode in batch mode),
             "force" (ignore existing signature and overwrite them while
@@ -1460,8 +1460,8 @@ def cmd_execute(args, workflow_args):
             "config_file":
                 args.config,
             "sig_mode":
-                "default" if args.sig_mode in (None,
-                                               "ignore") else args.sig_mode,
+                "default" if args.__sig_mode__ in (None,
+                                               "ignore") else args.__sig_mode__,
             "run_mode":
                 "dryrun" if args.dryrun else
                 (args.run_mode if args.run_mode else "run"),
