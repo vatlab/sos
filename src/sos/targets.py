@@ -528,8 +528,13 @@ class file_target(path, BaseTarget):
     """A regular target for files."""
 
     def __init__(self, *args, **kwargs):
-        # this is path segments
-        super().__init__(*args, **kwargs)
+        if sys.version_info[0] >= 3 and sys.version_info[1] >= 12:
+            # python 3.12 and above
+            path.__init__(self, *args, **kwargs)
+        else:
+            # python 2.10 and 3.11
+            path.__init__(self)
+        BaseTarget.__init__(self, *args, **kwargs)
         if len(args) == 1 and isinstance(args[0], file_target):
             self._md5 = args[0]._md5 if hasattr(args[0], '_md5') else None
         else:
@@ -675,7 +680,7 @@ class sos_tempfile(file_target):
         if cls is Path:
             cls = WindowsPath if os.name == "nt" else PosixPath
         filename = request_answer_from_controller(["sos_tempfile", path, name, suffix, prefix, dir])
-        return cls._from_parts([filename])
+        return file_target(filename)
 
 
 class paths(Sequence, os.PathLike):
