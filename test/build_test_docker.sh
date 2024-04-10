@@ -21,10 +21,12 @@ docker rmi eg_sshd
 # copy the public key here
 cp ~/.ssh/id_rsa.pub authorized_keys
 
+python_version=$(python --version | cut -d. -f2)
 # create a docker file
 #
-cat > Dockerfile << 'HERE'
-FROM python:3.10
+echo "FROM python:3.${python_version}" > Dockerfile
+
+cat >> Dockerfile << 'HERE'
 
 RUN apt-get update && apt-get install -y openssh-server rsync task-spooler
 RUN mkdir /var/run/sshd
