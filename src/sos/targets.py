@@ -528,7 +528,12 @@ class file_target(path, BaseTarget):
     """A regular target for files."""
 
     def __init__(self, *args, **kwargs):
-        path.__init__(self)
+        if sys.version_info[0] >= 3 and sys.version_info[1] >= 12:
+            # python 3.12 and above
+            path.__init__(self, *args, **kwargs)
+        else:
+            # python 2.10 and 3.11
+            path.__init__(self)
         BaseTarget.__init__(self, *args, **kwargs)
         if len(args) == 1 and isinstance(args[0], file_target):
             self._md5 = args[0]._md5 if hasattr(args[0], '_md5') else None

@@ -31,4 +31,5 @@ jobs:
       run: |
         cd test
         sh build_test_docker.sh
+        echo "Running tests"
         python run_tests.py
