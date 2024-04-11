@@ -59,6 +59,9 @@ if you have helped fixing bugs or making improvements to the source code. In add
 
 ### Change Log of SoS Workflow and SoS Notebook
 
+SoS 0.25.1:
+* [sos#1542](https://github.com/vatlab/sos/issues/1542): Fix a compatibility issue with Python 3.12.
+
 SoS 0.25.0:
 * [sos#1535](https://github.com/vatlab/sos/issues/1535): Remove 'R' formatter, `remote` target type, remote `push` and `pull`, named (`#name`) path because SoS now assumes that all input and output files are available on shared drives with identical path names.
 
