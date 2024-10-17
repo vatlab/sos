@@ -19,7 +19,7 @@ from shlex import quote
 from typing import Any, Dict, List, Union
 
 import fasteners
-import pkg_resources
+from importlib import metadata
 
 from .controller import (request_answer_from_controller, send_message_to_controller)
 from .eval import get_config, interpolate
@@ -1873,7 +1873,7 @@ class InMemorySignature:
                             target_class = eval(target_type)
                         else:
                             # check registry
-                            for entrypoint in pkg_resources.iter_entry_points(group="sos_targets"):
+                            for entrypoint in metadata.entry_points(group="sos_targets"):
                                 if entrypoint.name.strip() == target_type:
                                     target_class = entrypoint.load()
                                     break

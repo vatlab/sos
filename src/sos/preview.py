@@ -7,7 +7,7 @@ import argparse
 import base64
 import io
 
-import pkg_resources
+from importlib import metadata
 
 from sos.utils import dehtml, dot_to_gif, env, linecount_of_file
 
@@ -17,7 +17,7 @@ def get_previewers():
     # something to the plugin
     group = "sos_previewers"
     result = []
-    for entrypoint in pkg_resources.iter_entry_points(group=group):
+    for entrypoint in metadata.entry_points(group=group):
         # if ':' in entry point name, it should be a function
         try:
             name, priority = entrypoint.name.split(",", 1)

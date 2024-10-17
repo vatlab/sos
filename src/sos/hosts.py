@@ -16,7 +16,7 @@ from collections.abc import Sequence
 from typing import Any, Dict, List, Optional, Union
 
 import pexpect
-import pkg_resources
+from importlib import metadata
 
 from .eval import Undetermined, cfg_interpolate, get_config
 from .syntax import SOS_LOGLINE
@@ -904,7 +904,7 @@ class Host:
             task_engine = None
             workflow_engine = None
 
-            for entrypoint in pkg_resources.iter_entry_points(group="sos_taskengines"):
+            for entrypoint in metadata.entry_points(group="sos_taskengines"):
                 try:
                     if entrypoint.name == self._engine_type:
                         task_engine = entrypoint.load()(self.host_instances[self.alias])
@@ -912,7 +912,7 @@ class Host:
                 except Exception as e:
                     env.logger.debug(f"Failed to load task engine {self._engine_type}: {e}")
 
-            for entrypoint in pkg_resources.iter_entry_points(group="sos_workflowengines"):
+            for entrypoint in metadata.entry_points(group="sos_workflowengines"):
                 try:
                     if entrypoint.name == self._engine_type:
                         workflow_engine = entrypoint.load()(self.host_instances[self.alias])

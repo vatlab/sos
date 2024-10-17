@@ -2,7 +2,7 @@
 #
 # Copyright (c) Bo Peng and the University of Texas MD Anderson Cancer Center
 # Distributed under the terms of the 3-clause BSD License.
-import pkg_resources
+from importlib import metadata
 
 from .functions import (done_if, fail_if, skip_if, stop_if, warn_if)
 # backward compatibility #1337
@@ -15,7 +15,7 @@ sos_get_param, get_output, path, paths, expand_pattern, done_if, fail_if, skip_i
 
 
 def _load_group(group: str) -> None:
-    for _entrypoint in pkg_resources.iter_entry_points(group=group):
+    for _entrypoint in metadata.entry_points(group=group):
         # import all targets and actions from entry_points
         # Grab the function that is the actual plugin.
         _name = _entrypoint.name
@@ -29,7 +29,7 @@ def _load_group(group: str) -> None:
             if "Requirement.parse" in str(e):
                 import re
 
-                from pkg_resources import parse_version
+                from metadata import parse_version
 
                 from ._version import __version__
 

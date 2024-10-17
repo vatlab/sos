@@ -9,7 +9,7 @@ import datetime
 import os
 import sys
 
-import pkg_resources
+from importlib import metadata
 
 script_help = """A SoS script that defines one or more workflows, in format
     .sos or .ipynb. The script can be a filename or a URL from which the
@@ -49,7 +49,7 @@ transcript_help = """Name of a file that records the execution transcript of
 #         return parser
 #     parser.set_defaults(func=cmd_install)
 #     subparsers = parser.add_subparsers(title='installers', dest='installer_name')
-#     for entrypoint in pkg_resources.iter_entry_points(group='sos_installers'):
+#     for entrypoint in metadata.entry_points(group='sos_installers'):
 #         try:
 #             name = entrypoint.name
 #             if not name.endswith('.parser'):
@@ -63,7 +63,7 @@ transcript_help = """Name of a file that records the execution transcript of
 #
 # def cmd_install(args, unknown_args):
 #     from .utils import env, get_traceback
-#     for entrypoint in pkg_resources.iter_entry_points(group='sos_installers'):
+#     for entrypoint in metadata.entry_points(group='sos_installers'):
 #         try:
 #             if entrypoint.name == args.installer_name + '.func':
 #                 func = entrypoint.load()
@@ -110,7 +110,7 @@ def get_convert_parser(desc_only=False):
         title="converters (name of converter is not needed from command line)",
         dest="converter_name",
     )
-    for entrypoint in pkg_resources.iter_entry_points(group="sos_converters"):
+    for entrypoint in metadata.entry_points(group="sos_converters"):
         try:
             name = entrypoint.name
             if name.endswith(".parser"):
@@ -198,7 +198,7 @@ def print_converter_help():
         [x for x in sys.argv[2:] if x != "-h"])
     if from_format is None or to_format is None:
         return
-    for entrypoint in pkg_resources.iter_entry_points(group="sos_converters"):
+    for entrypoint in metadata.entry_points(group="sos_converters"):
         try:
             name = entrypoint.name
             if name.endswith(".parser"):
@@ -236,7 +236,7 @@ def print_converter_help():
 def cmd_convert(args, unknown_args):
     from .utils import env, get_traceback
 
-    for entrypoint in pkg_resources.iter_entry_points(group="sos_converters"):
+    for entrypoint in metadata.entry_points(group="sos_converters"):
         try:
             if entrypoint.name == args.converter_name:
                 converter = entrypoint.load()()
@@ -1479,7 +1479,7 @@ def cmd_execute(args, workflow_args):
             executor = BaseTaskExecutor()
         else:
             found = False
-            for entrypoint in pkg_resources.iter_entry_points(
+            for entrypoint in metadata.entry_points(
                     group="sos_taskexecutors"):
                 name = entrypoint.name.strip()
                 if name == args.executor:
@@ -2627,7 +2627,7 @@ def cmd_config(args, workflow_args):
 # Handling addon commands
 #
 def handle_addon(args, unknown_args):
-    for entrypoint in pkg_resources.iter_entry_points(group="sos_addons"):
+    for entrypoint in metadata.entry_points(group="sos_addons"):
         name = entrypoint.name.strip()
         if name.endswith(".func") and name.rsplit(".", 1)[0] == args.addon_name:
             func = entrypoint.load()
@@ -2777,7 +2777,7 @@ def main():
                 "remove",
                 "config",
         ]:
-            for entrypoint in pkg_resources.iter_entry_points(
+            for entrypoint in metadata.entry_points(
                     group="sos_addons"):
                 name = entrypoint.name
                 addon = entrypoint.load()()

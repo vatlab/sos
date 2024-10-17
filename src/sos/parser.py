@@ -112,10 +112,10 @@ def is_type_hint(stmt: str) -> bool:
     # if action is registered
     global _action_list
     if _action_list is None:
-        import pkg_resources
+        from importlib import metadata
 
         _action_list = [
-            x.name for x in pkg_resources.iter_entry_points(group="sos_actions")
+            x.name for x in metadata.entry_points(group="sos_actions")
         ]
     if action in _action_list:
         return False

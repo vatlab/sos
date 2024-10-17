@@ -40,7 +40,7 @@ class Py_Module(BaseTarget):
         pip install if necessary.'''
         import importlib
 
-        import pkg_resources
+        from importlib import metadata
         spam_spec = importlib.util.find_spec(name)
         reinstall = False
         if spam_spec is not None:
@@ -50,7 +50,7 @@ class Py_Module(BaseTarget):
                     ver = mod.__version__
                 else:
                     try:
-                        ver = pkg_resources.get_distribution(name).version
+                        ver = metadata.get_distribution(name).version
                     except Exception as e:
                         env.logger.debug(
                             f'Failed to get version of {name}: {e}')
@@ -58,41 +58,41 @@ class Py_Module(BaseTarget):
                     f'Comparing exiting version {ver} against requested version {self._version}'
                 )
                 if self._version.startswith(
-                        '==') and pkg_resources.parse_version(
-                            ver) == pkg_resources.parse_version(
+                        '==') and metadata.parse_version(
+                            ver) == metadata.parse_version(
                                 self._version[2:]):
                     pass
                 elif self._version.startswith(
-                        '<=') and pkg_resources.parse_version(
-                            ver) <= pkg_resources.parse_version(
+                        '<=') and metadata.parse_version(
+                            ver) <= metadata.parse_version(
                                 self._version[2:]):
                     pass
                 elif self._version.startswith(
                         '<') and not self._version.startswith(
-                            '<=') and pkg_resources.parse_version(
-                                ver) < pkg_resources.parse_version(
+                            '<=') and metadata.parse_version(
+                                ver) < metadata.parse_version(
                                     self._version[1:]):
                     pass
                 elif self._version.startswith(
-                        '>=') and pkg_resources.parse_version(
-                            ver) >= pkg_resources.parse_version(
+                        '>=') and metadata.parse_version(
+                            ver) >= metadata.parse_version(
                                 self._version[2:]):
                     pass
                 # the case of >
                 elif self._version.startswith(
                         '>') and not self._version.startswith(
-                            '>=') and pkg_resources.parse_version(
-                                ver) > pkg_resources.parse_version(
+                            '>=') and metadata.parse_version(
+                                ver) > metadata.parse_version(
                                     self._version[1:]):
                     pass
                 elif self._version.startswith(
-                        '!=') and pkg_resources.parse_version(
-                            ver) != pkg_resources.parse_version(
+                        '!=') and metadata.parse_version(
+                            ver) != metadata.parse_version(
                                 self._version[2:]):
                     pass
                 elif self._version[0] not in (
-                        '=', '>', '<', '!') and pkg_resources.parse_version(
-                            ver) == pkg_resources.parse_version(self._version):
+                        '=', '>', '<', '!') and metadata.parse_version(
+                            ver) == metadata.parse_version(self._version):
                     pass
                 else:
                     env.logger.warning(

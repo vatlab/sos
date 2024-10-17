@@ -1611,10 +1611,10 @@ def version_info(module: str):
         exec(compile(code, "<string>", "exec"), ns_g, ns_l)
         return ns_l["version"]
     except Exception:
-        import pkg_resources
+        from importlib import metadata
 
         try:
-            return pkg_resources.require(module)[0].version
+            return metadata.require(module)[0].version
         except Exception:
             return "na"
 

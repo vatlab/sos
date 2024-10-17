@@ -4,7 +4,7 @@ from .utils import (StopInputGroup, TerminateExecution, env)
 
 # def _load_actions():
 #     global g_action_map  # pylint: disable=global-variable-not-assigned
-#     for _entrypoint in pkg_resources.iter_entry_points(group="sos_actions"):
+#     for _entrypoint in metadata.entry_points(group="sos_actions"):
 #         # import actions from entry_points
 #         # Grab the function that is the actual plugin.
 #         _name = _entrypoint.name
