@@ -18,8 +18,7 @@ def list_queues(cfg, hosts=[], verbosity=1):
     env.verbosity = 1
     all_hosts = cfg.get("hosts", [])
     if not all_hosts:
-        env.logger.warning(
-            "No remote host or task queue is defined in ~/.sos/hosts.yml.")
+        env.logger.warning("No remote host or task queue is defined in ~/.sos/hosts.yml.")
         return
     for host in hosts:
         if host not in all_hosts:
@@ -28,8 +27,7 @@ def list_queues(cfg, hosts=[], verbosity=1):
         ["Alias", "Address", "Queue Type", "Description"],
         ["-----", "-------", "----------", "-----------"],
     ]
-    for host in sorted([x for x in hosts
-                        if x in all_hosts] if hosts else all_hosts):
+    for host in sorted([x for x in hosts if x in all_hosts] if hosts else all_hosts):
         try:
             h = Host(host, start_engine=False, test_connection=False)
         except Exception as e:
@@ -43,16 +41,13 @@ def list_queues(cfg, hosts=[], verbosity=1):
                 if isinstance(cfg["hosts"][host], dict):
                     print("Configuration:")
                     for key in cfg["hosts"][host].keys():
-                        print(
-                            f'  {(key + ":").ljust(24)} {cfg["hosts"][host][key]}'
-                        )
+                        print(f"  {(key + ':').ljust(24)} {cfg['hosts'][host][key]}")
                 print()
             continue
         if verbosity == 0:
             print(h.alias)
         elif verbosity in (1, 2):
-            host_description.append(
-                [h.alias, h._host_agent.address, h._engine_type, h.description])
+            host_description.append([h.alias, h._host_agent.address, h._engine_type, h.description])
         else:
             print(f"Queue:       {h.alias}")
             print(f"Address:     {h._host_agent.address}")
@@ -61,22 +56,19 @@ def list_queues(cfg, hosts=[], verbosity=1):
             print("Configuration:")
             keys = sorted(h.config.keys())
             for key in keys:
-                print(f'  {(key + ":").ljust(24)} {h.config[key]}')
+                print(f"  {(key + ':').ljust(24)} {h.config[key]}")
             print()
     if verbosity in (1, 2):
         width = [(len(x) for x in row) for row in host_description]
         max_width = [max(x) for x in zip(*width)]
-        print("\n".join(" ".join([t.ljust(w)
-                                  for t, w in zip(row, max_width)])
-                        for row in host_description))
+        print("\n".join(" ".join([t.ljust(w) for t, w in zip(row, max_width)]) for row in host_description))
 
 
 def status_of_queues(cfg, hosts=[], verbosity=1):
     env.verbosity = 1
     all_hosts = cfg.get("hosts", [])
     if not all_hosts:
-        env.logger.warning(
-            "No remote host or task queue is defined in ~/.sos/hosts.yml.")
+        env.logger.warning("No remote host or task queue is defined in ~/.sos/hosts.yml.")
         return
     for host in hosts:
         if host not in all_hosts:
@@ -85,8 +77,7 @@ def status_of_queues(cfg, hosts=[], verbosity=1):
         ["Alias", "Address", "Queue Type", "Running", "Pending", "Completed"],
         ["-----", "-------", "----------", "-------", "-------", "---------"],
     ]
-    for host in sorted([x for x in hosts
-                        if x in all_hosts] if hosts else all_hosts):
+    for host in sorted([x for x in hosts if x in all_hosts] if hosts else all_hosts):
         try:
             h = Host(host, start_engine=True)
             status = h._task_engine.query_tasks(tasks=[], verbosity=0)
@@ -103,9 +94,7 @@ def status_of_queues(cfg, hosts=[], verbosity=1):
                 if isinstance(cfg["hosts"][host], dict):
                     print("Configuration:")
                     for key in cfg["hosts"][host].keys():
-                        print(
-                            f'  {(key + ":").ljust(24)} {cfg["hosts"][host][key]}'
-                        )
+                        print(f"  {(key + ':').ljust(24)} {cfg['hosts'][host][key]}")
                 print()
             continue
         status = [x.strip() for x in status.splitlines() if x.strip()]
@@ -116,14 +105,16 @@ def status_of_queues(cfg, hosts=[], verbosity=1):
         if verbosity == 0:
             print(f"{h.alias} {running} {pending} {completed}")
         elif verbosity in (1, 2):
-            host_description.append([
-                h.alias,
-                h._host_agent.address,
-                h._engine_type,
-                running,
-                pending,
-                completed,
-            ])
+            host_description.append(
+                [
+                    h.alias,
+                    h._host_agent.address,
+                    h._engine_type,
+                    running,
+                    pending,
+                    completed,
+                ]
+            )
         else:
             print(f"Queue:       {h.alias}")
             print(f"Address:     {h._host_agent.address}")
@@ -131,18 +122,16 @@ def status_of_queues(cfg, hosts=[], verbosity=1):
             print(f"Description: {h.description}")
             for k in set(status):
                 if k not in ("running", "pending", "completed"):
-                    print(f'{(k+":").ljust(26)} {status.count(k)}')
+                    print(f"{(k + ':').ljust(26)} {status.count(k)}")
             print("Configuration:")
             keys = sorted(h.config.keys())
             for key in keys:
-                print(f'  {(key + ":").ljust(24)} {h.config[key]}')
+                print(f"  {(key + ':').ljust(24)} {h.config[key]}")
             print()
     if verbosity in (1, 2):
         width = [(len(x) for x in row) for row in host_description]
         max_width = [max(x) for x in zip(*width)]
-        print("\n".join(" ".join([t.ljust(w)
-                                  for t, w in zip(row, max_width)])
-                        for row in host_description))
+        print("\n".join(" ".join([t.ljust(w) for t, w in zip(row, max_width)]) for row in host_description))
 
 
 def test_ssh(host):
@@ -156,8 +145,7 @@ def test_scp(host):
     import random
 
     tID = random.randint(1, 100000)
-    task_filename = os.path.join(
-        os.path.expanduser("~"), ".sos", f"test_{tID}.tmp")
+    task_filename = os.path.join(os.path.expanduser("~"), ".sos", f"test_{tID}.tmp")
     with open(task_filename, "w") as test_task:
         test_task.write("test task")
     # test scp
@@ -177,8 +165,7 @@ def test_scp(host):
 def test_cmd(host, cmd):
     # test the execution of sos commands
     try:
-        ret = host.check_call(
-            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        ret = host.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if ret == 0:
             return "OK"
         return "sos not installed or not accessible on host."
@@ -202,14 +189,12 @@ def test_shared(host):
             remote_files = host.check_output(f"ls -a {path(remote):q}")
         except Exception:
             return f"Failed to access shared directory {remote} on remote host."
-        remote_files = [
-            x for x in remote_files.splitlines() if x not in (".", "..")
-        ]
+        remote_files = [x for x in remote_files.splitlines() if x not in (".", "..")]
         #
         if sorted(local_files) != sorted(remote_files):
             return f"shared directory {local} has different content on remote host under {remote}"
 
-    return f'OK (shared {" ".join(host.shared_dirs)})'
+    return f"OK (shared {' '.join(host.shared_dirs)})"
 
 
 def stty_sane():
@@ -233,8 +218,7 @@ def test_queue(host, cmd=None, verbosity=1):
         h._engine_type,
         ssh_res,
         test_scp(h._host_agent) if ssh_res.startswith("OK") else "-",
-        test_cmd(h._host_agent, [h.config.get("sos", "sos"), "-h"])
-        if ssh_res.startswith("OK") else "-",
+        test_cmd(h._host_agent, [h.config.get("sos", "sos"), "-h"]) if ssh_res.startswith("OK") else "-",
         test_shared(h._host_agent) if ssh_res.startswith("OK") else "-",
     ] + ([] if cmd is None else [test_cmd(h._host_agent, cmd)])
 
@@ -243,18 +227,13 @@ def test_queues(cfg, hosts=[], cmd=None, verbosity=1):
     env.verbosity = verbosity
     all_hosts = cfg.get("hosts", [])
     if not all_hosts:
-        env.logger.warning(
-            "No remote host or task queue is defined in ~/.sos/hosts.yml.")
+        env.logger.warning("No remote host or task queue is defined in ~/.sos/hosts.yml.")
         return
     host_description = [
-        [
-            "Alias", "Address", "Queue Type", "ssh", "scp", "sos", "paths",
-            "shared"
-        ] + ([] if cmd is None else [" ".join(cmd)]),
-        [
-            "-----", "-------", "----------", "---", "---", "---", "-----",
-            "------"
-        ] + ([] if cmd is None else ["-" * len(" ".join(cmd))]),
+        ["Alias", "Address", "Queue Type", "ssh", "scp", "sos", "paths", "shared"]
+        + ([] if cmd is None else [" ".join(cmd)]),
+        ["-----", "-------", "----------", "---", "---", "---", "-----", "------"]
+        + ([] if cmd is None else ["-" * len(" ".join(cmd))]),
     ]
     for host in hosts:
         if host not in all_hosts:
@@ -265,28 +244,20 @@ def test_queues(cfg, hosts=[], cmd=None, verbosity=1):
     from multiprocessing import Pool
 
     pool = Pool(min(len(hosts), 10))
-    host_description.extend(
-        pool.starmap(test_queue, [(x, cmd, verbosity) for x in hosts]))
+    host_description.extend(pool.starmap(test_queue, [(x, cmd, verbosity) for x in hosts]))
     if verbosity == 0:
         # just print succ or self
         for hd in host_description:
-            print(f'{hd[0]} {"OK" if all(x=="OK" for x in hd[3:]) else "FAIL"}')
+            print(f"{hd[0]} {'OK' if all(x == 'OK' for x in hd[3:]) else 'FAIL'}")
     elif verbosity in (1, 2):
         shortened = host_description[:2]
         for row in host_description[2:]:
-            shortened.append(row[:3] + [
-                "OK" if x.startswith("OK") else ("-" if x == "-" else "FAIL")
-                for x in row[3:]
-            ])
+            shortened.append(row[:3] + ["OK" if x.startswith("OK") else ("-" if x == "-" else "FAIL") for x in row[3:]])
         width = [(len(x) for x in row) for row in shortened]
         max_width = [max(x) for x in zip(*width)]
-        print("\n".join(" ".join([t.ljust(w)
-                                  for t, w in zip(row, max_width)])
-                        for row in shortened))
+        print("\n".join(" ".join([t.ljust(w) for t, w in zip(row, max_width)]) for row in shortened))
         if any("FAILED" in row for row in shortened):
-            print(
-                '\nUse command "sos remote --test host -v3" to check details of hosts with failed tests.'
-            )
+            print('\nUse command "sos remote --test host -v3" to check details of hosts with failed tests.')
     else:
         for row in host_description[2:]:
             print(f"Alias:       {row[0]}")
@@ -298,9 +269,7 @@ def test_queues(cfg, hosts=[], cmd=None, verbosity=1):
             print(f"paths:       {row[6]}")
             print(f"shared:      {row[7]}")
             if cmd:
-                print(
-                    f'{" ".join(cmd)}:{" "*(max(1, 12 - len(" ".join(cmd))))}{row[8]}'
-                )
+                print(f"{' '.join(cmd)}:{' ' * (max(1, 12 - len(' '.join(cmd))))}{row[8]}")
             print()
 
 
@@ -309,16 +278,17 @@ def copy_public_key(host, agent, password):
         if password is None:
             import getpass
 
-            password = getpass.getpass(
-                f"Please enter password for {agent.address}: ")
+            password = getpass.getpass(f"Please enter password for {agent.address}: ")
         cmd = f"scp -P {agent.port if agent.port else 22} {os.path.expanduser('~')}/.ssh/id_rsa.pub {agent.address}:id_rsa.pub.{host}"
         env.logger.info(cmd)
         p = pexpect.spawn(cmd, echo=False)
-        i = p.expect([
-            "(?i)are you sure you want to continue connecting",
-            "[pP]assword:",
-            pexpect.EOF,
-        ])
+        i = p.expect(
+            [
+                "(?i)are you sure you want to continue connecting",
+                "[pP]assword:",
+                pexpect.EOF,
+            ]
+        )
         if i == 0:
             p.sendline("yes")
             p.expect(
@@ -348,11 +318,13 @@ def copy_public_key(host, agent, password):
         cmd = f"ssh {agent.address} -p {agent.port} '[ -d .ssh ] || mkdir .ssh && chmod 700 .ssh; cat id_rsa.pub.{host} >> .ssh/authorized_keys; rm -f id_rsa.pub.{host}'"
         env.logger.info(cmd)
         p = pexpect.spawn(cmd, echo=False)
-        i = p.expect([
-            "(?i)are you sure you want to continue connecting",
-            "assword:",
-            pexpect.EOF,
-        ])
+        i = p.expect(
+            [
+                "(?i)are you sure you want to continue connecting",
+                "assword:",
+                pexpect.EOF,
+            ]
+        )
         if i == 0:
             p.sendline("yes")
             p.expect(
@@ -385,13 +357,15 @@ def create_public_key():
         env.logger.info(cmd)
         p = pexpect.spawn(cmd, echo=False)
         while True:
-            i = p.expect([
-                "Enter file in which to save .*",
-                "Enter passphrase.*",
-                "Enter same passphrase again:.*",
-                "Overwrite .*",
-                pexpect.EOF,
-            ])
+            i = p.expect(
+                [
+                    "Enter file in which to save .*",
+                    "Enter passphrase.*",
+                    "Enter same passphrase again:.*",
+                    "Overwrite .*",
+                    pexpect.EOF,
+                ]
+            )
             if i in (0, 1, 2):
                 p.sendline("")
             elif i == 3:
@@ -407,13 +381,11 @@ def setup_remote_access(cfg, hosts=[], password="", verbosity=1):
     env.verbosity = verbosity
     all_hosts = cfg.get("hosts", [])
     if not all_hosts and not hosts:
-        env.logger.warning(
-            "No remote host or task queue is defined in ~/.sos/hosts.yml.")
+        env.logger.warning("No remote host or task queue is defined in ~/.sos/hosts.yml.")
         return
     for host in hosts:
         if host not in all_hosts:
-            env.logger.warning(
-                f"Treating undefined host {host} as address of a remote host.")
+            env.logger.warning(f"Treating undefined host {host} as address of a remote host.")
     # public_key
     public_key = os.path.join(os.path.expanduser("~"), ".ssh", "id_rsa.pub")
 
@@ -438,8 +410,7 @@ def setup_remote_access(cfg, hosts=[], password="", verbosity=1):
             else:
                 host_agent = Namespace(address=host, port=22)
         except Exception as e:
-            env.logger.error(
-                f"Failed to start set up remote engine for {host}: {e}")
+            env.logger.error(f"Failed to start set up remote engine for {host}: {e}")
             continue
 
         if os.path.isfile(public_key):
@@ -457,8 +428,7 @@ def setup_remote_access(cfg, hosts=[], password="", verbosity=1):
             sys.exit(1)
         # file copied, check ssh again.
         if isinstance(host_agent, Namespace):
-            host_agent = Host(
-                host, start_engine=False, test_connection=False)._host_agent
+            host_agent = Host(host, start_engine=False, test_connection=False)._host_agent
         response = test_ssh(host_agent)
         if response.startswith("OK"):
             env.logger.info(
@@ -489,13 +459,12 @@ def run_command_on_hosts(cfg, hosts, cmd, verbosity):
     if not hosts:
         hosts = cfg.get("hosts", [])
     if not hosts:
-        env.logger.warning(
-            "No remote host or task queue is defined in ~/.sos/hosts.yml.")
+        env.logger.warning("No remote host or task queue is defined in ~/.sos/hosts.yml.")
         return
     for host in hosts:
         # runing command on all hosts
         try:
-            env.logger.info(f'Running ``{" ".join(cmd)}`` on ``{host}``')
+            env.logger.info(f"Running ``{' '.join(cmd)}`` on ``{host}``")
             h = Host(host, start_engine=False)
             print(h._host_agent.check_output(cmd, under_workdir=True))
         except Exception as e:

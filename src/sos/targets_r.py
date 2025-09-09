@@ -41,26 +41,18 @@ class R_library(BaseTarget):
 
         from sos.pattern import glob_wildcards
 
-        output_file = tempfile.NamedTemporaryFile(
-            mode="w+t", suffix=".txt", delete=False).name
-        script_file = tempfile.NamedTemporaryFile(
-            mode="w+t", suffix=".R", delete=False).name
+        output_file = tempfile.NamedTemporaryFile(mode="w+t", suffix=".txt", delete=False).name
+        script_file = tempfile.NamedTemporaryFile(mode="w+t", suffix=".R", delete=False).name
         #
-        package_loaded = (
-            "suppressMessages(require(package, character.only=TRUE, quietly=TRUE))"
-        )
+        package_loaded = "suppressMessages(require(package, character.only=TRUE, quietly=TRUE))"
         version_satisfied = "TRUE"
         for opt in ("==", ">=", ">", "<=", "<", "!="):
             if opt in name:
                 if version is not None:
-                    raise ValueError(
-                        f"Specifying 'version=' option in addition to '{name}' is not allowed"
-                    )
+                    raise ValueError(f"Specifying 'version=' option in addition to '{name}' is not allowed")
                 name, version = (x.strip() for x in name.split(opt, 1))
                 if "," in version:
-                    raise ValueError(
-                        f"SoS does not yet support multiple version comparisons. {version} provided"
-                    )
+                    raise ValueError(f"SoS does not yet support multiple version comparisons. {version} provided")
                 version = (opt + version,)
                 break
         if version is not None:
@@ -91,10 +83,7 @@ class R_library(BaseTarget):
             # check version and mark version mismatch
             # if current version satisfies any of the
             # requirement the check program quits
-            version_satisfied = "||".join([
-                f"(cur_version {y} {repr(x)})"
-                for x, y in zip(version, operators)
-            ])
+            version_satisfied = "||".join([f"(cur_version {y} {repr(x)})" for x, y in zip(version, operators)])
         #
         if len(glob_wildcards("{repo}@{pkg}", [name])["repo"]) > 0:
             # package is from github
@@ -153,12 +142,10 @@ class R_library(BaseTarget):
             with open(script_file, "w") as sfile:
                 sfile.write(install_script)
             #
-            p = subprocess.Popen(
-                ["Rscript", "--default-packages=utils", script_file])
+            p = subprocess.Popen(["Rscript", "--default-packages=utils", script_file])
             ret = p.wait()
             if ret != 0:
-                env.logger.warning(
-                    f"Failed to detect or install R library {name}")
+                env.logger.warning(f"Failed to detect or install R library {name}")
                 return False
         except Exception as e:
             env.logger.error(f"Failed to execute script: {e}")
@@ -171,22 +158,18 @@ class R_library(BaseTarget):
             for line in tmp:
                 lib, cur_version, status = line.split(" ", 2)
                 if status.strip() == "MISSING":
-                    env.logger.error(
-                        f"R library {lib} is not available and cannot be installed."
-                    )
+                    env.logger.error(f"R library {lib} is not available and cannot be installed.")
                 elif status.strip() == "UNAVAILABLE":
                     env.logger.error(f"R library {lib} is not available.")
                 elif status.strip() == "AVAILABLE":
-                    env.logger.debug(
-                        f"R library {lib} ({cur_version}) is available")
+                    env.logger.debug(f"R library {lib} ({cur_version}) is available")
                     ret_val = True
                 elif status.strip() == "INSTALLED":
-                    env.logger.debug(
-                        f"R library {lib} ({cur_version}) has been installed")
+                    env.logger.debug(f"R library {lib} ({cur_version}) has been installed")
                     ret_val = True
                 elif status.strip() == "VERSION_MISMATCH":
                     env.logger.error(
-                        f'R library {lib} ({cur_version}) does not satisfy version requirement ({"/".join(version)})!'
+                        f"R library {lib} ({cur_version}) does not satisfy version requirement ({'/'.join(version)})!"
                     )
                 else:
                     raise RuntimeError(f"This should not happen: {line}")
@@ -197,10 +180,8 @@ class R_library(BaseTarget):
         return ret_val
 
     def target_exists(self, mode="any"):
-        if (self._library, self._version,
-                self._autoinstall) in self.LIB_STATUS_CACHE:
-            return self.LIB_STATUS_CACHE[(self._library, self._version,
-                                          self._autoinstall)]
+        if (self._library, self._version, self._autoinstall) in self.LIB_STATUS_CACHE:
+            return self.LIB_STATUS_CACHE[(self._library, self._version, self._autoinstall)]
         # check if R is installed
         if not shutil.which("Rscript"):
             env.logger.debug(
@@ -208,8 +189,7 @@ class R_library(BaseTarget):
             )
             return False
         ret = self._install(self._library, self._version, self._repos)
-        self.LIB_STATUS_CACHE[(self._library, self._version,
-                                self._autoinstall)] = ret
+        self.LIB_STATUS_CACHE[(self._library, self._version, self._autoinstall)] = ret
         return ret
 
     def target_name(self):
@@ -217,11 +197,8 @@ class R_library(BaseTarget):
 
     def __repr__(self):
         if self._version:
-            return (
-                f'{self.__class__.__name__}("{self.target_name()}", {self._version!r})'
-            )
+            return f'{self.__class__.__name__}("{self.target_name()}", {self._version!r})'
         return super().__repr__()
-
 
     def target_signature(self, mode="any"):
         # we are supposed to get signature of the library, but we cannot

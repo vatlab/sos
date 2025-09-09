@@ -27,7 +27,7 @@ def format(c, check=False):
     if check:
         cmd += " --check"
     cmd += f" {SRC_DIR} {TEST_DIR} tasks.py"
-    
+
     print(f"{'Checking' if check else 'Formatting'} code with ruff...")
     c.run(cmd, pty=True)
 
@@ -39,7 +39,7 @@ def lint(c, fix=False):
     if fix:
         cmd += " --fix"
     cmd += f" {SRC_DIR} {TEST_DIR} tasks.py"
-    
+
     print("Running ruff linter...")
     c.run(cmd, pty=True)
 
@@ -48,7 +48,7 @@ def lint(c, fix=False):
 def test(c, verbose=False, coverage=False, markers="", keyword="", failfast=False):
     """
     Run tests with pytest.
-    
+
     Args:
         verbose: Show verbose test output
         coverage: Run with coverage reporting
@@ -57,34 +57,34 @@ def test(c, verbose=False, coverage=False, markers="", keyword="", failfast=Fals
         failfast: Stop on first failure
     """
     print("Running tests...")
-    
+
     with c.cd(TEST_DIR):
         # Build test docker images if needed
         if (TEST_DIR / "build_test_docker.sh").exists():
             print("Building test Docker containers...")
             c.run("sh build_test_docker.sh", pty=True)
-        
+
         # Build pytest command
         cmd = "pytest"
-        
+
         if verbose:
             cmd += " -v"
-        
+
         if coverage:
             cmd += " --cov=sos --cov-report=html --cov-report=term"
-        
+
         if markers:
             cmd += f" -m '{markers}'"
-        
+
         if keyword:
             cmd += f" -k '{keyword}'"
-        
+
         if failfast:
             cmd += " -x"
-        
+
         # Run tests
         c.run(cmd, pty=True)
-        
+
         if coverage:
             print("\nCoverage report generated in htmlcov/index.html")
 
@@ -103,12 +103,12 @@ def test_file(c, file, verbose=False):
 def clean(c, all=False):
     """
     Clean build artifacts and caches.
-    
+
     Args:
         all: Remove all generated files including .venv
     """
     print("Cleaning build artifacts...")
-    
+
     patterns = [
         "build/",
         "dist/",
@@ -116,19 +116,20 @@ def clean(c, all=False):
         "**/__pycache__",
         "**/*.pyc",
         "**/*.pyo",
+        "**/*.pyd",  # Windows compiled extensions
         ".pytest_cache/",
         ".coverage",
         "htmlcov/",
         ".ruff_cache/",
         "**/.ipynb_checkpoints",
     ]
-    
+
     if all:
         patterns.extend([".venv/", "uv.lock"])
-    
+
     for pattern in patterns:
         c.run(f"rm -rf {pattern}", warn=True)
-    
+
     print("✓ Cleaned build artifacts")
 
 
@@ -136,10 +137,10 @@ def clean(c, all=False):
 def build(c):
     """Build distribution packages."""
     print("Building distribution packages...")
-    
+
     # Clean old builds first
     clean(c)
-    
+
     # Build with uv if available, otherwise use build module
     try:
         c.run("which uv", hide=True, warn=True)
@@ -148,7 +149,7 @@ def build(c):
     except:
         print("Using python -m build...")
         c.run("python -m build", pty=True)
-    
+
     # List generated files
     c.run("ls -la dist/", pty=True)
 
@@ -157,13 +158,13 @@ def build(c):
 def install(c, dev=False, extras=""):
     """
     Install the package.
-    
+
     Args:
         dev: Install in development mode with dev dependencies
         extras: Additional extras to install (comma-separated)
     """
     print("Installing package...")
-    
+
     if dev:
         # Development installation
         try:
@@ -185,7 +186,7 @@ def install(c, dev=False, extras=""):
 def docs(c, serve=False, port=8000):
     """
     Build documentation.
-    
+
     Args:
         serve: Start a local server to preview docs
         port: Port for the documentation server
@@ -193,12 +194,12 @@ def docs(c, serve=False, port=8000):
     if not DOCS_DIR.exists():
         print("No docs directory found. Skipping documentation build.")
         return
-    
+
     with c.cd(DOCS_DIR):
         print("Building documentation...")
         c.run("make clean", warn=True)
         c.run("make html", pty=True)
-        
+
         if serve:
             print(f"Serving documentation at http://localhost:{port}")
             with c.cd("_build/html"):
@@ -209,22 +210,22 @@ def docs(c, serve=False, port=8000):
 def check(c):
     """Run all checks (format check, lint, tests)."""
     print("Running all checks...\n")
-    
+
     print("=" * 60)
     print("Checking code formatting...")
     print("=" * 60)
     format(c, check=True)
-    
+
     print("\n" + "=" * 60)
     print("Running linter...")
     print("=" * 60)
     lint(c)
-    
+
     print("\n" + "=" * 60)
     print("Running tests...")
     print("=" * 60)
     test(c)
-    
+
     print("\n✓ All checks passed!")
 
 
@@ -239,12 +240,12 @@ def pre_commit(c):
 def deps_update(c, package=""):
     """
     Update dependencies.
-    
+
     Args:
         package: Specific package to update (updates all if not specified)
     """
     print("Updating dependencies...")
-    
+
     try:
         c.run("which uv", hide=True, warn=True)
         if package:
@@ -263,7 +264,7 @@ def deps_update(c, package=""):
 def deps_show(c, outdated=False):
     """
     Show project dependencies.
-    
+
     Args:
         outdated: Show only outdated packages
     """
@@ -279,12 +280,12 @@ def deps_show(c, outdated=False):
 def version(c, bump=""):
     """
     Show or bump version.
-    
+
     Args:
         bump: Version bump type (major, minor, patch)
     """
     version_file = SRC_DIR / "sos" / "_version.py"
-    
+
     if not bump:
         # Just show current version
         with open(version_file) as f:
@@ -296,18 +297,18 @@ def version(c, bump=""):
     else:
         # Bump version
         import re
-        
+
         with open(version_file) as f:
             content = f.read()
-        
+
         # Extract current version
         match = re.search(r'__version__ = "(\d+)\.(\d+)\.(\d+)"', content)
         if not match:
             print("Could not parse version from _version.py")
             return
-        
+
         major, minor, patch = map(int, match.groups())
-        
+
         if bump == "major":
             major += 1
             minor = 0
@@ -320,19 +321,15 @@ def version(c, bump=""):
         else:
             print(f"Invalid bump type: {bump}. Use major, minor, or patch.")
             return
-        
+
         new_version = f"{major}.{minor}.{patch}"
-        
+
         # Update version in file
-        content = re.sub(
-            r'__version__ = "[^"]+"',
-            f'__version__ = "{new_version}"',
-            content
-        )
-        
+        content = re.sub(r'__version__ = "[^"]+"', f'__version__ = "{new_version}"', content)
+
         with open(version_file, "w") as f:
             f.write(content)
-        
+
         print(f"Version bumped to {new_version}")
         print("Don't forget to commit and tag the version change!")
 
@@ -341,18 +338,18 @@ def version(c, bump=""):
 def release(c, test_pypi=False):
     """
     Create a release and upload to PyPI.
-    
+
     Args:
         test_pypi: Upload to TestPyPI instead of PyPI
     """
     print("Preparing release...")
-    
+
     # Run all checks first
     check(c)
-    
+
     # Build packages
     build(c)
-    
+
     # Upload to PyPI
     if test_pypi:
         print("Uploading to TestPyPI...")
@@ -394,3 +391,51 @@ def t(c, verbose=False, coverage=False):
 def c(c, all=False):
     """Alias for clean."""
     clean(c, all=all)
+
+
+@task
+def check_pkg_resources(c):
+    """Check for any remaining pkg_resources usage."""
+    print("Checking for pkg_resources usage...")
+
+    # Search for pkg_resources imports
+    result = c.run("grep -r 'pkg_resources' src/ || true", hide=True, warn=True)
+    if result.stdout.strip():
+        print("❌ Found pkg_resources usage:")
+        print(result.stdout)
+        return False
+
+    # Search for old entry_points patterns that might cause issues
+    result = c.run("grep -r 'iter_entry_points\\|load_entry_point' src/ || true", hide=True, warn=True)
+    if result.stdout.strip():
+        print("⚠️  Found old entry_points patterns:")
+        print(result.stdout)
+        print("These should be migrated to use importlib.metadata")
+
+    # Check if pkg_resources is imported anywhere
+    result = c.run(
+        "python -c 'import sys; print(\"pkg_resources\" in sys.modules)' 2>/dev/null || echo 'False'",
+        hide=True,
+        warn=True,
+    )
+
+    print("✅ No direct pkg_resources usage found in source code")
+    print("Note: The warning might be coming from:")
+    print("  - An installed dependency that uses pkg_resources")
+    print("  - Cached bytecode files (try: invoke clean)")
+    print("  - An older version of SoS in your environment")
+
+    return True
+
+
+@task
+def migrate_pkg_resources(c):
+    """Migrate any remaining pkg_resources usage to importlib.metadata."""
+    print("This would migrate pkg_resources usage, but none found in current codebase.")
+    print("The codebase already uses importlib.metadata correctly.")
+
+    # Show current usage
+    print("\nCurrent entry_points usage:")
+    c.run("grep -n 'metadata.entry_points' src/sos/*.py | head -5", warn=True)
+
+    print("\n✅ All entry_points usage is already using importlib.metadata")

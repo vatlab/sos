@@ -208,13 +208,13 @@ class WorkflowDict:
         """A short cut to set value to key without triggering any logging
         or warning message."""
         if hasattr(value, "labels"):
-            if ("VARIABLE" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]):
+            if "VARIABLE" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
                 env.log_to_file(
                     "VARIABLE",
                     f"Set {key} to {short_repr(value)} with labels {short_repr(value.labels)}",
                 )
         else:
-            if ("VARIABLE" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]):
+            if "VARIABLE" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
                 env.log_to_file(
                     "VARIABLE",
                     f"Set {key} to {short_repr(value)} of type {value.__class__.__name__}",
@@ -254,13 +254,13 @@ class WorkflowDict:
         if env.config["run_mode"] == "prepare":
             self._warn(key, value)
         if key in (
-                "input",
-                "output",
-                "depends",
-                "_input",
-                "_output",
-                "_depends",
-                "_runtime",
+            "input",
+            "output",
+            "depends",
+            "_input",
+            "_output",
+            "_depends",
+            "_runtime",
         ):
             raise ValueError(f"Variable {key} can only be set by SoS")
         self.set(key, value)
@@ -270,8 +270,11 @@ class WorkflowDict:
             env.log_to_file("VARIABLE", f"Set ``{key}`` = ``{short_repr(value)}``")
 
     def _warn(self, key, value):
-        if (key.startswith("_") and not key.startswith("__") and
-                key not in ("_input", "_output", "_step", "_index", "_depends", "_runtime")):
+        if (
+            key.startswith("_")
+            and not key.startswith("__")
+            and key not in ("_input", "_output", "_step", "_index", "_depends", "_runtime")
+        ):
             env.logger.warning(f"{key}: Variables with leading underscore is reserved for SoS temporary variables.")
 
     def clone_selected_vars(self, selected=None):
@@ -309,8 +312,8 @@ def fileMD5(filename, sig_type="partial"):
     partial and full signatures will be returned as a tuple."""
     filesize = os.path.getsize(filename)
     # calculate md5 for specified file
-    partial_sig = hash_md5() if sig_type in ('partial', 'both') else None
-    full_sig = full_md5() if sig_type in ('full', 'both') else None
+    partial_sig = hash_md5() if sig_type in ("partial", "both") else None
+    full_sig = full_md5() if sig_type in ("full", "both") else None
 
     block_size = 2**20  # buffer of 1M
     try:
@@ -454,13 +457,15 @@ class RuntimeEnvironments:
             return
         self._sub_envs[self._sub_idx]["sos_dict"] = self.sos_dict
         self._sub_envs[self._sub_idx]["config"] = copy.deepcopy(env.config)
-        self._sub_envs[self._sub_idx]["socket"] = (env.__socket__ if hasattr(env, "__socket__") else None)
+        self._sub_envs[self._sub_idx]["socket"] = env.__socket__ if hasattr(env, "__socket__") else None
         if len(self._sub_envs) <= idx:
-            self._sub_envs.append({
-                "sos_dict": WorkflowDict(),
-                "config": copy.deepcopy(env.config),
-                "socket": env.__socket__ if hasattr(env, "__socket__") else None,
-            })
+            self._sub_envs.append(
+                {
+                    "sos_dict": WorkflowDict(),
+                    "config": copy.deepcopy(env.config),
+                    "socket": env.__socket__ if hasattr(env, "__socket__") else None,
+                }
+            )
         if not self._sub_envs[idx]:
             self._sub_envs[idx] = {
                 "sos_dict": WorkflowDict(),
@@ -481,7 +486,7 @@ class RuntimeEnvironments:
         if not msg:
             self.logger.debug(topic)
             return
-        if (topic not in self.config["SOS_DEBUG"] and "ALL" not in self.config["SOS_DEBUG"]):
+        if topic not in self.config["SOS_DEBUG"] and "ALL" not in self.config["SOS_DEBUG"]:
             return
         self.logger.debug(topic + " - " + str(msg))
 
@@ -496,21 +501,23 @@ class RuntimeEnvironments:
         # run mode, this mode controls how SoS actions behave
         #
         self.config = defaultdict(str)
-        self.config.update({
-            "config_file": None,
-            "output_dag": None,
-            "output_report": None,
-            "wait_for_task": None,
-            "default_queue": "",
-            "worker_procs": ["2"],
-            "max_running_jobs": None,
-            "sig_mode": "default",
-            "run_mode": "run",
-            "verbosity": 1,
-            # determined later
-            "master_id": "",
-            "SOS_DEBUG": set(),
-        })
+        self.config.update(
+            {
+                "config_file": None,
+                "output_dag": None,
+                "output_report": None,
+                "wait_for_task": None,
+                "default_queue": "",
+                "worker_procs": ["2"],
+                "max_running_jobs": None,
+                "sig_mode": "default",
+                "run_mode": "run",
+                "verbosity": 1,
+                # determined later
+                "master_id": "",
+                "SOS_DEBUG": set(),
+            }
+        )
         if "SOS_DEBUG" in os.environ:
             self.config["SOS_DEBUG"] = {x for x in os.environ["SOS_DEBUG"].split(",") if "." not in x and x != "-"}
         #
@@ -548,7 +555,7 @@ class RuntimeEnvironments:
         }
         # stop setting root logger always to DEBUG. If SOS_DEBUG is defined as PROFILE, we profile
         # in non-debug mode. Otherwise debugging leval will be set to DEBUG
-        debug_mode = ("SOS_DEBUG" in os.environ and os.environ["SOS_DEBUG"] and os.environ["SOS_DEBUG"] != "PROFILE")
+        debug_mode = "SOS_DEBUG" in os.environ and os.environ["SOS_DEBUG"] and os.environ["SOS_DEBUG"] != "PROFILE"
         self._logger.setLevel(logging.DEBUG if debug_mode else levels[self._verbosity])
 
         if self._logging_socket:
@@ -891,7 +898,8 @@ def locate_script(filename, start=""):
                 cfg = yaml.safe_load(config)
         except Exception as e:
             raise RuntimeError(
-                f"Failed to parse global sos config file {sos_config_file}, is it in JSON format?") from e
+                f"Failed to parse global sos config file {sos_config_file}, is it in JSON format?"
+            ) from e
         #
         pathes.extend(cfg.get("sos_path", []))
     #
@@ -967,9 +975,9 @@ def split_fstring(text):
         # now we have a valid spos
         pieces.append(text[:spos])
         # skip '{'
-        rhs_pieces = text[spos + 1:].split("}")
+        rhs_pieces = text[spos + 1 :].split("}")
         if len(rhs_pieces) == 1:
-            raise SyntaxError(f"Invalid f-string {text}: missing right sigil at {text[pos:pos+20]}")
+            raise SyntaxError(f"Invalid f-string {text}: missing right sigil at {text[pos : pos + 20]}")
         # rhs = 'whatever }' :r} something else {}
         #
         # we need to include } in expression
@@ -1029,8 +1037,11 @@ def transcribe(text, cmd=None):
         text = "{}:\n{}".format(cmd, "    " + text.replace("\n", "\n    ") + "\n")
     with fasteners.InterProcessLock(os.path.join(env.temp_dir, "transcript.lck")):
         trans_file = os.path.join(env.exec_dir, "transcript.txt")
-        open_mode = 'w' if os.path.isfile(trans_file) and time.time() - os.path.getmtime(trans_file) > (30 * 24 * 60 *
-                                                                                                        60) else 'a'
+        open_mode = (
+            "w"
+            if os.path.isfile(trans_file) and time.time() - os.path.getmtime(trans_file) > (30 * 24 * 60 * 60)
+            else "a"
+        )
         with open(trans_file, open_mode) as trans:
             trans.write(text)
 
@@ -1060,7 +1071,7 @@ def pretty_size(n, pow=0, b=1024, u="B", pre=[""] + [p + "i" for p in "KMGTPEZY"
     pow, n = min(int(math.log(max(n * b**pow, 1), b)), len(pre) - 1), n * b**pow
 
     # pylint: disable=consider-using-f-string
-    return "%%.%if %%s%%s" % abs(pow % (-pow - 1)) % (n / b**float(pow), pre[pow], u)
+    return "%%.%if %%s%%s" % abs(pow % (-pow - 1)) % (n / b ** float(pow), pre[pow], u)
 
 
 def expand_size(size):
@@ -1075,8 +1086,8 @@ def expand_size(size):
         return sign * int(num)
     if not num:
         num = 1
-    s = {x + "I": 1024**(idx + 1) for idx, x in enumerate("KMGTPEZY")}
-    s.update({x: 1000**(idx + 1) for idx, x in enumerate("KMGTPEZY")})
+    s = {x + "I": 1024 ** (idx + 1) for idx, x in enumerate("KMGTPEZY")}
+    s.update({x: 1000 ** (idx + 1) for idx, x in enumerate("KMGTPEZY")})
     unit = unit[:-1].upper() if unit[-1].upper().endswith("B") else unit.upper()
     if unit not in s:
         raise ValueError(f"Invalid size specified: {size}")
@@ -1097,7 +1108,6 @@ def find_symbolic_links(item):
 
 
 class ActivityNotifier(threading.Thread):
-
     def __init__(self, msg, delay=5):
         threading.Thread.__init__(self)
         self.msg = msg
@@ -1119,11 +1129,14 @@ class ActivityNotifier(threading.Thread):
                 prog = ProgressBar(desc="", position=0, bar_format="{desc}", total=100000000)
             second_elapsed = time.time() - self.start_time
             # pylint: disable=consider-using-f-string
-            prog.set_description("Elapsed time {}{}".format(
-                "" if second_elapsed < 86400 else
-                f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} ',
-                time.strftime("%H:%M:%S", time.gmtime(second_elapsed)),
-            ))
+            prog.set_description(
+                "Elapsed time {}{}".format(
+                    ""
+                    if second_elapsed < 86400
+                    else f"{int(second_elapsed / 86400)} day{'s' if second_elapsed > 172800 else ''} ",
+                    time.strftime("%H:%M:%S", time.gmtime(second_elapsed)),
+                )
+            )
             prog.update(1)
 
     def stop(self):
@@ -1195,8 +1208,8 @@ def sos_get_param(key, defvalue):
             feature_parser.add_argument(f"--{key}", dest=key, action="store_true")
             feature_parser.add_argument(f"--no-{key}", dest=key, action="store_false")
             if "_" in key:
-                feature_parser.add_argument(f'--{key.replace("_", "-")}', dest=key, action="store_true")
-                feature_parser.add_argument(f'--no-{key.replace("_", "-")}', dest=key, action="store_false")
+                feature_parser.add_argument(f"--{key.replace('_', '-')}", dest=key, action="store_true")
+                feature_parser.add_argument(f"--no-{key.replace('_', '-')}", dest=key, action="store_false")
         else:
             if defvalue is None:
                 defvalue = str
@@ -1213,7 +1226,7 @@ def sos_get_param(key, defvalue):
                     nargs="+" if defvalue not in (str, file_target) and hasattr(defvalue, "__iter__") else "?",
                 )
                 feature_parser.add_argument(
-                    f'--{key.replace("_", "-")}',
+                    f"--{key.replace('_', '-')}",
                     dest=key,
                     type=str if hasattr(defvalue, "__iter__") and defvalue not in (file_target, path) else defvalue,
                     help="",
@@ -1234,8 +1247,8 @@ def sos_get_param(key, defvalue):
             feature_parser.add_argument(f"--{key}", dest=key, action="store_true")
             feature_parser.add_argument(f"--no-{key}", dest=key, action="store_false")
             if "_" in key:
-                feature_parser.add_argument(f'--{key.replace("_", "-")}', dest=key, action="store_true")
-                feature_parser.add_argument(f'--no-{key.replace("_", "-")}', dest=key, action="store_false")
+                feature_parser.add_argument(f"--{key.replace('_', '-')}", dest=key, action="store_true")
+                feature_parser.add_argument(f"--no-{key.replace('_', '-')}", dest=key, action="store_false")
             feature_parser.set_defaults(**{key: defvalue})
         else:
             if isinstance(defvalue, (file_target, path)):
@@ -1266,7 +1279,7 @@ def sos_get_param(key, defvalue):
                     default=defvalue,
                 )
                 feature_parser.add_argument(
-                    f'--{key.replace("_", "-")}',
+                    f"--{key.replace('_', '-')}",
                     dest=key,
                     type=deftype,
                     nargs="*" if isinstance(defvalue, Sequence) and not isinstance(defvalue, str) else "?",
@@ -1351,11 +1364,11 @@ def load_config_files(filename=None, default_config_files=True):
         env.logger.warning(f"Ignoring missing configuration file {filename}")
         filename = None
 
-    filemtime = (None if filename is None else os.path.getmtime(os.path.expanduser(filename)))
+    filemtime = None if filename is None else os.path.getmtime(os.path.expanduser(filename))
 
     from .targets import textMD5
 
-    extra_cfg = (None if "extra_config" not in env.config else textMD5(str(env.config["extra_config"])))
+    extra_cfg = None if "extra_config" not in env.config else textMD5(str(env.config["extra_config"]))
 
     if (filename, filemtime, extra_cfg) in config_cache:
         env.sos_dict.set("CONFIG", config_cache[(filename, filemtime, extra_cfg)])
@@ -1371,7 +1384,8 @@ def load_config_files(filename=None, default_config_files=True):
                     cfg = yaml.safe_load(config)
             except Exception as e:
                 raise RuntimeError(
-                    f"Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})") from e
+                    f"Failed to parse global sos hosts file {sos_config_file}, is it in YAML/JSON format? ({e})"
+                ) from e
 
         # global site file
         sos_config_file = os.path.join(os.path.expanduser("~"), ".sos", "hosts.yml")
@@ -1413,9 +1427,9 @@ def load_config_files(filename=None, default_config_files=True):
     def process_based_on(cfg, item):
         if "based_on" in item:
             if not isinstance(item["based_on"], (str, list)) or not item["based_on"]:
-                raise ValueError(f'A string is expected for key based_on. {item["based_on"]} obtained')
+                raise ValueError(f"A string is expected for key based_on. {item['based_on']} obtained")
 
-            referred_keys = ([item["based_on"]] if isinstance(item["based_on"], str) else item["based_on"])
+            referred_keys = [item["based_on"]] if isinstance(item["based_on"], str) else item["based_on"]
             item.pop("based_on")
             for rkey in referred_keys:
                 # find item...
@@ -1525,7 +1539,7 @@ def expand_time(v, default_unit="s") -> int:
 
 
 def tail_of_file(filename, n, ansi2html=False):
-    """Reads a n lines from f with an offset of offset lines. """
+    """Reads a n lines from f with an offset of offset lines."""
     avg_line_length = 74
     to_read = n
 
@@ -1635,16 +1649,21 @@ def convertAnsi2html(txt):
     # 95 is purple, warning
     # 91 is red, error
     # 36 is cray, trace
-    return (txt.replace("\033[94m", '<font color="">').replace("\033[32m", '<font color="DarkGreen">').replace(
-        "\033[36m", '<font color="cyan">').replace("\033[95m", '<font color="purple">').replace(
-            "\033[91m", '<font color="red">').replace("\033[0m", "</font>").replace("\n", "<br>"))
+    return (
+        txt.replace("\033[94m", '<font color="">')
+        .replace("\033[32m", '<font color="DarkGreen">')
+        .replace("\033[36m", '<font color="cyan">')
+        .replace("\033[95m", '<font color="purple">')
+        .replace("\033[91m", '<font color="red">')
+        .replace("\033[0m", "</font>")
+        .replace("\n", "<br>")
+    )
 
 
 # log to file for debugging purpose only
 
 
 def pexpect_run(cmd, shell=False, win_width=None, stdout_socket=None):
-
     def send_output(output):
         if stdout_socket:
             stdout_socket.send_multipart([b"PRINT", env.config.get("slave_id", "").encode(), output.encode()])
@@ -1716,7 +1735,7 @@ def format_par(name, par):
         if val is True or val is False:
             return f"--[no-]{name} (default to {val})"
         if isinstance(val, Sequence) and not isinstance(val, str):
-            return f'--{name} {" ".join(str(x) for x in val)} (as {val.__class__.__name__})'
+            return f"--{name} {' '.join(str(x) for x in val)} (as {val.__class__.__name__})"
         if isinstance(val, str):
             return f"--{name} {val if val.isalnum() else repr(val)}"
         return f"--{name} {val} (as {val.__class__.__name__})"
@@ -1853,7 +1872,7 @@ def separate_options(options: str) -> List[str]:
                 if idx == 0:
                     raise ValueError("Invalid section option") from e
                 # break myself again
-                pieces = pieces[:idx] + pieces[idx].split(",") + pieces[idx + 1:]
+                pieces = pieces[:idx] + pieces[idx].split(",") + pieces[idx + 1 :]
                 # go back
                 idx -= 1
                 pieces[idx] += "\n" + pieces[idx + 1]
@@ -1920,7 +1939,7 @@ def get_nodelist():
         # IBM LSF https://www.ibm.com/support/knowledgecenter/en/SSETD4_9.1.3/lsf_config_ref/lsf_envars_ref.html
         # LSB_MCPU_HOSTS="hostA 3 hostB 3"
         hostlist = os.environ["LSB_MCPU_HOSTS"].strip().split()
-        args = [f"{hostlist[2*i]}:{hostlist[2*i+1]}" for i in range(len(hostlist) // 2)]
+        args = [f"{hostlist[2 * i]}:{hostlist[2 * i + 1]}" for i in range(len(hostlist) // 2)]
         env.log_to_file("WORKER", f'Using "-j {args}" on a IBM LSF cluster.')
         return args
 

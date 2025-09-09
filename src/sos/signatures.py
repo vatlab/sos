@@ -64,19 +64,16 @@ class StepSignatures(SignatureDB):
     def get(self, step_id: str):
         try:
             cur = self.conn.cursor()
-            cur.execute("SELECT signature FROM steps WHERE step_id=? ",
-                        (step_id,))
+            cur.execute("SELECT signature FROM steps WHERE step_id=? ", (step_id,))
             res = cur.fetchone()
         except sqlite3.DatabaseError as e:
-            env.logger.warning(
-                f"Failed to get step signature for step {step_id}: {e}")
+            env.logger.warning(f"Failed to get step signature for step {step_id}: {e}")
             return None
         if res:
             try:
                 return pickle.loads(lzma.decompress(res[0]))
             except Exception as e:
-                env.logger.warning(
-                    f"Failed to load signature for step {step_id}: {e}")
+                env.logger.warning(f"Failed to load signature for step {step_id}: {e}")
                 return None
         else:
             return None
@@ -85,8 +82,7 @@ class StepSignatures(SignatureDB):
         try:
             self._write((step_id, lzma.compress(pickle.dumps(signature))))
         except sqlite3.DatabaseError as e:
-            env.logger.warning(
-                f"Failed to set step signature for step {step_id}: {e}")
+            env.logger.warning(f"Failed to set step signature for step {step_id}: {e}")
 
     def _num_records(self, cur):
         try:
@@ -100,13 +96,11 @@ class StepSignatures(SignatureDB):
         try:
             cur = self.conn.cursor()
             cnt = self._num_records(cur)
-            cur.executemany("DELETE FROM steps WHERE step_id=?",
-                            [(x,) for x in steps])
+            cur.executemany("DELETE FROM steps WHERE step_id=?", [(x,) for x in steps])
             self.conn.commit()
             return cnt - self._num_records(cur)
         except sqlite3.DatabaseError as e:
-            env.logger.warning(
-                f"Failed to remove signature for {len(steps)} substeps: {e}")
+            env.logger.warning(f"Failed to remove signature for {len(steps)} substeps: {e}")
             return 0
 
     def clear(self):
@@ -136,9 +130,7 @@ class WorkflowSignatures(SignatureDB):
         try:
             self._write((env.config["master_id"], entry_type, id, item))
         except sqlite3.DatabaseError as e:
-            env.logger.warning(
-                f"Failed to write workflow signature of type {entry_type} and id {id}: {e}"
-            )
+            env.logger.warning(f"Failed to write workflow signature of type {entry_type} and id {id}: {e}")
             return None
 
     def records(self, workflow_id):
@@ -150,8 +142,7 @@ class WorkflowSignatures(SignatureDB):
             )
             return cur.fetchall() if cur else []
         except sqlite3.DatabaseError as e:
-            env.logger.warning(
-                f"Failed to get records of workflow {workflow_id}: {e}")
+            env.logger.warning(f"Failed to get records of workflow {workflow_id}: {e}")
             return []
 
     def workflows(self):
@@ -160,55 +151,45 @@ class WorkflowSignatures(SignatureDB):
             cur.execute("SELECT DISTINCT master_id FROM workflows")
             return [x[0] for x in cur.fetchall()]
         except sqlite3.DatabaseError as e:
-            env.logger.warning(
-                f"Failed to get workflows from signature database: {e}")
+            env.logger.warning(f"Failed to get workflows from signature database: {e}")
             return []
 
     def tasks(self):
         try:
             cur = self.conn.cursor()
-            cur.execute(
-                'SELECT DISTINCT id FROM workflows WHERE entry_type = "task"')
+            cur.execute('SELECT DISTINCT id FROM workflows WHERE entry_type = "task"')
             return [x[0] for x in cur.fetchall()]
         except sqlite3.DatabaseError as e:
-            env.logger.warning(
-                f"Failed to get tasks from signature database: {e}")
+            env.logger.warning(f"Failed to get tasks from signature database: {e}")
             return []
 
     def files(self):
         """Listing files related to workflows related to current directory"""
         try:
             cur = self.conn.cursor()
-            cur.execute(
-                'SELECT id, item FROM workflows WHERE entry_type = "tracked_files"'
-            )
+            cur.execute('SELECT id, item FROM workflows WHERE entry_type = "tracked_files"')
             return [(x[0], eval(x[1])) for x in cur.fetchall()]
         except sqlite3.DatabaseError as e:
-            env.logger.warning(
-                f"Failed to get files from signature database: {e}")
+            env.logger.warning(f"Failed to get files from signature database: {e}")
             return []
 
     def placeholders(self, workflow_id=None):
         try:
             cur = self.conn.cursor()
             if workflow_id is None:
-                cur.execute(
-                    'SELECT item FROM workflows WHERE entry_type = "placeholder"'
-                )
+                cur.execute('SELECT item FROM workflows WHERE entry_type = "placeholder"')
             else:
                 cur.execute(
                     f'SELECT item FROM workflows WHERE entry_type = "placeholder" AND master_id = "{workflow_id}"'
                 )
             return [x[0] for x in cur.fetchall()]
         except sqlite3.DatabaseError as e:
-            env.logger.warning(
-                f"Failed to get placeholders from signature database: {e}")
+            env.logger.warning(f"Failed to get placeholders from signature database: {e}")
             return []
 
     def clear(self):
         try:
-            self.conn.execute("DELETE FROM workflows WHERE master_id = ?",
-                              (env.config["master_id"],))
+            self.conn.execute("DELETE FROM workflows WHERE master_id = ?", (env.config["master_id"],))
             self.conn.commit()
         except sqlite3.DatabaseError as e:
             env.logger.warning(f"Failed to clear workflow database: {e}")

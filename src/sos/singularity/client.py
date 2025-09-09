@@ -10,8 +10,7 @@ import sys
 import tempfile
 import time
 
-from sos.controller import (request_answer_from_controller,
-                            send_message_to_controller)
+from sos.controller import request_answer_from_controller, send_message_to_controller
 from sos.eval import interpolate
 from sos.targets import path
 from sos.utils import env, pexpect_run
@@ -22,7 +21,8 @@ from sos.utils import env, pexpect_run
 
 
 class SoS_SingularityClient:
-    '''A singleton class to ensure there is only one client'''
+    """A singleton class to ensure there is only one client"""
+
     _instance = None
 
     pulled_images = set()
@@ -33,40 +33,34 @@ class SoS_SingularityClient:
         return cls._instance
 
     def _ensure_singularity(self):
-        if not shutil.which('singularity'):
-            raise RuntimeError('Command singularity is not found')
+        if not shutil.which("singularity"):
+            raise RuntimeError("Command singularity is not found")
 
     def _is_image_avail(self, image):
         # the command will return ID of the image if it exists
         try:
             return bool(
-                subprocess.check_output(
-                    f'''Singularity images {image} --no-trunc --format "{{{{.ID}}}}"''',
-                    shell=True))
+                subprocess.check_output(f'''Singularity images {image} --no-trunc --format "{{{{.ID}}}}"''', shell=True)
+            )
         except Exception as e:
-            env.logger.warning(f'Failed to check image {image}: {e}')
+            env.logger.warning(f"Failed to check image {image}: {e}")
             return False
 
     def _run_cmd(self, cmd, **kwargs):
-        if env.config['run_mode'] == 'interactive':
-            if 'stdout' in kwargs or 'stderr' in kwargs:
-                child = subprocess.Popen(
-                    cmd,
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    bufsize=0)
+        if env.config["run_mode"] == "interactive":
+            if "stdout" in kwargs or "stderr" in kwargs:
+                child = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
                 out, err = child.communicate()
-                if 'stdout' in kwargs:
-                    if kwargs['stdout'] is not False:
-                        with open(kwargs['stdout'], 'ab') as so:
+                if "stdout" in kwargs:
+                    if kwargs["stdout"] is not False:
+                        with open(kwargs["stdout"], "ab") as so:
                             so.write(out)
                 else:
                     sys.stdout.write(out.decode())
 
-                if 'stderr' in kwargs:
-                    if kwargs['stderr'] is not False:
-                        with open(kwargs['stderr'], 'ab') as se:
+                if "stderr" in kwargs:
+                    if kwargs["stderr"] is not False:
+                        with open(kwargs["stderr"], "ab") as se:
                             se.write(err)
                 else:
                     sys.stderr.write(err.decode())
@@ -74,25 +68,25 @@ class SoS_SingularityClient:
             else:
                 # need to catch output and send to python output, which will in trun be hijacked by SoS notebook
                 ret = pexpect_run(cmd)
-        elif '__std_out__' in env.sos_dict and '__std_err__' in env.sos_dict:
-            if 'stdout' in kwargs or 'stderr' in kwargs:
-                if 'stdout' in kwargs:
-                    if kwargs['stdout'] is False:
+        elif "__std_out__" in env.sos_dict and "__std_err__" in env.sos_dict:
+            if "stdout" in kwargs or "stderr" in kwargs:
+                if "stdout" in kwargs:
+                    if kwargs["stdout"] is False:
                         so = subprocess.DEVNULL
                     else:
-                        so = open(kwargs['stdout'], 'ab')
+                        so = open(kwargs["stdout"], "ab")
                 elif env.verbosity > 0:
-                    so = open(env.sos_dict['__std_out__'], 'ab')
+                    so = open(env.sos_dict["__std_out__"], "ab")
                 else:
                     so = subprocess.DEVNULL
 
-                if 'stderr' in kwargs:
-                    if kwargs['stderr'] is False:
+                if "stderr" in kwargs:
+                    if kwargs["stderr"] is False:
                         se = subprocess.DEVNULL
                     else:
-                        se = open(kwargs['stderr'], 'ab')
+                        se = open(kwargs["stderr"], "ab")
                 elif env.verbosity > 1:
-                    se = open(env.sos_dict['__std_err__'], 'ab')
+                    se = open(env.sos_dict["__std_err__"], "ab")
                 else:
                     se = subprocess.DEVNULL
 
@@ -105,34 +99,28 @@ class SoS_SingularityClient:
                     se.close()
 
             elif env.verbosity >= 1:
-                with open(env.sos_dict['__std_out__'],
-                          'ab') as so, open(env.sos_dict['__std_err__'],
-                                            'ab') as se:
+                with open(env.sos_dict["__std_out__"], "ab") as so, open(env.sos_dict["__std_err__"], "ab") as se:
                     p = subprocess.Popen(cmd, shell=True, stderr=se, stdout=so)
                     ret = p.wait()
             else:
-                p = subprocess.Popen(
-                    cmd,
-                    shell=True,
-                    stderr=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL)
+                p = subprocess.Popen(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
                 ret = p.wait()
         else:
-            if 'stdout' in kwargs:
-                if kwargs['stdout'] is False:
+            if "stdout" in kwargs:
+                if kwargs["stdout"] is False:
                     so = subprocess.DEVNULL
                 else:
-                    so = open(kwargs['stdout'], 'ab')
+                    so = open(kwargs["stdout"], "ab")
             elif env.verbosity > 0:
                 so = None
             else:
                 so = subprocess.DEVNULL
 
-            if 'stderr' in kwargs:
-                if kwargs['stderr'] is False:
+            if "stderr" in kwargs:
+                if kwargs["stderr"] is False:
                     se = subprocess.DEVNULL
                 else:
-                    se = open(kwargs['stderr'], 'ab')
+                    se = open(kwargs["stderr"], "ab")
             elif env.verbosity > 1:
                 se = None
             else:
@@ -150,52 +138,43 @@ class SoS_SingularityClient:
     def build(self, script=None, src=None, dest=None, **kwargs):
         self._ensure_singularity()
         if not dest:
-            raise ValueError(
-                'Please specify result of sigularity build with option dest')
+            raise ValueError("Please specify result of sigularity build with option dest")
 
-        if os.path.isfile(dest) and not 'force' in kwargs:
+        if os.path.isfile(dest) and not "force" in kwargs:
             raise ValueError(
                 f'Destination image {dest} already exists. Please remove or overwrite it with option "force=True"'
             )
         with tempfile.TemporaryDirectory(dir=os.getcwd()) as tempdir:
             if script:
-                with open(os.path.join(tempdir, 'singularity.def'), 'w') as df:
+                with open(os.path.join(tempdir, "singularity.def"), "w") as df:
                     df.write(script)
-                file_opt = [dest, os.path.join(tempdir, 'singularity.def')]
+                file_opt = [dest, os.path.join(tempdir, "singularity.def")]
             else:
                 if not src:
-                    raise ValueError(
-                        'Please specify either a script file as script or a source url with option --src'
-                    )
+                    raise ValueError("Please specify either a script file as script or a source url with option --src")
                 file_opt = [dest, src]
 
             other_opts = []
             sudo_opt = []
             for arg, value in kwargs.items():
                 # boolean args
-                if arg in ('sandbox', 'writable', 'notest', 'checks', 'low',
-                           'med', 'high', 'force'):
+                if arg in ("sandbox", "writable", "notest", "checks", "low", "med", "high", "force"):
                     if value is True:
-                        other_opts.append(f'--{arg.replace("_", "-")}')
+                        other_opts.append(f"--{arg.replace('_', '-')}")
                     else:
-                        env.logger.warning(
-                            f'Boolean {arg} is ignored (True should be provided)'
-                        )
-                elif arg in ('section', 'tag'):
-                    other_opts.extend([f'--{arg.replace("_", "-")}', value])
-                elif arg == 'sudo':
-                    sudo_opt = ['sudo']
+                        env.logger.warning(f"Boolean {arg} is ignored (True should be provided)")
+                elif arg in ("section", "tag"):
+                    other_opts.extend([f"--{arg.replace('_', '-')}", value])
+                elif arg == "sudo":
+                    sudo_opt = ["sudo"]
                 else:
-                    env.logger.warning(
-                        f'Unrecognized option for singularity build {arg}')
+                    env.logger.warning(f"Unrecognized option for singularity build {arg}")
 
-            cmd = subprocess.list2cmdline(
-                sudo_opt + [shutil.which('singularity'), 'build'] + other_opts +
-                file_opt)
+            cmd = subprocess.list2cmdline(sudo_opt + [shutil.which("singularity"), "build"] + other_opts + file_opt)
 
             env.logger.debug(cmd)
-            if env.config['run_mode'] == 'dryrun':
-                print(f'HINT: {cmd}')
+            if env.config["run_mode"] == "dryrun":
+                print(f"HINT: {cmd}")
                 print(script)
                 return 0
 
@@ -203,37 +182,31 @@ class SoS_SingularityClient:
 
             if ret != 0:
                 if script:
-                    debug_script_dir = os.path.join(
-                        os.path.expanduser('~'), '.sos')
-                    cmd_line = cmd.replace(tempdir,debug_script_dir)
+                    debug_script_dir = os.path.join(os.path.expanduser("~"), ".sos")
+                    cmd_line = cmd.replace(tempdir, debug_script_dir)
                     msg = f"The definition has been saved to {debug_script_dir}/singularity.def. To reproduce the error please run:\n``{cmd_line}``"
-                    shutil.copy(
-                        os.path.join(tempdir, 'Singularityfile'),
-                        debug_script_dir)
+                    shutil.copy(os.path.join(tempdir, "Singularityfile"), debug_script_dir)
                 else:
                     msg = f"To reproduce this error please run \n  {cmd}\nfrom command line"
-                raise subprocess.CalledProcessError(
-                    returncode=ret, cmd=cmd, stderr=msg)
+                raise subprocess.CalledProcessError(returncode=ret, cmd=cmd, stderr=msg)
 
     def _image_file(self, image):
-        lib_path = path(os.environ['SOS_SINGULARITY_LIBRARY']
-                       ) if 'SOS_SINGULARITY_LIBRARY' in os.environ else path(
-                           '~/.sos/singularity/library')
+        lib_path = (
+            path(os.environ["SOS_SINGULARITY_LIBRARY"])
+            if "SOS_SINGULARITY_LIBRARY" in os.environ
+            else path("~/.sos/singularity/library")
+        )
         if not os.path.isdir(lib_path):
             try:
                 os.makedirs(lib_path, exist_ok=True)
             except Exception as e:
-                raise RuntimeError(
-                    f'Failed to create singularity library directory {lib_path}'
-                ) from e
+                raise RuntimeError(f"Failed to create singularity library directory {lib_path}") from e
 
-        if '://' in image:
-            ctx, cname = image.split('://', 1)
-            if ctx == 'file':
+        if "://" in image:
+            ctx, cname = image.split("://", 1)
+            if ctx == "file":
                 return image
-            return os.path.join(
-                lib_path,
-                cname.replace('/', '-').replace(':', '-') + '.sif')
+            return os.path.join(lib_path, cname.replace("/", "-").replace(":", "-") + ".sif")
         if os.path.isfile(image):
             # if image is a filename, ok
             return image
@@ -245,61 +218,44 @@ class SoS_SingularityClient:
 
         if image in self.pulled_images:
             return
-        if image.startswith('instance://'):
+        if image.startswith("instance://"):
             return image
         image_file = self._image_file(image)
         if os.path.exists(image_file):
-            env.logger.debug(
-                f'Using existing singularity image {image_file.replace(os.path.expanduser("~"), "~")}'
-            )
+            env.logger.debug(f"Using existing singularity image {image_file.replace(os.path.expanduser('~'), '~')}")
             return
-        if '://' not in image:
-            raise ValueError(f'Cannot locate or pull singularity image {image}')
+        if "://" not in image:
+            raise ValueError(f"Cannot locate or pull singularity image {image}")
         # ask controller
         while True:
-            res = request_answer_from_controller(
-                ['resource', 'singularity_image', 'request', image])
-            if res == 'pending':
+            res = request_answer_from_controller(["resource", "singularity_image", "request", image])
+            if res == "pending":
                 time.sleep(0.5)
-            elif res == 'available':
+            elif res == "available":
                 return
-            elif res == 'unavailable':
-                raise RuntimeError(f'Docker image {image} is unavailable')
-            elif res == 'help yourself':
+            elif res == "unavailable":
+                raise RuntimeError(f"Docker image {image} is unavailable")
+            elif res == "help yourself":
                 break
             else:
-                raise ValueError(f'Unrecognized request from controller {res}')
+                raise ValueError(f"Unrecognized request from controller {res}")
 
         # if image is specified, check if it is available locally. If not, pull it
         try:
-            print(
-                f'HINT: Pulling singularity image {image} to {image_file.replace(os.path.expanduser("~"), "~")}'
-            )
+            print(f"HINT: Pulling singularity image {image} to {image_file.replace(os.path.expanduser('~'), '~')}")
             subprocess.check_output(
-                f"singularity pull {image_file} {image}",
-                stderr=subprocess.STDOUT,
-                shell=True,
-                universal_newlines=True)
+                f"singularity pull {image_file} {image}", stderr=subprocess.STDOUT, shell=True, universal_newlines=True
+            )
             self.pulled_images.add(image)
         except subprocess.CalledProcessError as exc:
-            send_message_to_controller(
-                ['resource', 'singularity_image', 'unavailable', image])
-            env.logger.warning(f'Failed to pull {image}: {exc.output}')
+            send_message_to_controller(["resource", "singularity_image", "unavailable", image])
+            env.logger.warning(f"Failed to pull {image}: {exc.output}")
         if not path(image_file).exists():
-            raise ValueError(
-                f'Image {image_file} does not exist after pulling {image}.')
-        print(f'HINT: Singularity image {image} is now up to date')
-        send_message_to_controller(
-            ['resource', 'singularity_image', 'available', image])
+            raise ValueError(f"Image {image_file} does not exist after pulling {image}.")
+        print(f"HINT: Singularity image {image} is now up to date")
+        send_message_to_controller(["resource", "singularity_image", "available", image])
 
-    def run(self,
-            image,
-            script='',
-            interpreter='',
-            args='',
-            suffix='.sh',
-            entrypoint='',
-            **kwargs):
+    def run(self, image, script="", interpreter="", args="", suffix=".sh", entrypoint="", **kwargs):
         self._ensure_singularity()
         #
         env.logger.debug(f"singularity_run with keyword args {kwargs}")
@@ -311,52 +267,92 @@ class SoS_SingularityClient:
             # tempdir = tempfile.mkdtemp(dir=os.getcwd())
             tempscript = f"singularity_run_{os.getpid()}{suffix}"
             if script:
-                with open(os.path.join(tempdir, tempscript),
-                          'w') as script_file:
+                with open(os.path.join(tempdir, tempscript), "w") as script_file:
                     # the input script might have windows new line but the container
                     # will need linux new line for proper execution #1023
-                    script_file.write('\n'.join(script.splitlines()))
+                    script_file.write("\n".join(script.splitlines()))
             #
             # if there is an interpreter and with args
             if not args:
-                args = '{filename:pq}'
+                args = "{filename:pq}"
             #
             # under mac, we by default share /Users within Singularity
             exec_opts = []
-            if 'bind' in kwargs:
-                binds = [kwargs['bind']] if isinstance(kwargs['bind'],
-                                                       str) else kwargs['bind']
+            if "bind" in kwargs:
+                binds = [kwargs["bind"]] if isinstance(kwargs["bind"], str) else kwargs["bind"]
                 exec_opts.extend([f"-B {x}" for x in binds])
-                kwargs.pop('bind', None)
+                kwargs.pop("bind", None)
 
-            for opt in ['nv', 'nvccli', 'disable_cache', 'nohttps', 'nonet', 'vm_err', 'writable',
-                        'writable_tmpfs', 'vm', 'uts', 'userns', 'rocm', 'pid', 'passphrase',
-                        'no_mark', 'no_privs', 'no_init', 'no_https', 'no_home', 'net',
-                        'keep_privs', 'fakeroot', 'disable_cache', 'containall', 'contain',
-                        'compat', 'cleanenv', 'allow_setuid']:
+            for opt in [
+                "nv",
+                "nvccli",
+                "disable_cache",
+                "nohttps",
+                "nonet",
+                "vm_err",
+                "writable",
+                "writable_tmpfs",
+                "vm",
+                "uts",
+                "userns",
+                "rocm",
+                "pid",
+                "passphrase",
+                "no_mark",
+                "no_privs",
+                "no_init",
+                "no_https",
+                "no_home",
+                "net",
+                "keep_privs",
+                "fakeroot",
+                "disable_cache",
+                "containall",
+                "contain",
+                "compat",
+                "cleanenv",
+                "allow_setuid",
+            ]:
                 if opt in kwargs and kwargs[opt]:
-                    exec_opts.append('--' + opt.replace('_', '-'))
+                    exec_opts.append("--" + opt.replace("_", "-"))
                     kwargs.pop(opt)
 
-            for opt in ['home', 'vm_cpu', 'vm_ip', 'vm_ram', 'security', 'scratch', 'pwd', 'pem_path',
-                        'overlay', 'network', 'network_args', 'mount', 'hostname', 'fusemount', 'env_file', 'env'
-                        'drop_caps', 'dns', 'apply_cgroups', 'app', 'add_caps' ]:
+            for opt in [
+                "home",
+                "vm_cpu",
+                "vm_ip",
+                "vm_ram",
+                "security",
+                "scratch",
+                "pwd",
+                "pem_path",
+                "overlay",
+                "network",
+                "network_args",
+                "mount",
+                "hostname",
+                "fusemount",
+                "env_file",
+                "envdrop_caps",
+                "dns",
+                "apply_cgroups",
+                "app",
+                "add_caps",
+            ]:
                 if opt in kwargs:
-                    exec_opts.append('--' + opt.replace('_', '-') + ' ' + kwargs[opt])
+                    exec_opts.append("--" + opt.replace("_", "-") + " " + kwargs[opt])
                     kwargs.pop(opt)
 
             cmd_opt = interpolate(
-                f'{entrypoint} {interpreter if isinstance(interpreter, str) else interpreter[0]} {args}'.strip(),
-                {
-                    'filename': path(tempdir) / tempscript,
-                    'script': script
-                })
+                f"{entrypoint} {interpreter if isinstance(interpreter, str) else interpreter[0]} {args}".strip(),
+                {"filename": path(tempdir) / tempscript, "script": script},
+            )
 
             cmd = f"singularity exec {' '.join(exec_opts)} {self._image_file(image)} {cmd_opt}"
 
             env.logger.debug(cmd)
-            if env.config['run_mode'] == 'dryrun':
-                print(f'HINT: {cmd}')
+            if env.config["run_mode"] == "dryrun":
+                print(f"HINT: {cmd}")
                 print(script)
                 return 0
 
@@ -364,22 +360,24 @@ class SoS_SingularityClient:
 
             if ret != 0:
                 debug_script_dir = env.exec_dir
-                cmd_line = cmd.replace(f'{path(tempdir):p}',
-                                f'{path(debug_script_dir):p}')
+                cmd_line = cmd.replace(f"{path(tempdir):p}", f"{path(debug_script_dir):p}")
                 msg = (
                     f"The script has been saved to {debug_script_dir}/{debug_script_dir}."
                     f"To reproduce the error please run:\n``{cmd_line}``"
                 )
                 shutil.copy(os.path.join(tempdir, tempscript), debug_script_dir)
-                out = f", stdout={kwargs['stdout']}" if 'stdout' in kwargs and os.path.isfile(
-                    kwargs['stdout']) and os.path.getsize(
-                        kwargs['stdout']) > 0 else ''
-                err = f", stderr={kwargs['stderr']}" if 'stderr' in kwargs and os.path.isfile(
-                    kwargs['stderr']) and os.path.getsize(
-                        kwargs['stderr']) > 0 else ''
+                out = (
+                    f", stdout={kwargs['stdout']}"
+                    if "stdout" in kwargs and os.path.isfile(kwargs["stdout"]) and os.path.getsize(kwargs["stdout"]) > 0
+                    else ""
+                )
+                err = (
+                    f", stderr={kwargs['stderr']}"
+                    if "stderr" in kwargs and os.path.isfile(kwargs["stderr"]) and os.path.getsize(kwargs["stderr"]) > 0
+                    else ""
+                )
                 msg = f"Executing script in Singularity returns an error (exitcode={ret}{err}{out}).\n{msg}"
                 raise subprocess.CalledProcessError(
-                    returncode=ret,
-                    cmd=cmd.replace(tempdir, debug_script_dir),
-                    stderr=msg)
+                    returncode=ret, cmd=cmd.replace(tempdir, debug_script_dir), stderr=msg
+                )
         return 0

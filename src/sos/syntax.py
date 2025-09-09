@@ -58,13 +58,17 @@ SOS_DIRECTIVES = ["input", "output", "depends", "task", "parameter"]
 SOS_SECTION_OPTIONS = ["provides", "shared", "workdir"]
 
 SOS_KEYWORDS = (
-    SOS_INPUT_OPTIONS + SOS_OUTPUT_OPTIONS + SOS_DEPENDS_OPTIONS +
-    SOS_RUNTIME_OPTIONS + SOS_ACTION_OPTIONS + SOS_DIRECTIVES +
-    SOS_SECTION_OPTIONS)
+    SOS_INPUT_OPTIONS
+    + SOS_OUTPUT_OPTIONS
+    + SOS_DEPENDS_OPTIONS
+    + SOS_RUNTIME_OPTIONS
+    + SOS_ACTION_OPTIONS
+    + SOS_DIRECTIVES
+    + SOS_SECTION_OPTIONS
+)
 
 SOS_USAGES = {
-    "input":
-        """
+    "input": """
 input: filename, filename, ... [group_by=GROUP] [filetype=FILETYPE]
           [paired_with=PAIRS] [for_each=VARS] [pattern=PATTEN]
 
@@ -72,16 +76,14 @@ Specify input targets of a SoS step.
 
 See online documentation for details of variables.
 """,
-    "output":
-        """
+    "output": """
 output: target, target, ...
 
 Specify output targets of a SoS step.
 
 See online documentation for details of variables.
 """,
-    "depends":
-        """
+    "depends": """
 depends: target, target, ...
 
 Specify dependent targets of a SoS step.
@@ -134,8 +136,7 @@ class LazyRegex:
 
     def _compile_and_collapse(self) -> None:
         """Actually compile the requested regex"""
-        self._real_regex = self._real_re_compile(*self._regex_args,
-                                                 **self._regex_kwargs)
+        self._real_regex = self._real_re_compile(*self._regex_args, **self._regex_kwargs)
         for attr in self._regex_attributes_to_copy:
             setattr(self, attr, getattr(self._real_regex, attr))
 
@@ -224,7 +225,7 @@ _SUBWORKFLOW_TMPL = r"""
 
 _SECTION_OPTION_TMPL = rf"""
     ^\s*                               # start
-    (?P<name>{'|'.join(SOS_SECTION_OPTIONS)})                       # one of the option names
+    (?P<name>{"|".join(SOS_SECTION_OPTIONS)})                       # one of the option names
     (\s*=\s*                           # =
     (?P<value>.+)                      # value
     )?                                 # value is optional

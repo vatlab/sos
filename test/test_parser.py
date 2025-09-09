@@ -506,7 +506,8 @@ task:
 parameter: value = 'a'
 sh: expand=True
 echo {value} >  a.txt
-""",)
+""",
+        )
     # multiple parameters
     script = SoS_Script("""
 parameter: a_b = int
@@ -732,10 +733,12 @@ something: 'filename',  filename2, opt=value==1
 """)
     # need commma
     with pytest.raises(ParsingError):
-        SoS_Script("""
+        SoS_Script(
+            """
 [0]
 input: 'filename'  filename2
-""",)
+""",
+        )
     # can be after action
     SoS_Script("""
 [0]
@@ -813,7 +816,8 @@ e.write("""
 [section]
 """)
 
-''',)
+''',
+        )
     # scripts with section head-like lines
     script = SoS_Script("""
 [0]
@@ -880,16 +884,14 @@ output: (f"a{x}" for x in _input)
 """)
     wf = script.workflow()
     Base_Executor(wf).run(mode="dryrun")
-    assert sorted(env.sos_dict["i"]) == sos_targets(
-        ["a.txt", "a0", "a1", "b.txt"])
-    assert sorted(env.sos_dict["o"]) == sos_targets(
-        ["aa.txt", "aa0", "aa1", "ab.txt"])
+    assert sorted(env.sos_dict["i"]) == sos_targets(["a.txt", "a0", "a1", "b.txt"])
+    assert sorted(env.sos_dict["o"]) == sos_targets(["aa.txt", "aa0", "aa1", "ab.txt"])
 
 
 def test_group_by(temp_factory, clear_now_and_after):
     """Test group_by parameter of step input"""
-    clear_now_and_after('a.txt', 'b.txt', 'c.txt' 'xx.txt')
-    clear_now_and_after([f"b{x+1}.txt" for x in range(6)])
+    clear_now_and_after("a.txt", "b.txt", "c.txtxx.txt")
+    clear_now_and_after([f"b{x + 1}.txt" for x in range(6)])
     # group_by = 'all'
     temp_factory([f"a{x}.txt" for x in range(15)])
     #
@@ -903,10 +905,9 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
-    assert env.sos_dict["executed"] == [
-        sos_targets("a1.txt", "a2.txt", "a3.txt", "a4.txt")
-    ]
+        options={"run_mode": "dryrun"},
+    )
+    assert env.sos_dict["executed"] == [sos_targets("a1.txt", "a2.txt", "a3.txt", "a4.txt")]
     assert env.sos_dict["executed"][0].labels == ["0"] * 4
     # group_by = 'single'
     execute_workflow(
@@ -919,7 +920,8 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
+        options={"run_mode": "dryrun"},
+    )
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt"),
         sos_targets("a2.txt"),
@@ -937,11 +939,9 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
-    assert env.sos_dict["executed"] == [
-        sos_targets("a1.txt", "a3.txt"),
-        sos_targets("a2.txt", "a4.txt")
-    ]
+        options={"run_mode": "dryrun"},
+    )
+    assert env.sos_dict["executed"] == [sos_targets("a1.txt", "a3.txt"), sos_targets("a2.txt", "a4.txt")]
     # group_by = 'pairs2'
     execute_workflow(
         """
@@ -953,7 +953,8 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
+        options={"run_mode": "dryrun"},
+    )
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt", "a2.txt", "a5.txt", "a6.txt"),
         sos_targets("a3.txt", "a4.txt", "a7.txt", "a8.txt"),
@@ -969,11 +970,11 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
+        options={"run_mode": "dryrun"},
+    )
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt", "a2.txt", "a3.txt", "a7.txt", "a8.txt", "a9.txt"),
-        sos_targets("a4.txt", "a5.txt", "a6.txt", "a10.txt", "a11.txt",
-                    "a12.txt"),
+        sos_targets("a4.txt", "a5.txt", "a6.txt", "a10.txt", "a11.txt", "a12.txt"),
     ]
 
     # group_by = 'pairwise'
@@ -987,7 +988,8 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
+        options={"run_mode": "dryrun"},
+    )
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt", "a2.txt"),
         sos_targets("a2.txt", "a3.txt"),
@@ -1004,11 +1006,12 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
+        options={"run_mode": "dryrun"},
+    )
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt", "a2.txt", "a3.txt", "a4.txt"),
         sos_targets("a3.txt", "a4.txt", "a5.txt", "a6.txt"),
-    ], f'obtained {env.sos_dict["executed"]}'
+    ], f"obtained {env.sos_dict['executed']}"
 
     # group_by = 'combinations'
     execute_workflow(
@@ -1021,7 +1024,8 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
+        options={"run_mode": "dryrun"},
+    )
     assert env.sos_dict["executed"], [
         sos_targets("a1.txt", "a2.txt"),
         sos_targets("a1.txt", "a3.txt"),
@@ -1042,13 +1046,14 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
+        options={"run_mode": "dryrun"},
+    )
     assert env.sos_dict["executed"] == [
         sos_targets(["a1.txt", "a2.txt", "a3.txt"]),
         sos_targets(["a1.txt", "a2.txt", "a4.txt"]),
         sos_targets(["a1.txt", "a3.txt", "a4.txt"]),
         sos_targets(["a2.txt", "a3.txt", "a4.txt"]),
-    ], f'obtained {env.sos_dict["executed"]}'
+    ], f"obtained {env.sos_dict['executed']}"
     # group_by chunks specified as integers
     execute_workflow(
         """
@@ -1060,7 +1065,8 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
+        options={"run_mode": "dryrun"},
+    )
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt", "a2.txt", "a3.txt"),
         sos_targets("a4.txt", "a5.txt", "a6.txt"),
@@ -1077,7 +1083,8 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
+        options={"run_mode": "dryrun"},
+    )
     assert env.sos_dict["executed"] == [
         sos_targets("a1.txt", "a2.txt", "a3.txt"),
         sos_targets("a4.txt", "a5.txt", "a6.txt"),
@@ -1095,7 +1102,8 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
+        options={"run_mode": "dryrun"},
+    )
     # incorrect value causes an exception
     with pytest.raises(Exception):
         execute_workflow(
@@ -1108,7 +1116,8 @@ def test_group_by(temp_factory, clear_now_and_after):
             executed.append(_input)
 
             """,
-            options={'run_mode': "dryrun"})
+            options={"run_mode": "dryrun"},
+        )
 
     #
     # group by label
@@ -1132,7 +1141,8 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
+        options={"run_mode": "dryrun"},
+    )
     assert env.sos_dict["executed"] == [
         sos_targets("c.txt"),
         sos_targets("a.txt"),
@@ -1159,11 +1169,9 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
-    assert env.sos_dict["executed"] == [
-        sos_targets("a1.txt", "b1.txt"),
-        sos_targets("a2.txt", "b2.txt")
-    ]
+        options={"run_mode": "dryrun"},
+    )
+    assert env.sos_dict["executed"] == [sos_targets("a1.txt", "b1.txt"), sos_targets("a2.txt", "b2.txt")]
 
     # group_by='pairlabel3'
     temp_factory([f"c{x}.txt" for x in range(1, 7)])
@@ -1186,7 +1194,8 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
+        options={"run_mode": "dryrun"},
+    )
     assert env.sos_dict["executed"] == [
         sos_targets(
             "c1.txt",
@@ -1232,7 +1241,8 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
+        options={"run_mode": "dryrun"},
+    )
     assert env.sos_dict["executed"] == [
         sos_targets("c1.txt", "a1.txt", "b1.txt", "b2.txt", "b3.txt"),
         sos_targets("c2.txt", "a1.txt", "b4.txt", "b5.txt", "b6.txt"),
@@ -1253,9 +1263,9 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
-    assert env.sos_dict["executed"] == [["a0.txt", "a1.txt", "a2.txt"],
-                                        ["a3.txt", "a4.txt"]]
+        options={"run_mode": "dryrun"},
+    )
+    assert env.sos_dict["executed"] == [["a0.txt", "a1.txt", "a2.txt"], ["a3.txt", "a4.txt"]]
 
     #
     # group by lambda function
@@ -1270,10 +1280,9 @@ def test_group_by(temp_factory, clear_now_and_after):
         executed.append(_input)
 
         """,
-        options={'run_mode': "dryrun"})
-    assert env.sos_dict["executed"] == [["a0.txt", "a3.txt"],
-                                        ["a1.txt", "a4.txt"],
-                                        ["a2.txt", "a5.txt"]]
+        options={"run_mode": "dryrun"},
+    )
+    assert env.sos_dict["executed"] == [["a0.txt", "a3.txt"], ["a1.txt", "a4.txt"], ["a2.txt", "a5.txt"]]
 
 
 def test_output_group_by(temp_factory):
@@ -1292,7 +1301,8 @@ def test_output_group_by(temp_factory):
         executed.append(_output)
 
         """,
-        options={'run_mode': "dryrun"})
+        options={"run_mode": "dryrun"},
+    )
     assert env.sos_dict["executed"] == [
         sos_targets("a0.txt.bak", "a1.txt.bak"),
         sos_targets("a2.txt.bak", "a3.txt.bak"),
@@ -1301,7 +1311,7 @@ def test_output_group_by(temp_factory):
 
 def test_steps_with_step_name(clear_now_and_after):
     """Test from steps"""
-    clear_now_and_after('a.txt')
+    clear_now_and_after("a.txt")
     execute_workflow("""
         [step_10]
 
@@ -1335,10 +1345,12 @@ string''', with_option=1
 )
 """)
     with pytest.raises(ParsingError):
-        SoS_Script("""
+        SoS_Script(
+            """
 [0]
 func(
-""",)
+""",
+        )
 
 
 def test_longer_code():
@@ -1391,27 +1403,24 @@ def test_combined_workflow():
         [d: shared='executed']
         executed.append(step_name)
         """
-    execute_workflow(script, workflow="a+b", options={'run_mode': 'dryrun'})
-    assert env.sos_dict["executed"] == [
-        "a_1", "a_2", "a_3", "a_4", "b_1", "b_2", "b_3", "b_4"
-    ]
+    execute_workflow(script, workflow="a+b", options={"run_mode": "dryrun"})
+    assert env.sos_dict["executed"] == ["a_1", "a_2", "a_3", "a_4", "b_1", "b_2", "b_3", "b_4"]
 
     assert env.sos_dict["a"] == 1
     assert env.sos_dict["input_b1"] == ["out_a_4"]
     #
     env.sos_dict.pop("executed", None)
-    execute_workflow(
-        script, workflow="a: 1-2 + a:4 + b:3-", options={'run_mode': 'dryrun'})
+    execute_workflow(script, workflow="a: 1-2 + a:4 + b:3-", options={"run_mode": "dryrun"})
     assert env.sos_dict["executed"] == ["a_1", "a_2", "a_4", "b_3", "b_4"]
     #
     env.sos_dict.pop("executed", None)
-    execute_workflow(script, workflow="a+c+d", options={'run_mode': 'dryrun'})
+    execute_workflow(script, workflow="a+c+d", options={"run_mode": "dryrun"})
     assert env.sos_dict["executed"] == ["a_1", "a_2", "a_3", "a_4", "c", "d"]
 
 
 def test_yaml_config(clear_now_and_after):
     """Test config file in yaml format"""
-    clear_now_and_after('myconfig.yml', 'config.sos')
+    clear_now_and_after("myconfig.yml", "config.sos")
     with open("myconfig.yml", "w") as config:
         config.write("""
 # Lines beginning with # are skipped when the JSON is parsed, so we can
@@ -1433,12 +1442,15 @@ print(CONFIG.get('StoreOwnerSpouse', 'someone else'))
 #print(CONFIG.StoreOwner)
 """)
     # run the command
-    assert subprocess.call(
-        "sos run config.sos -c myconfig.yml",
-        stderr=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        shell=True,
-    ) == 0
+    assert (
+        subprocess.call(
+            "sos run config.sos -c myconfig.yml",
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            shell=True,
+        )
+        == 0
+    )
     # now test the value
     script = SoS_Script(filename="config.sos")
     wf = script.workflow()
@@ -1458,7 +1470,8 @@ def test_var_output():
         output: f"test{_seq}.txt"
         print(_output)
         """,
-        options={'run_mode': "dryrun"})
+        options={"run_mode": "dryrun"},
+    )
 
 
 def test_cell():
@@ -1468,7 +1481,6 @@ def test_cell():
 [step ]
 a = 1
 """)
-
 
 
 def test_overwrite_keyword(clear_now_and_after):
@@ -1497,13 +1509,10 @@ run:
 
 def test_help_message(sample_workflow):
     """Test help message from ipynb notebook"""
-    msg = subprocess.check_output(
-        f"sos run {sample_workflow} -h", shell=True).decode()
+    msg = subprocess.check_output(f"sos run {sample_workflow} -h", shell=True).decode()
     assert "this comment will be included but not shown in help" not in msg
-    assert msg.count(
-        "this comment will become the comment for parameter b") == 1
-    assert msg.count(
-        "this comment will become the comment for parameter d") == 1
+    assert msg.count("this comment will become the comment for parameter b") == 1
+    assert msg.count("this comment will become the comment for parameter d") == 1
     assert msg.count("--c 3 (as int)") == 1
     assert msg.count("this is a section comment, will be displayed") == 1
     assert "this is a test workflow" not in msg
@@ -1518,8 +1527,7 @@ def test_help_on_multi_workflow(script_factory):
         [workflow_a_20]
         [default]
         """)
-    msg = subprocess.check_output(
-        f"sos run {test_sos} -h", shell=True).decode()
+    msg = subprocess.check_output(f"sos run {test_sos} -h", shell=True).decode()
     assert "workflow_a" in msg
     assert "workflow_b" in msg
     # when introducing sections
@@ -1541,15 +1549,16 @@ def test_parameter_abbreviation(clear_now_and_after):
         print(_output)
         _output.touch()
         """,
-        args=["--n", "5"])
+        args=["--n", "5"],
+    )
     assert os.path.isfile("0914.txt")
 
 
 def test_named_input(temp_factory, clear_now_and_after):
     """Test named input"""
-    clear_now_and_after('c.txt')
-    temp_factory('a.txt', content='a.txt' + '\n')
-    temp_factory('b.txt', content='b.txt' + '\n')
+    clear_now_and_after("c.txt")
+    temp_factory("a.txt", content="a.txt" + "\n")
+    temp_factory("b.txt", content="b.txt" + "\n")
     execute_workflow("""
         [1]
         input: {'A': 'a.txt', 'B': 'b.txt'}, group_by='pairlabel'
@@ -1565,7 +1574,7 @@ def test_named_input(temp_factory, clear_now_and_after):
 
 def test_named_output_in_depends(clear_now_and_after):
     """Test named_output in depends statement"""
-    clear_now_and_after('a.txt')
+    clear_now_and_after("a.txt")
     execute_workflow("""
         [A]
         output: A='a.txt'
@@ -1578,7 +1587,7 @@ def test_named_output_in_depends(clear_now_and_after):
 
 def test_output_from_in_depends(clear_now_and_after):
     """Test output_from in depends statement"""
-    clear_now_and_after('a.txt')
+    clear_now_and_after("a.txt")
     execute_workflow("""
         [A]
         output: A='a.txt'
@@ -1591,7 +1600,7 @@ def test_output_from_in_depends(clear_now_and_after):
 
 def test_named_output_in_output(clear_now_and_after):
     """Test named_output in output statement"""
-    clear_now_and_after('a.txt')
+    clear_now_and_after("a.txt")
     with pytest.raises(Exception):
         execute_workflow("""
             [A]
@@ -1678,8 +1687,8 @@ def test_wide_card_step_name():
 
 
 def test_outfrom_prev_step(clear_now_and_after):
-    """Test output_from(-1) from output_from """
-    clear_now_and_after('A_1.txt')
+    """Test output_from(-1) from output_from"""
+    clear_now_and_after("A_1.txt")
     execute_workflow("""
         [A_1]
         output: 'A_1.txt'
@@ -1862,7 +1871,8 @@ def test_para_from_nested_workflow():
         [default]
         sos_run('B+A')
         """,
-        args=["--param", "2"])
+        args=["--param", "2"],
+    )
 
 
 def test_task_param_var():
@@ -1930,7 +1940,7 @@ def test_limited_concurrency():
 
 
 def test_concurrent_substep_with_step_import():
-    """ Test concurrent substep with step leval import statement #1354"""
+    """Test concurrent substep with step leval import statement #1354"""
     execute_workflow("""
         import time
         input: for_each=dict(i=range(2))

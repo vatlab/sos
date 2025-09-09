@@ -4,7 +4,8 @@
 # Distributed under the terms of the 3-clause BSD License.
 from importlib import metadata
 
-from .functions import (done_if, fail_if, skip_if, stop_if, warn_if)
+from .functions import done_if, fail_if, skip_if, stop_if, warn_if
+
 # backward compatibility #1337
 from .pattern import expand_pattern
 from .targets import path, paths

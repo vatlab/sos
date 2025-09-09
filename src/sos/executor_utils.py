@@ -21,11 +21,9 @@ import psutil
 from .controller import request_answer_from_controller
 from .eval import SoS_eval, analyze_global_statements, stmtHash
 from .syntax import SOS_TAG
-from .targets import (RemovedTarget, RuntimeInfo, dynamic, file_target,
-                      sos_step, sos_targets, sos_variable)
+from .targets import RemovedTarget, RuntimeInfo, dynamic, file_target, sos_step, sos_targets, sos_variable
 from .tasks import TaskParams
-from .utils import (Error, env, expand_size, format_HHMMSS, get_traceback,
-                    load_config_files, textMD5)
+from .utils import Error, env, expand_size, format_HHMMSS, get_traceback, load_config_files, textMD5
 
 
 class ExecuteError(Error):
@@ -44,9 +42,7 @@ class ExecuteError(Error):
         if not lines:
             short_line = ""
         else:
-            short_line = ("[" +
-                          (lines[0][:40] if len(lines[0]) > 40 else lines[0]) +
-                          "]:")
+            short_line = "[" + (lines[0][:40] if len(lines[0]) > 40 else lines[0]) + "]:"
         self.errors.append(short_line)
         self.traces.append(get_traceback())
         newline = "\n" if self.message else ""
@@ -86,20 +82,16 @@ def __output_from__(
     elif isinstance(steps, Sequence):
         steps = list(steps)
     else:
-        raise ValueError(
-            f"Unacceptable value of input prameter from: {steps} provided")
+        raise ValueError(f"Unacceptable value of input prameter from: {steps} provided")
     #
     for step in steps:
         if isinstance(step, int):
             if step == -1:
                 # this refers to the last step of a forward style workflow
-                if "__last_step__" in env.sos_dict and env.sos_dict[
-                        "__last_step__"]:
+                if "__last_step__" in env.sos_dict and env.sos_dict["__last_step__"]:
                     step = env.sos_dict["__last_step__"]
                 else:
-                    raise ValueError(
-                        "output_from(-1) is called for a step without previous step"
-                    )
+                    raise ValueError("output_from(-1) is called for a step without previous step")
             elif "_" in env.sos_dict["step_name"]:
                 step = f"{env.sos_dict['step_name'].rsplit('_', 1)[0]}_{step}"
             else:
@@ -158,16 +150,15 @@ def clear_output(output=None):
     for target in env.sos_dict["_output"] if output is None else output:
         if isinstance(target, file_target):
             try:
-                #new_name = target + '.' + token_hex(3) + '.bak'
-                #target.rename(new_name)
-                #env.logger.debug(
+                # new_name = target + '.' + token_hex(3) + '.bak'
+                # target.rename(new_name)
+                # env.logger.debug(
                 #    f"{target} removed to {new_name} due to failed step.")
                 target.unlink()
-                (target + '.md5').unlink()
+                (target + ".md5").unlink()
             except Exception:
                 # ok if file does not exist (FileNotfoundError)
                 pass
-
 
 
 def get_traceback_msg(e):
@@ -178,10 +169,12 @@ def get_traceback_msg(e):
         if st.filename.startswith("script_"):
             code = stmtHash.script(st.filename)
             line_number = st.lineno
-            code = "\n".join([
-                f'{"---->" if i+1 == line_number else "     "} {x.rstrip()}'
-                for i, x in enumerate(code.splitlines())
-            ][max(line_number - 3, 0):line_number + 3])
+            code = "\n".join(
+                [
+                    f"{'---->' if i + 1 == line_number else '     '} {x.rstrip()}"
+                    for i, x in enumerate(code.splitlines())
+                ][max(line_number - 3, 0) : line_number + 3]
+            )
             msg += f"""\
 {st.filename} in {st.name}
 {code}
@@ -214,29 +207,21 @@ def prepare_env(gdef="", gvars={}, extra_vars={}, host="localhost"):
     if "CONFIG" not in env.sos_dict:
         # if this is in sos notebook
         load_config_files()
-    if ("hosts" not in env.sos_dict["CONFIG"] and
-            "localhost" not in env.sos_dict["CONFIG"]):
+    if "hosts" not in env.sos_dict["CONFIG"] and "localhost" not in env.sos_dict["CONFIG"]:
         env.sos_dict["CONFIG"]["localhost"] = "localhost"
-        env.sos_dict["CONFIG"]["hosts"] = {
-            "localhost": {
-                "paths": {},
-                "address": "localhost"
-            }
-        }
+        env.sos_dict["CONFIG"]["hosts"] = {"localhost": {"paths": {}, "address": "localhost"}}
     # expose `paths` of localhost
     if host == "localhost":
         if "localhost" in env.sos_dict["CONFIG"]:
-            if ("hosts" not in env.sos_dict["CONFIG"] or
-                    env.sos_dict["CONFIG"]["localhost"]
-                    not in env.sos_dict["CONFIG"]["hosts"]):
-                env.logger.warning(
-                    f"Localhost {env.sos_dict['CONFIG']['localhost']} is not defined in CONFIG['hosts']"
-                )
-                env.sos_dict["CONFIG"]["hosts"][env.sos_dict["CONFIG"]
-                                                ["localhost"]] = {
-                                                    "paths": {},
-                                                    "address": "localhost",
-                                                }
+            if (
+                "hosts" not in env.sos_dict["CONFIG"]
+                or env.sos_dict["CONFIG"]["localhost"] not in env.sos_dict["CONFIG"]["hosts"]
+            ):
+                env.logger.warning(f"Localhost {env.sos_dict['CONFIG']['localhost']} is not defined in CONFIG['hosts']")
+                env.sos_dict["CONFIG"]["hosts"][env.sos_dict["CONFIG"]["localhost"]] = {
+                    "paths": {},
+                    "address": "localhost",
+                }
             env.sos_dict.set("__host__", env.sos_dict["CONFIG"]["localhost"])
         else:
             if "hosts" in env.sos_dict["CONFIG"]:
@@ -250,8 +235,7 @@ def prepare_env(gdef="", gvars={}, extra_vars={}, host="localhost"):
                 env.sos_dict["CONFIG"]["hosts"]["localhost"]["paths"] = {}
             env.sos_dict.set("__host__", "localhost")
     else:
-        if ("hosts" not in env.sos_dict["CONFIG"] or
-                host not in env.sos_dict["CONFIG"]["hosts"]):
+        if "hosts" not in env.sos_dict["CONFIG"] or host not in env.sos_dict["CONFIG"]["hosts"]:
             raise RuntimeError(
                 f"Remote host {host} is not defined in CONFIG['hosts']. Available ones are {env.sos_dict['CONFIG']['hosts'].keys()}"
             )
@@ -259,13 +243,8 @@ def prepare_env(gdef="", gvars={}, extra_vars={}, host="localhost"):
 
 
 def statementMD5(stmts):
-
     def _get_tokens(statement):
-        return [
-            x[1]
-            for x in generate_tokens(StringIO(statement).readline)
-            if x[1] not in ("", "\n")
-        ]
+        return [x[1] for x in generate_tokens(StringIO(statement).readline) if x[1] not in ("", "\n")]
 
     tokens = []
     for stmt in stmts:
@@ -277,13 +256,9 @@ def statementMD5(stmts):
 def create_task(global_def, global_vars, task_stmt, task_params):
     # env.sos_dict.set('_runtime', {})
     if task_params:
-        args, kwargs = SoS_eval(
-            f"__null_func__({task_params})",
-            extra_dict={"__null_func__": __null_func__})
+        args, kwargs = SoS_eval(f"__null_func__({task_params})", extra_dict={"__null_func__": __null_func__})
         if args:
-            raise RuntimeError(
-                f'Only keyword arguments are accepted for task statement: "{task_params}" provided'
-            )
+            raise RuntimeError(f'Only keyword arguments are accepted for task statement: "{task_params}" provided')
         for k, v in kwargs.items():
             # if k not in SOS_RUNTIME_OPTIONS:
             #     raise RuntimeError(f'Unrecognized runtime option {k}={v}')
@@ -318,7 +293,8 @@ def create_task(global_def, global_vars, task_stmt, task_params):
             "step_name",
             "_runtime",
             "__signature_vars__",
-        })
+        }
+    )
 
     task_tags = [
         env.sos_dict["step_name"],
@@ -339,8 +315,7 @@ def create_task(global_def, global_vars, task_stmt, task_params):
             if not SOS_TAG.match(tag):
                 new_tag = re.sub(r"[^\w_.-]", "", tag)
                 if new_tag:
-                    env.logger.warning(
-                        f'Invalid tag "{tag}" is added as "{new_tag}"')
+                    env.logger.warning(f'Invalid tag "{tag}" is added as "{new_tag}"')
                     task_tags.append(new_tag)
                 else:
                     env.logger.warning(f'Invalid tag "{tag}" is ignored')
@@ -357,14 +332,17 @@ def create_task(global_def, global_vars, task_stmt, task_params):
     )
     # if no output (thus no signature)
     # temporarily create task signature to obtain sig_id
-    task_id = 't' + RuntimeInfo(
-        statementMD5([task_stmt]),
-        task_vars["_input"],
-        task_vars["_output"],
-        task_vars["_depends"],
-        task_vars["__signature_vars__"],
-        task_vars,
-    ).sig_id
+    task_id = (
+        "t"
+        + RuntimeInfo(
+            statementMD5([task_stmt]),
+            task_vars["_input"],
+            task_vars["_output"],
+            task_vars["_depends"],
+            task_vars["__signature_vars__"],
+            task_vars,
+        ).sig_id
+    )
 
     # workflow ID should be included but not part of the signature, this is why it is included
     # after task_id is created.
@@ -397,7 +375,7 @@ def kill_all_subprocesses(pid=None, include_self=False):
 def reevaluate_output():
     # re-process the output statement to determine output files
     args, kwargs = SoS_eval(
-        f'__null_func__({env.sos_dict["step_output"]._undetermined})',
+        f"__null_func__({env.sos_dict['step_output']._undetermined})",
         extra_dict={
             "__null_func__": __null_func__,
             "output_from": __output_from__,
@@ -409,10 +387,7 @@ def reevaluate_output():
         return
     # handle dynamic args
     args = [x.resolve() if isinstance(x, dynamic) else x for x in args]
-    kwargs = {
-        x: (y.resolve() if isinstance(y, dynamic) else y)
-        for x, y in kwargs.items()
-    }
+    kwargs = {x: (y.resolve() if isinstance(y, dynamic) else y) for x, y in kwargs.items()}
     return sos_targets(*args, **kwargs, _verify_existence=True)
 
 
@@ -423,7 +398,7 @@ def validate_step_sig(sig):
         matched = sig.validate()
         if isinstance(matched, dict):
             env.logger.info(
-                f'``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` due to saved signature'
+                f"``{env.sos_dict['step_name']}`` (index={env.sos_dict['_index']}) is ``ignored`` due to saved signature"
             )
             return matched
         env.logger.debug(f"Signature mismatch: {matched}")
@@ -433,14 +408,14 @@ def validate_step_sig(sig):
         if isinstance(matched, str):
             raise RuntimeError(f"Signature mismatch: {matched}")
         env.logger.info(
-            f'Substep ``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` with matching signature'
+            f"Substep ``{env.sos_dict['step_name']}`` (index={env.sos_dict['_index']}) is ``ignored`` with matching signature"
         )
         return matched
     if env.config["sig_mode"] == "build":
         # build signature require existence of files
         if sig.write():
             env.logger.info(
-                f'Step ``{env.sos_dict["step_name"]}`` (index={env.sos_dict["_index"]}) is ``ignored`` with signature constructed'
+                f"Step ``{env.sos_dict['step_name']}`` (index={env.sos_dict['_index']}) is ``ignored`` with signature constructed"
             )
             return {
                 "input": sig.content["input_obj"],
@@ -451,8 +426,7 @@ def validate_step_sig(sig):
     elif env.config["sig_mode"] == "force":
         return {}
     else:
-        raise RuntimeError(
-            f'Unrecognized signature mode {env.config["sig_mode"]}')
+        raise RuntimeError(f"Unrecognized signature mode {env.config['sig_mode']}")
 
 
 def strip_param_defs(stmt):
@@ -481,6 +455,6 @@ def verify_input(ignore_internal_targets=False):
     for key in ("_input", "_depends"):
         for target in env.sos_dict[key]:
             if not target.target_exists("target") and not (
-                    ignore_internal_targets and
-                    isinstance(target, (sos_variable, sos_step))):
+                ignore_internal_targets and isinstance(target, (sos_variable, sos_step))
+            ):
                 raise RemovedTarget(target)

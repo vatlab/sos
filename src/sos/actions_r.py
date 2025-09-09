@@ -19,9 +19,7 @@ from .targets_r import R_library
 
 @SoS_Action(
     acceptable_args=["script", "interpreter", "args", "entrypoint"],
-    default_args={"default_env": {
-        "R_DEFAULT_PACKAGES": "datasets,methods,utils,stats,grDevices,graphics"
-    }},
+    default_args={"default_env": {"R_DEFAULT_PACKAGES": "datasets,methods,utils,stats,grDevices,graphics"}},
 )
 def R(script, interpreter="", args="", entrypoint="", **kwargs):
     """Execute specified script with command Rscript, with default options
@@ -36,13 +34,15 @@ def R(script, interpreter="", args="", entrypoint="", **kwargs):
 
 
 @SoS_Action(acceptable_args=["script", "interpreter", "args", "entrypoint"])
-def Rmarkdown(script=None,
-              input=None,
-              output=None,
-              interpreter="",
-              entrypoint="",
-              args="{input:r}, output_file={output:ar}",
-              **kwargs):
+def Rmarkdown(
+    script=None,
+    input=None,
+    output=None,
+    interpreter="",
+    entrypoint="",
+    args="{input:r}, output_file={output:ar}",
+    **kwargs,
+):
     """Convert input file to output using Rmarkdown
 
     The input can be specified in three ways:
@@ -86,10 +86,7 @@ def Rmarkdown(script=None,
         #        run_Rmarkdown = TRUE, quiet = FALSE, encoding = getOption("encoding"))
         cmd = interpolate(
             f'{entrypoint} {interpreter or "Rscript"} -e "rmarkdown::render({args})"',
-            {
-                "input": input,
-                "output": output
-            },
+            {"input": input, "output": output},
         )
         if "ACTION" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
             env.log_to_file("ACTION", f'Running command "{cmd}"')
@@ -108,14 +105,11 @@ def Rmarkdown(script=None,
     except Exception as e:
         env.logger.error(str(e))
     if ret != 0:
-        temp_file = os.path.join(".sos", f'{"Rmarkdown"}_{os.getpid()}.md')
+        temp_file = os.path.join(".sos", f"{'Rmarkdown'}_{os.getpid()}.md")
         shutil.copyfile(str(input), temp_file)
         cmd = interpolate(
             f'Rscript -e "rmarkdown::render({args})"',
-            {
-                "input": input,
-                "output": sos_targets(temp_file)
-            },
+            {"input": input, "output": sos_targets(temp_file)},
         )
         raise RuntimeError(f'Failed to execute script. Please use command \n"{cmd}"\nunder {os.getcwd()} to test it.')
     if write_to_stdout:

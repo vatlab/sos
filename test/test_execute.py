@@ -17,12 +17,12 @@ from sos._version import __version__
 from sos.parser import SoS_Script
 from sos.targets import file_target, sos_targets
 from sos.utils import env
+
 # if the test is imported under sos/test, test interacive executor
 from sos.workflow_executor import Base_Executor
 
 
 def multi_attempts(fn):
-
     def wrapper(*args, **kwargs):
         for n in range(4):
             try:
@@ -48,70 +48,100 @@ a =1
 """)
     result = subprocess.check_output("sos --version", stderr=subprocess.STDOUT, shell=True).decode()
     assert result.startswith(f"sos {__version__}")
-    assert (subprocess.call("sos", stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True) == 0)
-    assert (subprocess.call("sos -h", stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True) == 0)
-    assert (subprocess.call(
-        "sos run -h",
-        stderr=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        shell=True,
-    ) == 0)
+    assert subprocess.call("sos", stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True) == 0
+    assert subprocess.call("sos -h", stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, shell=True) == 0
+    assert (
+        subprocess.call(
+            "sos run -h",
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            shell=True,
+        )
+        == 0
+    )
     #
-    assert (subprocess.call(
-        "sos run test_cl -w -W",
-        stderr=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        shell=True,
-    ) == 1)
-    assert (subprocess.call(
-        "sos-runner -h",
-        stderr=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        shell=True,
-    ) == 0)
-    assert (subprocess.call(
-        "sos dryrun -h",
-        stderr=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        shell=True,
-    ) == 0)
-    assert (subprocess.call(
-        "sos dryrun test_cl",
-        stderr=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        shell=True,
-    ) == 0)
-    assert (subprocess.call(
-        "sos dryrun test_cl.sos",
-        stderr=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        shell=True,
-    ) == 0)
-    assert (subprocess.call(
-        "sos dryrun test_cl L",
-        stderr=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        shell=True,
-    ) == 0)
-    assert (subprocess.call(
-        "sos-runner test_cl L",
-        stderr=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        shell=True,
-    ) == 0)
+    assert (
+        subprocess.call(
+            "sos run test_cl -w -W",
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            shell=True,
+        )
+        == 1
+    )
+    assert (
+        subprocess.call(
+            "sos-runner -h",
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            shell=True,
+        )
+        == 0
+    )
+    assert (
+        subprocess.call(
+            "sos dryrun -h",
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            shell=True,
+        )
+        == 0
+    )
+    assert (
+        subprocess.call(
+            "sos dryrun test_cl",
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            shell=True,
+        )
+        == 0
+    )
+    assert (
+        subprocess.call(
+            "sos dryrun test_cl.sos",
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            shell=True,
+        )
+        == 0
+    )
+    assert (
+        subprocess.call(
+            "sos dryrun test_cl L",
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            shell=True,
+        )
+        == 0
+    )
+    assert (
+        subprocess.call(
+            "sos-runner test_cl L",
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            shell=True,
+        )
+        == 0
+    )
     # script help
-    assert (subprocess.call(
-        "sos-runner test_cl -h",
-        stderr=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        shell=True,
-    ) == 0)
-    assert (subprocess.call(
-        "sos convert -h",
-        stderr=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        shell=True,
-    ) == 0)
+    assert (
+        subprocess.call(
+            "sos-runner test_cl -h",
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            shell=True,
+        )
+        == 0
+    )
+    assert (
+        subprocess.call(
+            "sos convert -h",
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            shell=True,
+        )
+        == 0
+    )
 
 
 def test_func_def(temp_factory):
@@ -540,7 +570,7 @@ def test_group_by_with_no_input():
 
 
 def test_paired_with(temp_factory, clear_now_and_after):
-    """Test option paired_with """
+    """Test option paired_with"""
     temp_factory("a.txt", "b.txt")
     clear_now_and_after("a.txt1", "b.txt2")
     #
@@ -598,7 +628,7 @@ def test_paired_with(temp_factory, clear_now_and_after):
 
 
 def test_paired_with_as_target_property(temp_factory):
-    """Test option paired_with with values accessed by individual target """
+    """Test option paired_with with values accessed by individual target"""
     temp_factory("a.txt", "b.txt")
     for ofile in ["a.txt1", "b.txt2"]:
         if file_target(ofile).exists():
@@ -650,7 +680,7 @@ def test_paired_with_as_target_property(temp_factory):
 
 
 def test_group_with(temp_factory):
-    """Test option group_with """
+    """Test option group_with"""
     temp_factory("a.txt", "b.txt")
     for ofile in ["a.txt1", "b.txt2"]:
         if file_target(ofile).exists():
@@ -765,7 +795,7 @@ def test_output_group_with(temp_factory):
 
 
 def test_group_with_as_target_property(temp_factory):
-    """Test option group_with """
+    """Test option group_with"""
     temp_factory("a.txt", "b.txt")
     for ofile in ["a.txt1", "b.txt2"]:
         if file_target(ofile).exists():
@@ -817,7 +847,7 @@ def test_group_with_as_target_property(temp_factory):
 
 
 def test_input_pattern(temp_factory):
-    """Test option pattern of step input """
+    """Test option pattern of step input"""
     # env.verbosity = 4
     temp_factory("a-20.txt", "b-10.txt")
     execute_workflow(
@@ -838,7 +868,7 @@ def test_input_pattern(temp_factory):
 
 
 def test_input_pattern_as_target_property(temp_factory):
-    """Test option pattern of step input """
+    """Test option pattern of step input"""
     # env.verbosity = 4
     temp_factory("a-20.txt", "b-10.txt")
     execute_workflow(
@@ -1028,14 +1058,14 @@ run: expand=True
     wf = script.workflow()
     Base_Executor(wf).run()
     assert env.sos_dict["test"], (
-        sos_targets([os.path.join("temp", f"test_{x}.txt.bak") for x in range(5)]) ==
-        f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
+        sos_targets([os.path.join("temp", f"test_{x}.txt.bak") for x in range(5)])
+        == f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
     )
     # this time we use th existing signature
     Base_Executor(wf).run()
     assert env.sos_dict["test"], (
-        sos_targets([os.path.join("temp", f"test_{x}.txt.bak") for x in range(5)]) ==
-        f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
+        sos_targets([os.path.join("temp", f"test_{x}.txt.bak") for x in range(5)])
+        == f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
     )
 
 
@@ -1245,7 +1275,7 @@ def test_allow_error(clear_now_and_after):
 
 
 def test_concurrent_worker(clear_now_and_after):
-    """Test the starting of multiple workers #493 """
+    """Test the starting of multiple workers #493"""
     with open("test_script.sos", "w") as script:
         script.write("""
 [10]
@@ -1344,7 +1374,7 @@ cat {_input} > {_output}
     assert os.path.isfile("report.html")
 
 
-@pytest.mark.xfail(reason='dot may segfault')
+@pytest.mark.xfail(reason="dot may segfault")
 @pytest.mark.skipif(not shutil.which("dot") or sys.platform == "win32", reason="Graphviz not available under windows")
 def test_output_report_with_dag(clear_now_and_after):
     # test dag
@@ -1369,10 +1399,7 @@ def test_output_report_with_dag(clear_now_and_after):
         run: expand=True
             cat {_input} > {_output}
         """,
-        options={
-            "output_report": "report.html",
-            "output_dag": "report.dag"
-        },
+        options={"output_report": "report.html", "output_dag": "report.dag"},
     )
     with open("report.html") as rep:
         content = rep.read()
@@ -1381,7 +1408,7 @@ def test_output_report_with_dag(clear_now_and_after):
 
 def test_sos_step_with_output(clear_now_and_after):
     """Test checking output of sos_step #981"""
-    clear_now_and_after('a')
+    clear_now_and_after("a")
     execute_workflow("""
         [step]
         output: 'a'
@@ -1503,9 +1530,9 @@ def test_dryrun_in_sos_run(temp_factory):
         [default]
         sos_run('remove')
         """
-    execute_workflow(script, options={'run_mode': "dryrun"})
+    execute_workflow(script, options={"run_mode": "dryrun"})
     assert os.path.isfile("1.txt")
-    execute_workflow(script, options={'run_mode': "run"})
+    execute_workflow(script, options={"run_mode": "run"})
     assert not os.path.isfile("1.txt")
 
 
@@ -1527,7 +1554,7 @@ def test_concurrent_with_dynamic_output(clear_now_and_after):
 
 
 def test_group_by_with_emtpy_input():
-    """ Test option group by with empty input #1044"""
+    """Test option group by with empty input #1044"""
     execute_workflow("""
         [1]
         input: group_by=1
@@ -1541,7 +1568,7 @@ def test_depends_to_concurrent_substep(clear_now_and_after):
     # but it is not passed to concurrent substep because
     # the variable is not used in the substep. This test
     # should fail at least under windows
-    clear_now_and_after('a.txt')
+    clear_now_and_after("a.txt")
     execute_workflow("""
         [1: shared={'data': 'step_output'}]
         output: 'a.txt'
@@ -1556,7 +1583,7 @@ def test_depends_to_concurrent_substep(clear_now_and_after):
 
 def test_pass_of_target_source(clear_now_and_after):
     """Test passing of source information from step_output"""
-    clear_now_and_after('a.txt', 'b.txt', 'c.txt')
+    clear_now_and_after("a.txt", "b.txt", "c.txt")
     execute_workflow("""
         [1]
         output: 'a.txt'
@@ -1591,8 +1618,8 @@ def test_pass_of_target_source(clear_now_and_after):
 
 def test_return_output_in_step_output(clear_now_and_after):
     """Testing the return of _output as groups of step_output"""
-    clear_now_and_after([f'a_{i}.txt' for i in range(5)])
-    clear_now_and_after([f'b_{i}.txt' for i in range(5)])
+    clear_now_and_after([f"a_{i}.txt" for i in range(5)])
+    clear_now_and_after([f"b_{i}.txt" for i in range(5)])
     execute_workflow("""\
         [1]
         input: for_each=dict(i=range(5))
@@ -1627,8 +1654,8 @@ def test_return_output_in_step_output(clear_now_and_after):
 
 def test_output_from(clear_now_and_after):
     """Testing output_from input function"""
-    clear_now_and_after([f'a_{i}.txt' for i in range(5)])
-    clear_now_and_after([f'g_{i}.txt' for i in range(5)])
+    clear_now_and_after([f"a_{i}.txt" for i in range(5)])
+    clear_now_and_after([f"g_{i}.txt" for i in range(5)])
     for wf in ("B", "C", "D", "E", "F", "G", "H"):
         execute_workflow(
             """\
@@ -1696,12 +1723,13 @@ def test_output_from(clear_now_and_after):
             assert(step_input.labels == ['K']*8)
 
             """,
-            workflow=wf)
+            workflow=wf,
+        )
 
 
 def test_named_output1336(clear_now_and_after):
     "Test issue 1336"
-    clear_now_and_after('A.bak', 'B.txt')
+    clear_now_and_after("A.bak", "B.txt")
     execute_workflow("""
         import time
 
@@ -1720,8 +1748,8 @@ def test_named_output1336(clear_now_and_after):
 
 def test_set_variables_to_output(clear_now_and_after):
     """Test assigning variables to _output"""
-    clear_now_and_after('a.txt')
-    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
+    clear_now_and_after("a.txt")
+    clear_now_and_after([f"a_{i}.txt" for i in range(4)])
 
     execute_workflow("""\
         [10]
@@ -1852,7 +1880,7 @@ def test_error_handling_of_step(clear_now_and_after):
     st = time.time()
     with pytest.raises(Exception):
         execute_workflow(script)
-    assert (time.time() - st >= 8), "Test test should fail only after step 10 is completed"
+    assert time.time() - st >= 8, "Test test should fail only after step 10 is completed"
     assert os.path.isfile("10.txt")
     assert os.path.isfile("11.txt")
     #
@@ -1862,7 +1890,7 @@ def test_error_handling_of_step(clear_now_and_after):
     #
     st = time.time()
     execute_workflow(script, options={"error_mode": "ignore"})
-    assert (time.time() - st >= 8), "Test test should fail only after step 10 is completed"
+    assert time.time() - st >= 8, "Test test should fail only after step 10 is completed"
     assert os.path.isfile("10.txt")
     assert os.path.isfile("11.txt")
     #
@@ -2084,8 +2112,8 @@ def test_interpolation_4(temp_factory):
 
 def test_named_output(clear_now_and_after):
     """Testing named_output input function"""
-    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
-    clear_now_and_after([f'b_{i}.txt' for i in range(4)])
+    clear_now_and_after([f"a_{i}.txt" for i in range(4)])
+    clear_now_and_after([f"b_{i}.txt" for i in range(4)])
     for wf in ("B", "C", "D"):
         execute_workflow(
             """
@@ -2123,7 +2151,7 @@ def test_named_output(clear_now_and_after):
 
 def test_auto_provide(clear_now_and_after):
     """Testing steps to provide plain output"""
-    clear_now_and_after('a.txt', 'a.out')
+    clear_now_and_after("a.txt", "a.out")
     execute_workflow("""
         [global]
 
@@ -2172,14 +2200,14 @@ def test_error_handling_of_missing_input(clear_now_and_after):
     with pytest.raises(Exception):
         execute_workflow(script)
 
-    assert (time.time() - st >= 8), "Test test should fail only after step 10 is completed"
+    assert time.time() - st >= 8, "Test test should fail only after step 10 is completed"
     assert os.path.isfile("11.txt")
 
     clear_now_and_after("11.txt", "22.txt")
 
     execute_workflow(script, options={"error_mode": "ignore"})
 
-    assert (time.time() - st >= 8), "Test test should fail only after step 10 is completed"
+    assert time.time() - st >= 8, "Test test should fail only after step 10 is completed"
     assert not os.path.isfile("22.txt")
 
 
@@ -2229,7 +2257,7 @@ def test_1379(clear_now_and_after):
 
 def test_remove_empty_groups_default(clear_now_and_after):
     """Test remove of empty groups"""
-    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
+    clear_now_and_after([f"a_{i}.txt" for i in range(4)])
     # case 1, default output
     execute_workflow("""
         [10]
@@ -2246,7 +2274,7 @@ def test_remove_empty_groups_default(clear_now_and_after):
 def test_remove_empty_groups_false(clear_now_and_after):
     """Test remove of empty groups"""
     # case 2, use default remove_empty_groups=False
-    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
+    clear_now_and_after([f"a_{i}.txt" for i in range(4)])
     execute_workflow("""
         [A]
         input: for_each=dict(i=range(4))
@@ -2263,7 +2291,7 @@ def test_remove_empty_groups_false(clear_now_and_after):
 def test_remove_empty_groups_true(clear_now_and_after):
     """Test remove of empty groups"""
     # case 3, use remove_empty_groups=True
-    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
+    clear_now_and_after([f"a_{i}.txt" for i in range(4)])
 
     execute_workflow("""
         [A]
@@ -2281,7 +2309,7 @@ def test_remove_empty_groups_true(clear_now_and_after):
 def test_remove_empty_groups_named(clear_now_and_after):
     """Test remove of empty groups"""
     # case 4, use named_output
-    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
+    clear_now_and_after([f"a_{i}.txt" for i in range(4)])
     execute_workflow("""
         [A]
         input: for_each=dict(i=range(4))
@@ -2298,7 +2326,7 @@ def test_remove_empty_groups_named(clear_now_and_after):
 def test_remove_empty_groups_empty_named(clear_now_and_after):
     """Test remove of empty groups"""
     # case 5, use named_output
-    clear_now_and_after([f'a_{i}.txt' for i in range(4)])
+    clear_now_and_after([f"a_{i}.txt" for i in range(4)])
     execute_workflow("""
         [A]
         input: for_each=dict(i=range(4))
@@ -2358,12 +2386,12 @@ def test_multi_depends(clear_now_and_after, temp_factory):
     )
 
     for file in (
-            "dbsnp.vcf",
-            "hg19.fa",
-            "f1.bam",
-            "f2.bam",
-            "f1.bam.idx",
-            "f2.bam.idx",
+        "dbsnp.vcf",
+        "hg19.fa",
+        "f1.bam",
+        "f2.bam",
+        "f1.bam.idx",
+        "f2.bam.idx",
     ):
         assert os.path.isfile(file)
 
@@ -2375,7 +2403,9 @@ def test_execute_ipynb(sample_workflow):
     Base_Executor(wf).run()
 
 
-@pytest.mark.skip(reason="Skip test because travis fails on this test for unknown reason, also due to a bug in psutil under windows")
+@pytest.mark.skip(
+    reason="Skip test because travis fails on this test for unknown reason, also due to a bug in psutil under windows"
+)
 def test_kill_worker(script_factory):
     """Test if the workflow can error out after a worker is killed"""
     import time
@@ -2539,8 +2569,8 @@ _output.touch()
 
 def test_param_with_step_no_statement(clear_now_and_after):
     # 1375
-    clear_now_and_after([f'{x+1}.txt' for x in range(5)])
-    clear_now_and_after([f'{x+1}.out' for x in range(5)])
+    clear_now_and_after([f"{x + 1}.txt" for x in range(5)])
+    clear_now_and_after([f"{x + 1}.out" for x in range(5)])
     execute_workflow(
         r"""
         [global]
@@ -2581,10 +2611,10 @@ def test_concurrent_running_tasks(script_factory):
 
 
 def test_reexecute_task_with_missing_output(clear_now_and_after):
-    '''Issue #1493'''
-    clear_now_and_after([f'a_{i}.txt' for i in range(10)])
-    clear_now_and_after([f'a_{i}.bak' for i in range(10)])
-    script = '''
+    """Issue #1493"""
+    clear_now_and_after([f"a_{i}.txt" for i in range(10)])
+    clear_now_and_after([f"a_{i}.bak" for i in range(10)])
+    script = """
         [get_input: provides='{base}.txt']
         sh: expand=True
         echo {_output} > {_output}
@@ -2596,15 +2626,15 @@ def test_reexecute_task_with_missing_output(clear_now_and_after):
 
         run: expand = True
             cp {_input} {_output}
-    '''
+    """
     execute_workflow(script, options={"default_queue": "localhost"})
-    assert file_target('a_2.bak').exists()
-    assert file_target('a_4.bak').exists()
+    assert file_target("a_2.bak").exists()
+    assert file_target("a_4.bak").exists()
 
-    file_target('a_2.bak').unlink()
-    file_target('a_4.bak').unlink()
-    assert not file_target('a_2.bak').exists()
-    assert not file_target('a_4.bak').exists()
+    file_target("a_2.bak").unlink()
+    file_target("a_4.bak").unlink()
+    assert not file_target("a_2.bak").exists()
+    assert not file_target("a_4.bak").exists()
     execute_workflow(script, options={"default_queue": "localhost"})
-    assert file_target('a_2.bak').exists()
-    assert file_target('a_4.bak').exists()
+    assert file_target("a_2.bak").exists()
+    assert file_target("a_4.bak").exists()

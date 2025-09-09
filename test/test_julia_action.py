@@ -11,15 +11,15 @@ import pytest
 from sos import execute_workflow
 
 
-@pytest.mark.skipif(not shutil.which('julia'), reason="julia not available")
+@pytest.mark.skipif(not shutil.which("julia"), reason="julia not available")
 def test_julia(clear_now_and_after):
-    '''Test action Julia'''
-    clear_now_and_after('julia_example.txt')
-    execute_workflow(r'''
+    """Test action Julia"""
+    clear_now_and_after("julia_example.txt")
+    execute_workflow(r"""
         [0]
         julia:
             open("julia_example.txt", "w") do f
                 write(f, "A, B, C, D\n")
             end
-    ''')
-    assert os.path.isfile('julia_example.txt')
+    """)
+    assert os.path.isfile("julia_example.txt")

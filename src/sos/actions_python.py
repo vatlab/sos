@@ -21,8 +21,9 @@ def python2(script, interpreter="", args="", entrypoint="", **kwargs):
     not exist. This action accepts common action arguments such as
     input, active, workdir, docker_image and args. In particular, content of one or more files
     specified by option input would be prepended before the specified script."""
-    return SoS_ExecuteScript(script, interpreter or ["python2", "python2.7", "python"], ".py", args,
-                             entrypoint).run(**kwargs)
+    return SoS_ExecuteScript(script, interpreter or ["python2", "python2.7", "python"], ".py", args, entrypoint).run(
+        **kwargs
+    )
 
 
 @SoS_Action(acceptable_args=["script", "interpreter", "args", "entrypoint"])

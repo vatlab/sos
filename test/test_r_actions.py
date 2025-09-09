@@ -19,8 +19,8 @@ from sos.targets_r import R_library
 )
 def test_rmarkdown(clear_now_and_after):
     """Test action Rmarkdown"""
-    if not R_library('rmarkdown').target_exists():
-        pytest.xfail('rmarkdown is not properly installed.')
+    if not R_library("rmarkdown").target_exists():
+        pytest.xfail("rmarkdown is not properly installed.")
 
     clear_now_and_after("myreport.html")
     execute_workflow(
@@ -49,8 +49,8 @@ def test_rmarkdown(clear_now_and_after):
     reason="R or pandoc not installed",
 )
 def test_rmarkdown_with_input(clear_now_and_after):
-    if not R_library('rmarkdown').target_exists():
-        pytest.xfail('rmarkdown is not properly installed.')
+    if not R_library("rmarkdown").target_exists():
+        pytest.xfail("rmarkdown is not properly installed.")
 
     clear_now_and_after("myreport.html")
     # Rmarkdown with specified input.
@@ -75,8 +75,8 @@ def test_rmarkdown_with_input(clear_now_and_after):
     reason="R or pandoc not installed",
 )
 def test_rmarkdown_with_action_output(clear_now_and_after):
-    if not R_library('rmarkdown').target_exists():
-        pytest.xfail('rmarkdown is not properly installed.')
+    if not R_library("rmarkdown").target_exists():
+        pytest.xfail("rmarkdown is not properly installed.")
 
     clear_now_and_after("default_10.md", "default_20.md", "output.html")
     execute_workflow(
@@ -104,8 +104,8 @@ def test_rmarkdown_with_action_output(clear_now_and_after):
     reason="R or pandoc not installed",
 )
 def test_rmarkdown_to_stdout():
-    if not R_library('rmarkdown').target_exists():
-        pytest.xfail('rmarkdown is not properly installed.')
+    if not R_library("rmarkdown").target_exists():
+        pytest.xfail("rmarkdown is not properly installed.")
     execute_workflow(r"""
         # generate report
         Rmarkdown:

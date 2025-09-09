@@ -17,20 +17,46 @@ import zmq
 
 from .controller import close_socket, create_socket, send_message_to_controller
 from .eval import KeepOnlyImportAndDefine, SoS_eval, SoS_exec, accessed_vars
-from .executor_utils import (ExecuteError, __named_output__, __null_func__,
-                             __output_from__, __traced__, clear_output,
-                             create_task, get_traceback_msg, reevaluate_output,
-                             statementMD5, validate_step_sig, verify_input)
+from .executor_utils import (
+    ExecuteError,
+    __named_output__,
+    __null_func__,
+    __output_from__,
+    __traced__,
+    clear_output,
+    create_task,
+    get_traceback_msg,
+    reevaluate_output,
+    statementMD5,
+    validate_step_sig,
+    verify_input,
+)
 from .messages import decode_msg, encode_msg
-from .syntax import (SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS,
-                     SOS_OUTPUT_OPTIONS, SOS_TARGETS_OPTIONS)
-from .targets import (RemovedTarget, RuntimeInfo, UnavailableLock,
-                      UnknownTarget, dynamic, file_target, invalid_target,
-                      sos_step, sos_targets, sos_variable)
+from .syntax import SOS_DEPENDS_OPTIONS, SOS_INPUT_OPTIONS, SOS_OUTPUT_OPTIONS, SOS_TARGETS_OPTIONS
+from .targets import (
+    RemovedTarget,
+    RuntimeInfo,
+    UnavailableLock,
+    UnknownTarget,
+    dynamic,
+    file_target,
+    invalid_target,
+    sos_step,
+    sos_targets,
+    sos_variable,
+)
 from .tasks import MasterTaskParams, TaskFile
-from .utils import (ArgumentError, ProcessKilled, StopInputGroup,
-                    TerminateExecution, env, get_localhost_ip, get_traceback,
-                    short_repr, textMD5)
+from .utils import (
+    ArgumentError,
+    ProcessKilled,
+    StopInputGroup,
+    TerminateExecution,
+    env,
+    get_localhost_ip,
+    get_traceback,
+    short_repr,
+    textMD5,
+)
 
 __all__: List = []
 
@@ -69,8 +95,9 @@ class TaskManager:
         #  ]
         self._slots[slot].append([idx, task_def])
         # the slot is full
-        if len(self._slots[slot]) == self.trunk_size or (slot == len(self._slots) - 1 and
-                                                         len(self._slots[slot]) == self._last_slot_size):
+        if len(self._slots[slot]) == self.trunk_size or (
+            slot == len(self._slots) - 1 and len(self._slots[slot]) == self._last_slot_size
+        ):
             # if there are valida tasks
             if not all([x[1] is None for x in self._slots[slot]]):
                 # remove empty tasks and sort by id
@@ -112,12 +139,14 @@ class TaskManager:
                 master.push(task_id, taskdef)
             ids.append(master.ID)
             TaskFile(master.ID).save(master.finalize())
-            send_message_to_controller([
-                "workflow_sig",
-                "task",
-                master.ID,
-                f"{{'creation_time': {time.time()}}}",
-            ])
+            send_message_to_controller(
+                [
+                    "workflow_sig",
+                    "task",
+                    master.ID,
+                    f"{{'creation_time': {time.time()}}}",
+                ]
+            )
         self._unsubmitted_slots = []
 
         # individual tasks...
@@ -142,12 +171,14 @@ class TaskManager:
                 # if the task file, perhaps it is already running, we do not change
                 # the task file. Otherwise we are changing the status of the task
                 TaskFile(task_id).save(taskdef)
-                send_message_to_controller([
-                    "workflow_sig",
-                    "task",
-                    task_id,
-                    f"{{'creation_time': {time.time()}}}",
-                ])
+                send_message_to_controller(
+                    [
+                        "workflow_sig",
+                        "task",
+                        task_id,
+                        f"{{'creation_time': {time.time()}}}",
+                    ]
+                )
                 ids.append(task_id)
         else:
             master = None
@@ -155,12 +186,14 @@ class TaskManager:
                 if master is not None and master.num_tasks() == self.trunk_size:
                     ids.append(master.ID)
                     TaskFile(master.ID).save(master)
-                    send_message_to_controller([
-                        "workflow_sig",
-                        "task",
-                        master.ID,
-                        f"{{'creation_time': {time.time()}}}",
-                    ])
+                    send_message_to_controller(
+                        [
+                            "workflow_sig",
+                            "task",
+                            master.ID,
+                            f"{{'creation_time': {time.time()}}}",
+                        ]
+                    )
                     master = None
                 if master is None:
                     master = MasterTaskParams(self.trunk_workers)
@@ -168,12 +201,14 @@ class TaskManager:
             # the last piece
             if master is not None:
                 TaskFile(master.ID).save(master.finalize())
-                send_message_to_controller([
-                    "workflow_sig",
-                    "task",
-                    master.ID,
-                    f"{{'creation_time': {time.time()}}}",
-                ])
+                send_message_to_controller(
+                    [
+                        "workflow_sig",
+                        "task",
+                        master.ID,
+                        f"{{'creation_time': {time.time()}}}",
+                    ]
+                )
                 ids.append(master.ID)
 
         if not ids:
@@ -299,13 +334,16 @@ def evaluate_shared(vars, option):
                         shared_vars[var] = SoS_eval(val)
                     except Exception as e:
                         raise RuntimeError(
-                            f"Failed to evaluate shared variable {var} from expression {val}: {e}") from e
+                            f"Failed to evaluate shared variable {var} from expression {val}: {e}"
+                        ) from e
             else:
                 raise RuntimeError(
-                    f"Unacceptable shared option. Only str or mapping are accepted in sequence: {option}")
+                    f"Unacceptable shared option. Only str or mapping are accepted in sequence: {option}"
+                )
     else:
         raise RuntimeError(
-            f"Unacceptable shared option. Only str, sequence, or mapping are accepted in sequence: {option}")
+            f"Unacceptable shared option. Only str, sequence, or mapping are accepted in sequence: {option}"
+        )
     return shared_vars
 
 
@@ -318,23 +356,31 @@ def get_value_of_param(name, param_list, extra_dict={}):
     try:
         return [ast.literal_eval(kwargs[0].value)]
     except Exception:
-        return [eval(
-            compile(
-                ast.Expression(body=kwargs[0].value),
-                filename="<string>",
-                mode="eval",
-            ),
-            extra_dict,
-        )]
+        return [
+            eval(
+                compile(
+                    ast.Expression(body=kwargs[0].value),
+                    filename="<string>",
+                    mode="eval",
+                ),
+                extra_dict,
+            )
+        ]
 
 
 def is_sos_run_the_only_last_stmt(stmt):
     tree = ast.parse(stmt)
     return (
-        len(tree.body) >= 1 and isinstance(tree.body[-1], ast.Expr) and isinstance(tree.body[-1].value, ast.Call) and
-        hasattr(tree.body[-1].value.func, "id") and tree.body[-1].value.func.id == "sos_run" and
-        len([x for x in ast.walk(tree) if isinstance(x, ast.Call) and hasattr(x.func, "id") and x.func.id == "sos_run"
-            ]) == 1)
+        len(tree.body) >= 1
+        and isinstance(tree.body[-1], ast.Expr)
+        and isinstance(tree.body[-1].value, ast.Call)
+        and hasattr(tree.body[-1].value.func, "id")
+        and tree.body[-1].value.func.id == "sos_run"
+        and len(
+            [x for x in ast.walk(tree) if isinstance(x, ast.Call) and hasattr(x.func, "id") and x.func.id == "sos_run"]
+        )
+        == 1
+    )
 
 
 class Base_Step_Executor:
@@ -366,7 +412,7 @@ class Base_Step_Executor:
     def init_input_output_vars(self):
         # if there is __step_output__ from previous step, use it as default input
         # otherwise, reset to empty
-        if ("__step_output__" not in env.sos_dict or env.sos_dict["__step_output__"].unspecified()):
+        if "__step_output__" not in env.sos_dict or env.sos_dict["__step_output__"].unspecified():
             env.sos_dict.set("step_input", sos_targets([]))
         else:
             env.sos_dict.set("step_input", env.sos_dict["__step_output__"])
@@ -419,7 +465,7 @@ class Base_Step_Executor:
                                 missing.extend(target)
                             else:
                                 raise RuntimeError(
-                                    f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]} (curdir={os.getcwd()})'
+                                    f"Output target {target} does not exist after the completion of step {env.sos_dict['step_name']} (curdir={os.getcwd()})"
                                 )
             elif not target.target_exists("any"):
                 if env.config["run_mode"] == "dryrun":
@@ -432,7 +478,7 @@ class Base_Step_Executor:
                             missing.extend(target)
                         else:
                             raise RuntimeError(
-                                f'Output target {target} does not exist after the completion of step {env.sos_dict["step_name"]}'
+                                f"Output target {target} does not exist after the completion of step {env.sos_dict['step_name']}"
                             )
         return missing
 
@@ -508,14 +554,16 @@ class Base_Step_Executor:
                 ofiles = ofiles._get_group(0)
             elif ofiles._num_groups() != len(self._substeps):
                 raise RuntimeError(
-                    f"Inconsistent number of output ({ofiles._num_groups()}) and input ({len(self._substeps)}) groups.")
+                    f"Inconsistent number of output ({ofiles._num_groups()}) and input ({len(self._substeps)}) groups."
+                )
             else:
                 ofiles = ofiles._get_group(env.sos_dict["_index"])
 
         # create directory
         if ofiles.valid():
             parents = {
-                os.path.abspath(os.path.join(ofile, os.pardir)) for ofile in ofiles if isinstance(ofile, file_target)}
+                os.path.abspath(os.path.join(ofile, os.pardir)) for ofile in ofiles if isinstance(ofile, file_target)
+            }
             for parent_dir in parents:
                 if parent_dir and not os.path.isdir(parent_dir):
                     os.makedirs(parent_dir, exist_ok=True)
@@ -528,7 +576,7 @@ class Base_Step_Executor:
             oname = ofile.target_name()
             if oname in self._all_outputs:
                 raise ValueError(
-                    f'Output {ofile} from substep {env.sos_dict["_index"]} of {env.sos_dict["__num_groups__"]} substeps overlaps with output from a previous substep.'
+                    f"Output {ofile} from substep {env.sos_dict['_index']} of {env.sos_dict['__num_groups__']} substeps overlaps with output from a previous substep."
                 )
             self._all_outputs.add(oname)
 
@@ -546,7 +594,8 @@ class Base_Step_Executor:
                     trunk_size = env.sos_dict["__num_groups__"]
                 if not isinstance(trunk_size, int):
                     raise ValueError(
-                        f'An integer value or None is expected for runtime option trunk_size, "{trunk_size}" provided')
+                        f'An integer value or None is expected for runtime option trunk_size, "{trunk_size}" provided'
+                    )
             else:
                 trunk_size = 1
             if "trunk_workers" in env.sos_dict["_runtime"]:
@@ -554,7 +603,8 @@ class Base_Step_Executor:
                     raise ValueError(
                         'Option "trunk_workers" that specifies number of nodes and processes for the execution '
                         'of single-node jobs and option "nodes" that specifies number of nodes for single multi-node '
-                        "jobs cannot be used at the same time.")
+                        "jobs cannot be used at the same time."
+                    )
                 trunk_workers = env.sos_dict["_runtime"]["trunk_workers"]
             else:
                 trunk_workers = None
@@ -580,11 +630,12 @@ class Base_Step_Executor:
         # we should either give a warning or produce different ids...
         if self.task_manager.index_of(task_id) >= 0:
             raise RuntimeError(
-                f'Task {task_id} generated for (_index={env.sos_dict["_index"]}) is identical to a previous one (_index={self.task_manager.index_of(task_id)}).'
+                f"Task {task_id} generated for (_index={env.sos_dict['_index']}) is identical to a previous one (_index={self.task_manager.index_of(task_id)})."
             )
         if self.task_manager.has_output(task_vars["_output"]):
             raise RuntimeError(
-                f'Task produces output files {", ".join(task_vars["_output"])} that are output of other tasks.')
+                f"Task produces output files {', '.join(task_vars['_output'])} that are output of other tasks."
+            )
         # if no trunk_size, the job will be submitted immediately
         # otherwise tasks will be accumulated and submitted in batch
         self.task_manager.set(task_index, (task_id, taskdef, task_vars["_output"]))
@@ -632,7 +683,7 @@ class Base_Step_Executor:
             results = e.value
 
         if results is None:
-            raise RuntimeError('This should not happen since results should be a dictionary returned from runner.')
+            raise RuntimeError("This should not happen since results should be a dictionary returned from runner.")
 
         for id, result in results.items():
             # turn to string to avoid naming lookup issue
@@ -662,13 +713,13 @@ class Base_Step_Executor:
                 for _, mres in results.items():
                     if "subtasks" in mres and task in mres["subtasks"]:
                         self.proc_results[idx] = mres["subtasks"][task]
-                    elif 'exception' in mres:
+                    elif "exception" in mres:
                         self.proc_results[idx] = mres
         #
         # check if all have results?
         if any(isinstance(x, str) for x in self.proc_results.values()):
             raise RuntimeError(
-                f'Failed to get results for tasks {", ".join(x for x in self.proc_results.values() if isinstance(x, str))}'
+                f"Failed to get results for tasks {', '.join(x for x in self.proc_results.values() if isinstance(x, str))}"
             )
         #
         for idx, res in self.proc_results.items():
@@ -686,24 +737,25 @@ class Base_Step_Executor:
     def log(self, stage=None, msg=""):
         if stage == "start":
             env.logger.info(
-                f'{"Checking" if env.config["run_mode"] == "dryrun" else "Running"} ``{self.step.step_name(True)}``: {self.step.comment.strip()}'
+                f"{'Checking' if env.config['run_mode'] == 'dryrun' else 'Running'} ``{self.step.step_name(True)}``: {self.step.comment.strip()}"
             )
         elif stage == "input statement":
             if "STEP" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
                 env.log_to_file("STEP", f"Handling input statement {msg}")
         elif stage == "_input":
             if env.sos_dict["_input"] is not None and len(env.sos_dict["_input"]) > 0:
-                env.logger.debug(f'_input: ``{short_repr(env.sos_dict["_input"])}``{msg}')
+                env.logger.debug(f"_input: ``{short_repr(env.sos_dict['_input'])}``{msg}")
         elif stage == "_depends":
             if env.sos_dict["_depends"] is not None:
-                env.logger.debug(f'_depends: ``{short_repr(env.sos_dict["_depends"])}``{msg}')
+                env.logger.debug(f"_depends: ``{short_repr(env.sos_dict['_depends'])}``{msg}")
         elif stage == "input":
             if env.sos_dict["step_input"] is not None:
-                env.logger.info(f'input:   ``{short_repr(env.sos_dict["step_input"])}``{msg}')
+                env.logger.info(f"input:   ``{short_repr(env.sos_dict['step_input'])}``{msg}")
         elif stage == "output":
-            if (env.sos_dict["step_output"] is not None and len(env.sos_dict["step_output"]) > 0):
+            if env.sos_dict["step_output"] is not None and len(env.sos_dict["step_output"]) > 0:
                 env.logger.info(
-                    f'``{self.step.step_name(True)}`` output:   ``{short_repr(env.sos_dict["step_output"])}``{msg}')
+                    f"``{self.step.step_name(True)}`` output:   ``{short_repr(env.sos_dict['step_output'])}``{msg}"
+                )
 
     def execute(self, stmt, return_result=False):
         try:
@@ -745,7 +797,7 @@ class Base_Step_Executor:
                 if pending_substeps < (100 if isinstance(self.concurrent_substep, bool) else self.concurrent_substep):
                     if not self.result_pull_socket.poll(0):
                         return
-                elif ("STEP" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]):
+                elif "STEP" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
                     # if there are more than 100 pending substeps
                     # we wait indefinitely for the results
                     env.log_to_file(
@@ -762,32 +814,42 @@ class Base_Step_Executor:
                 if isinstance(res["exception"], RemovedTarget):
                     pass
                 elif env.config["error_mode"] == "ignore":
-                    idx_msg = (f'(id={env.sos_dict["step_id"]}, index={res["index"]})'
-                               if "index" in res and len(self._substeps) > 1 else f'(id={env.sos_dict["step_id"]})')
+                    idx_msg = (
+                        f"(id={env.sos_dict['step_id']}, index={res['index']})"
+                        if "index" in res and len(self._substeps) > 1
+                        else f"(id={env.sos_dict['step_id']})"
+                    )
                     env.logger.warning(
-                        f"""Ignoring error from ``{self.step.step_name(True)}`` {idx_msg}: {res["exception"]}.""")
+                        f"""Ignoring error from ``{self.step.step_name(True)}`` {idx_msg}: {res["exception"]}."""
+                    )
                     res["output"] = sos_targets(invalid_target())
                 elif env.config["error_mode"] == "abort":
-                    idx_msg = (f'(id={env.sos_dict["step_id"]}, index={res["index"]})'
-                               if "index" in res and len(self._substeps) > 1 else f'(id={env.sos_dict["step_id"]})')
+                    idx_msg = (
+                        f"(id={env.sos_dict['step_id']}, index={res['index']})"
+                        if "index" in res and len(self._substeps) > 1
+                        else f"(id={env.sos_dict['step_id']})"
+                    )
                     self.exec_error.append(idx_msg, res["exception"])
                     # try to stop everything but wait till for submitted tasks to
                     # complete
                     self._completed_concurrent_substeps + 1
                     waiting = till - 1 - self._completed_concurrent_substeps
                     env.logger.warning(
-                        f'``{self.step.step_name(True)}`` {idx_msg} returns an error.{f" Terminating step after completing {waiting} submitted substeps." if waiting else " Terminating now."}'
+                        f"``{self.step.step_name(True)}`` {idx_msg} returns an error.{f' Terminating step after completing {waiting} submitted substeps.' if waiting else ' Terminating now.'}"
                     )
                     for _ in range(waiting):
                         yield self.result_pull_socket
                         res = decode_msg(self.result_pull_socket.recv())
                         if "exception" in res:
-                            self.exec_error.append(f'index={res["index"]}', res["exception"])
+                            self.exec_error.append(f"index={res['index']}", res["exception"])
                     raise self.exec_error
                 else:
                     # default or unspecified
-                    idx_msg = (f'(id={env.sos_dict["step_id"]}, index={res["index"]})'
-                               if "index" in res and len(self._substeps) > 1 else f'(id={env.sos_dict["step_id"]})')
+                    idx_msg = (
+                        f"(id={env.sos_dict['step_id']}, index={res['index']})"
+                        if "index" in res and len(self._substeps) > 1
+                        else f"(id={env.sos_dict['step_id']})"
+                    )
                     self.exec_error.append(idx_msg, res["exception"])
             #
             if "index" not in res:
@@ -837,13 +899,15 @@ class Base_Step_Executor:
         for x in result["__step_output__"].targets:
             if isinstance(x, sos_variable):
                 result["__shared__"][x.target_name()] = env.sos_dict[x.target_name()]
-        send_message_to_controller([
-            "progress",
-            "step_completed",
-            -1 if "sos_run" in env.sos_dict["__signature_vars__"] else self.completed["__step_completed__"],
-            env.sos_dict["step_name"],
-            env.sos_dict["step_output"],
-        ])
+        send_message_to_controller(
+            [
+                "progress",
+                "step_completed",
+                -1 if "sos_run" in env.sos_dict["__signature_vars__"] else self.completed["__step_completed__"],
+                env.sos_dict["step_name"],
+                env.sos_dict["step_output"],
+            ]
+        )
         return result
 
     def set_task_queue_from_task_params(self):
@@ -868,9 +932,9 @@ class Base_Step_Executor:
             #     )
         # if -q is unspecified and option queue is unspecified,
         # or queue=None is specified, disregard the task keyword
-        if (env.config["default_queue"] is None and
-                "queue" not in env.sos_dict["_runtime"]) or ("queue" in env.sos_dict["_runtime"] and
-                                                             env.sos_dict["_runtime"]["queue"] is None):
+        if (env.config["default_queue"] is None and "queue" not in env.sos_dict["_runtime"]) or (
+            "queue" in env.sos_dict["_runtime"] and env.sos_dict["_runtime"]["queue"] is None
+        ):
             # remove task statement
             if len(self.step.statements) >= 1 and self.step.statements[-1][0] == "!":
                 self.step.statements[-1][1] += "\n" + self.step.task
@@ -884,7 +948,7 @@ class Base_Step_Executor:
 
     def local_exec_without_signature(self, statement):
         idx = env.sos_dict["_index"]
-        env.log_to_file("STEP", f'Execute substep {env.sos_dict["step_name"]} without signature')
+        env.log_to_file("STEP", f"Execute substep {env.sos_dict['step_name']} without signature")
         try:
             if self.is_input_verified:
                 verify_input()
@@ -895,7 +959,7 @@ class Base_Step_Executor:
                 self.execute(statement[1])
             if not self.step.task and env.config["run_mode"] != "interactive":
                 env.logger.info(
-                    f'``{self.step.step_name(True)}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``completed``{" (pending nested workflow)" if self._subworkflow_results else ""}.'
+                    f"``{self.step.step_name(True)}``{f' (index={idx})' if len(self._substeps) > 1 else ''} is ``completed``{' (pending nested workflow)' if self._subworkflow_results else ''}."
                 )
         finally:
             if not self.step.task:
@@ -905,7 +969,8 @@ class Base_Step_Executor:
         if "shared" in self.step.options:
             try:
                 self.shared_vars[env.sos_dict["_index"]].update(
-                    {x: env.sos_dict[x] for x in self.vars_to_be_shared if x in env.sos_dict})
+                    {x: env.sos_dict[x] for x in self.vars_to_be_shared if x in env.sos_dict}
+                )
             except Exception as e:
                 raise ValueError(f"Missing shared variable {e}.") from e
 
@@ -934,7 +999,7 @@ class Base_Step_Executor:
 
         env.log_to_file(
             "STEP",
-            f'Execute substep {env.sos_dict["step_name"]} with signature {sig.sig_id}',
+            f"Execute substep {env.sos_dict['step_name']} with signature {sig.sig_id}",
         )
         sig.lock()
         try:
@@ -947,12 +1012,13 @@ class Base_Step_Executor:
                 self.execute(statement[1])
             if not self.step.task and env.config["run_mode"] != "interactive":
                 env.logger.info(
-                    f'``{self.step.step_name(True)}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``completed``{" (pending nested workflow)" if self._subworkflow_results else ""}.'
+                    f"``{self.step.step_name(True)}``{f' (index={idx})' if len(self._substeps) > 1 else ''} is ``completed``{' (pending nested workflow)' if self._subworkflow_results else ''}."
                 )
             if "shared" in self.step.options:
                 try:
                     self.shared_vars[env.sos_dict["_index"]].update(
-                        {x: env.sos_dict[x] for x in self.vars_to_be_shared if x in env.sos_dict})
+                        {x: env.sos_dict[x] for x in self.vars_to_be_shared if x in env.sos_dict}
+                    )
                 except Exception as e:
                     raise ValueError(f"Missing shared variable {e}.") from e
         finally:
@@ -989,22 +1055,25 @@ class Base_Step_Executor:
         idx = env.sos_dict["_index"]
         env.log_to_file(
             "STEP",
-            f'Execute substep {env.sos_dict["step_name"]} {idx} concurrently with {self._completed_concurrent_substeps} completed',
+            f"Execute substep {env.sos_dict['step_name']} {idx} concurrently with {self._completed_concurrent_substeps} completed",
         )
 
         # the ignatures are supposed to be written by substep worker, however
         # the substep worker might send tasks back to the step worker and
         # we should write the signatures after the tasks are completed
-        if (env.config["sig_mode"] != "ignore" and not env.sos_dict["_output"].unspecified() and self.step.task):
+        if env.config["sig_mode"] != "ignore" and not env.sos_dict["_output"].unspecified() and self.step.task:
             self.pending_signatures[idx] = (
-                sig if sig else RuntimeInfo(
+                sig
+                if sig
+                else RuntimeInfo(
                     statementMD5([statement[1], self.step.task]),
                     env.sos_dict["_input"],
                     env.sos_dict["_output"],
                     env.sos_dict["_depends"],
                     env.sos_dict["__signature_vars__"],
                     shared_vars=self.vars_to_be_shared,
-                ))
+                )
+            )
         #
         # step_output: needed only when it is undetermined
         # step_input: not needed
@@ -1031,21 +1100,26 @@ class Base_Step_Executor:
                 "workflow_id",
                 "__num_groups__",
                 "__signature_vars__",
-            })
+            }
+        )
         self.proc_results[env.sos_dict["_index"]] = {}
-        self.submit_substep({
-            'stmt': statement[1],
-            'global_def': self.step.global_def,
-            # 1225: the step might contain large variables from global section, but
-            # we do not have to sent them if they are not used in substeps.
-            'cwd': os.getcwd(),
-            'global_vars': {x: y for x, y in self.step.global_vars.items() if x in env.sos_dict["__signature_vars__"]},
-            'task': self.step.task,
-            'task_params': self.step.task_params,
-            'proc_vars': env.sos_dict.clone_selected_vars(proc_vars),
-            'shared_vars': self.vars_to_be_shared,
-            'config': env.config,
-        })
+        self.submit_substep(
+            {
+                "stmt": statement[1],
+                "global_def": self.step.global_def,
+                # 1225: the step might contain large variables from global section, but
+                # we do not have to sent them if they are not used in substeps.
+                "cwd": os.getcwd(),
+                "global_vars": {
+                    x: y for x, y in self.step.global_vars.items() if x in env.sos_dict["__signature_vars__"]
+                },
+                "task": self.step.task,
+                "task_params": self.step.task_params,
+                "proc_vars": env.sos_dict.clone_selected_vars(proc_vars),
+                "shared_vars": self.vars_to_be_shared,
+                "config": env.config,
+            }
+        )
 
     def check_task_sig(self):
         idx = env.sos_dict["_index"]
@@ -1059,7 +1133,7 @@ class Base_Step_Executor:
         )
         env.log_to_file(
             "STEP",
-            f'Check task-only step {env.sos_dict["step_name"]} with signature {sig.sig_id}',
+            f"Check task-only step {env.sos_dict['step_name']} with signature {sig.sig_id}",
         )
         matched = validate_step_sig(sig)
         skip_index = bool(matched)
@@ -1108,7 +1182,7 @@ class Base_Step_Executor:
 
         # now that output is settled, we can write remaining signatures
         for idx, res in self.proc_results.items():
-            if (self.pending_signatures[idx] is not None and res["ret_code"] == 0 and "sig_skipped" not in res):
+            if self.pending_signatures[idx] is not None and res["ret_code"] == 0 and "sig_skipped" not in res:
                 # task might return output with vars #1355
                 self.pending_signatures[idx].set_output(self.output_groups[idx])
                 self.pending_signatures[idx].write()
@@ -1167,7 +1241,7 @@ class Base_Step_Executor:
         self.log("start")
         env.sos_dict.set(
             "step_id",
-            textMD5(f'{env.sos_dict["workflow_id"]} {env.sos_dict["step_name"]} {self.step.md5}'),
+            textMD5(f"{env.sos_dict['workflow_id']} {env.sos_dict['step_name']} {self.step.md5}"),
         )
         env.sos_dict.set("master_id", env.config["master_id"])
         # used by nested workflow
@@ -1190,7 +1264,7 @@ class Base_Step_Executor:
         if "STEP" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
             env.log_to_file(
                 "STEP",
-                f'Executing step {env.sos_dict["step_name"]} with step_input {env.sos_dict["step_input"]} and step_output {env.sos_dict["step_output"]}',
+                f"Executing step {env.sos_dict['step_name']} with step_input {env.sos_dict['step_input']} and step_output {env.sos_dict['step_output']}",
             )
 
         self.set_task_queue_from_task_params()
@@ -1340,11 +1414,13 @@ class Base_Step_Executor:
         self.vars_to_be_shared = set()
         if "shared" in self.step.options:
             self.vars_to_be_shared = parse_shared_vars(self.step.options["shared"])
-        self.vars_to_be_shared = sorted([
-            x[5:] if x.startswith("step_") else x
-            for x in self.vars_to_be_shared
-            if x not in ("step_", "step_input", "step_output", "step_depends")
-        ])
+        self.vars_to_be_shared = sorted(
+            [
+                x[5:] if x.startswith("step_") else x
+                for x in self.vars_to_be_shared
+                if x not in ("step_", "step_input", "step_output", "step_depends")
+            ]
+        )
         self.shared_vars = [{} for x in self._substeps]
         # run steps after input statement, which will be run multiple times for each input
         # group.
@@ -1361,10 +1437,14 @@ class Base_Step_Executor:
         self._all_outputs = set()
         self._subworkflow_results = []
 
-        if (any("sos_run" in x[1] for x in self.step.statements[input_statement_idx:]) and
-                "shared" not in self.step.options and not self.step.task and self.step.statements[-1][0] == "!" and
-            (len(self.step.statements) == 1 or self.step.statements[-2][0] == ":") and
-                is_sos_run_the_only_last_stmt(self.step.statements[-1][1])):
+        if (
+            any("sos_run" in x[1] for x in self.step.statements[input_statement_idx:])
+            and "shared" not in self.step.options
+            and not self.step.task
+            and self.step.statements[-1][0] == "!"
+            and (len(self.step.statements) == 1 or self.step.statements[-2][0] == ":")
+            and is_sos_run_the_only_last_stmt(self.step.statements[-1][1])
+        ):
             env.sos_dict.set("__concurrent_subworkflow__", True)
 
         if self.concurrent_substep:
@@ -1438,11 +1518,11 @@ class Base_Step_Executor:
                     if missed:
                         if any(isinstance(x, invalid_target) for x in missed):
                             env.logger.warning(
-                                f'{self.step.step_name(True)}{f" (index={idx})" if len(self._substeps) > 1 else ""} ignored due to invalid input caused by previous failed substep.'
+                                f"{self.step.step_name(True)}{f' (index={idx})' if len(self._substeps) > 1 else ''} ignored due to invalid input caused by previous failed substep."
                             )
                         else:
                             env.logger.warning(
-                                f'{self.step.step_name(True)}{f" (index={idx})" if len(self._substeps) > 1 else ""} ignored due to missing input {sos_targets(missed)}'
+                                f"{self.step.step_name(True)}{f' (index={idx})' if len(self._substeps) > 1 else ''} ignored due to missing input {sos_targets(missed)}"
                             )
                         self.output_groups[idx] = sos_targets(invalid_target())
                         env.sos_dict.set("_output", sos_targets(invalid_target()))
@@ -1460,18 +1540,22 @@ class Base_Step_Executor:
                     env.sos_dict.set("step_name", self.step.step_name())
                     env.sos_dict.set(
                         "step_id",
-                        hash((
-                            env.sos_dict["workflow_id"],
-                            env.sos_dict["step_name"],
-                            self.step.md5,
-                        )),
+                        hash(
+                            (
+                                env.sos_dict["workflow_id"],
+                                env.sos_dict["step_name"],
+                                self.step.md5,
+                            )
+                        ),
                     )
                     # used by nested workflow
                     env.sos_dict.set("__step_context__", self.step.context)
                 #
                 pre_statement = []
-                if (not any(st[0] == ":" and st[1] == "output" for st in self.step.statements[input_statement_idx:]) and
-                        "__default_output__" in env.sos_dict):
+                if (
+                    not any(st[0] == ":" and st[1] == "output" for st in self.step.statements[input_statement_idx:])
+                    and "__default_output__" in env.sos_dict
+                ):
                     pre_statement = [[":", "output", "_output"]]
 
                 # if there is no statement, no task, claim success
@@ -1520,7 +1604,7 @@ class Base_Step_Executor:
                                     if g.valid() and ofiles.valid():
                                         if any(x in g._targets for x in ofiles if not isinstance(x, sos_step)):
                                             raise RuntimeError(
-                                                f'Overlapping input and output files: {", ".join(repr(x) for x in ofiles if x in g)}'
+                                                f"Overlapping input and output files: {', '.join(repr(x) for x in ofiles if x in g)}"
                                             )
 
                                     # set variable _output and output
@@ -1570,14 +1654,18 @@ class Base_Step_Executor:
                                     return self.collect_result()
                                 raise RuntimeError(f"Failed to process step {key} ({value.strip()}): {e}") from e
                     elif is_last_runblock:
-                        if (env.config["sig_mode"] == "skip" and not self.vars_to_be_shared and
-                                "sos_run" not in statement[1] and not env.sos_dict["_output"].unspecified() and
-                                len(env.sos_dict["_output"]) > 0 and
-                                all(x.target_exists() for x in env.sos_dict["_output"].targets) and
-                                env.sos_dict["_output"].later_than(env.sos_dict["_input"])):
+                        if (
+                            env.config["sig_mode"] == "skip"
+                            and not self.vars_to_be_shared
+                            and "sos_run" not in statement[1]
+                            and not env.sos_dict["_output"].unspecified()
+                            and len(env.sos_dict["_output"]) > 0
+                            and all(x.target_exists() for x in env.sos_dict["_output"].targets)
+                            and env.sos_dict["_output"].later_than(env.sos_dict["_input"])
+                        ):
                             self.skip_substep()
                             env.logger.info(
-                                f'``{env.sos_dict["step_name"]}``{f" (index={idx})" if len(self._substeps) > 1 else ""} is ``skipped`` with existing output.'
+                                f"``{env.sos_dict['step_name']}``{f' (index={idx})' if len(self._substeps) > 1 else ''} is ``skipped`` with existing output."
                             )
                             skip_index = True
                             # do not execute the rest of the statement
@@ -1585,8 +1673,10 @@ class Base_Step_Executor:
                         #
                         # default mode, check if skipping substep
                         sig = None
-                        if (env.config["sig_mode"] not in ("ignore", "distributed", "build") and
-                                not env.sos_dict["_output"].unspecified()):
+                        if (
+                            env.config["sig_mode"] not in ("ignore", "distributed", "build")
+                            and not env.sos_dict["_output"].unspecified()
+                        ):
                             sig = RuntimeInfo(
                                 statementMD5([statement[1], self.step.task]),
                                 env.sos_dict["_input"],
@@ -1619,7 +1709,7 @@ class Base_Step_Executor:
                                         yreq = runner.send(yres)
                                 except StopIteration:
                                     pass
-                            elif (env.config["sig_mode"] == "ignore" or env.sos_dict["_output"].unspecified()):
+                            elif env.config["sig_mode"] == "ignore" or env.sos_dict["_output"].unspecified():
                                 self.local_exec_without_signature(statement)
                             else:
                                 skip_index = self.local_exec_with_signature(statement, sig)
@@ -1640,17 +1730,24 @@ class Base_Step_Executor:
                             if env.config["error_mode"] == "abort":
                                 raise
                             if env.config["error_mode"] == "ignore":
-                                idx_msg = (f'(id={env.sos_dict["step_id"]}, index={idx})'
-                                           if len(self._substeps) > 1 else f'(id={env.sos_dict["step_id"]})')
+                                idx_msg = (
+                                    f"(id={env.sos_dict['step_id']}, index={idx})"
+                                    if len(self._substeps) > 1
+                                    else f"(id={env.sos_dict['step_id']})"
+                                )
                                 env.logger.warning(
-                                    f"{self.step.step_name(True)} {idx_msg} returns no output due to error: {e}")
+                                    f"{self.step.step_name(True)} {idx_msg} returns no output due to error: {e}"
+                                )
                                 self.output_groups[idx] = sos_targets(invalid_target())
                                 skip_index = True
                             else:
                                 if env.config["run_mode"] != "interactive":
                                     # default mode
-                                    idx_msg = (f'(id={env.sos_dict["step_id"]}, index={idx})'
-                                               if len(self._substeps) > 1 else f'(id={env.sos_dict["step_id"]})')
+                                    idx_msg = (
+                                        f"(id={env.sos_dict['step_id']}, index={idx})"
+                                        if len(self._substeps) > 1
+                                        else f"(id={env.sos_dict['step_id']})"
+                                    )
                                     env.logger.error(f"{self.step.step_name(True)} {idx_msg} returns an error.")
                                 self.exec_error.append(str(idx), e)
                     else:
@@ -1674,9 +1771,13 @@ class Base_Step_Executor:
                             raise
                 # if there is no statement , but there are tasks, we should
                 # check signature here.
-                if ((not self.step.statements or self.step.statements[-1][0] != "!") and self.step.task and
-                        not self.concurrent_substep and env.config["sig_mode"] != "ignore" and
-                        not env.sos_dict["_output"].unspecified()):
+                if (
+                    (not self.step.statements or self.step.statements[-1][0] != "!")
+                    and self.step.task
+                    and not self.concurrent_substep
+                    and env.config["sig_mode"] != "ignore"
+                    and not env.sos_dict["_output"].unspecified()
+                ):
                     skip_index = self.check_task_sig()
 
                 # if this index is skipped, go directly to the next one
@@ -1706,12 +1807,14 @@ class Base_Step_Executor:
                         self.step.task,
                         self.step.task_params,
                     )
-                    task = self.submit_task({
-                        "index": env.sos_dict["_index"],
-                        "task_id": task_id,
-                        "task_def": taskdef,
-                        "task_vars": task_vars,
-                    })
+                    task = self.submit_task(
+                        {
+                            "index": env.sos_dict["_index"],
+                            "task_id": task_id,
+                            "task_def": taskdef,
+                            "task_vars": task_vars,
+                        }
+                    )
                     self.proc_results[env.sos_dict["_index"]] = task
                 except Exception as e:
                     # FIXME: cannot catch exception from subprocesses
@@ -1785,15 +1888,17 @@ class Base_Step_Executor:
             missing = self.verify_output()
             self.log(
                 "output",
-                msg=f'\033[95m missing: {short_repr(missing)} ({len(missing)} item{"s" if len(missing)>1 else ""})\033[0m'
-                if len(missing) > 0 else "",
+                msg=f"\033[95m missing: {short_repr(missing)} ({len(missing)} item{'s' if len(missing) > 1 else ''})\033[0m"
+                if len(missing) > 0
+                else "",
             )
             self.calculate_completed()
 
             def file_only(targets):
                 if not isinstance(targets, sos_targets):
                     env.logger.warning(
-                        f"Unexpected input or output target for reporting. Empty list returned: {targets}")
+                        f"Unexpected input or output target for reporting. Empty list returned: {targets}"
+                    )
                     return []
                 return [(str(x), x.size()) for x in targets._targets if isinstance(x, file_target)]
 
@@ -1879,7 +1984,8 @@ class Step_Executor(Base_Step_Executor):
                 raise ValueError(f"Unrecognized result from subworkflows: {res}")
             # remove from _self._subworkflow_results
             result_with_id = [
-                idx for idx, x in enumerate(self._subworkflow_results)
+                idx
+                for idx, x in enumerate(self._subworkflow_results)
                 if res["__workflow_id__"] in x["pending_workflows"]
             ]
             if not result_with_id:
@@ -1929,7 +2035,7 @@ class Step_Executor(Base_Step_Executor):
                 res = e.value
 
             if self.socket is not None:
-                if ("STEP" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]):
+                if "STEP" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
                     env.log_to_file(
                         "STEP",
                         f"Step {self.step.step_name()} sends result {short_repr(res)}",

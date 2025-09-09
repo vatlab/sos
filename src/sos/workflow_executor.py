@@ -18,10 +18,15 @@ from typing import Any, Dict, List, Optional, Union
 
 import zmq
 
-from .controller import (Controller, close_socket, connect_controllers,
-                         create_socket, disconnect_controllers,
-                         request_answer_from_controller,
-                         send_message_to_controller)
+from .controller import (
+    Controller,
+    close_socket,
+    connect_controllers,
+    create_socket,
+    disconnect_controllers,
+    request_answer_from_controller,
+    send_message_to_controller,
+)
 from .dag import SoS_DAG
 from .eval import analyze_global_statements
 from .executor_utils import ExecuteError, prepare_env
@@ -30,9 +35,20 @@ from .messages import decode_msg, encode_msg
 from .parser import SoS_Workflow
 from .pattern import extract_pattern
 from .section_analyzer import analyze_section
-from .targets import (BaseTarget, RemovedTarget, UnavailableLock,
-                      UnknownTarget, file_target, invalid_target, named_output,
-                      path, paths, sos_step, sos_targets, sos_variable)
+from .targets import (
+    BaseTarget,
+    RemovedTarget,
+    UnavailableLock,
+    UnknownTarget,
+    file_target,
+    invalid_target,
+    named_output,
+    path,
+    paths,
+    sos_step,
+    sos_targets,
+    sos_variable,
+)
 from .utils import env, get_localhost_ip, pickleable, short_repr, textMD5
 from .workflow_report import render_report
 
@@ -57,7 +73,6 @@ class dummy_node:
 
 
 class ProcInfo:
-
     def __init__(self, socket, port, step) -> None:
         self.socket = socket
         self.port = port
@@ -65,8 +80,9 @@ class ProcInfo:
         self._last_alive = time.time()
 
     def __repr__(self):
-        return f"{self.step}/{self.step._status}" + (f" on {self.step._pending_targets}"
-                                                     if self.step._status == "target_pending" else "")
+        return f"{self.step}/{self.step._status}" + (
+            f" on {self.step._pending_targets}" if self.step._status == "target_pending" else ""
+        )
 
     def set_status(self, status: str) -> None:
         self.step._status = status
@@ -141,7 +157,8 @@ class ExecutionManager:
         # have to temporarily exclude the ports that are active in the executor from the selection.
         #
         master_port = request_answer_from_controller(
-            ["worker_available", self._is_next_job_blocking()] + [x.port for x in self.procs if self.procs])
+            ["worker_available", self._is_next_job_blocking()] + [x.port for x in self.procs if self.procs]
+        )
         # no worker is available
         if master_port is None:
             env.log_to_file(
@@ -150,7 +167,7 @@ class ExecutionManager:
             )
             return False
 
-        runnable, spec = (self.step_queue.pop() if self.step_queue else self.workflow_queue.pop())
+        runnable, spec = self.step_queue.pop() if self.step_queue else self.workflow_queue.pop()
 
         if "sockets" not in spec["config"]:
             spec["config"]["sockets"] = {}
@@ -181,8 +198,9 @@ class ExecutionManager:
         return len([x for x in self.procs if x is not None])
 
     def all_done(self) -> bool:
-        return (not self.step_queue and not self.workflow_queue and
-                (not self.procs or all(x is None for x in self.procs)))
+        return (
+            not self.step_queue and not self.workflow_queue and (not self.procs or all(x is None for x in self.procs))
+        )
 
     def all_pending(self) -> bool:
         return all(x is None or x.is_pending() for x in self.procs)
@@ -240,7 +258,8 @@ class Base_Executor:
                 if isinstance(arg, str) and arg.startswith("--"):
                     if not wf_pars:
                         raise ValueError(
-                            f'Undefined parameter {arg[2:]} for command line argument "{" ".join(args[idx:])}".')
+                            f'Undefined parameter {arg[2:]} for command line argument "{" ".join(args[idx:])}".'
+                        )
                     pars = [arg[2:], arg[2:].replace("-", "_").split("=")[0]]
                     if arg[2:].startswith("no-"):
                         pars.extend([arg[5:], arg[5:].replace("-", "_").split("=")[0]])
@@ -288,8 +307,9 @@ class Base_Executor:
         }
         workflow_info["command_line"] = subprocess.list2cmdline([os.path.basename(sys.argv[0])] + sys.argv[1:])
         if "-m tapping" in workflow_info["command_line"]:
-            workflow_info["command_line"] = workflow_info["command_line"][:workflow_info["command_line"]
-                                                                          .index("-m tapping")]
+            workflow_info["command_line"] = workflow_info["command_line"][
+                : workflow_info["command_line"].index("-m tapping")
+            ]
         workflow_info["project_dir"] = os.getcwd()
         workflow_info["script"] = base64.b64encode(self.workflow.content.text().encode()).decode("ascii")
         workflow_info["master_id"] = env.config["master_id"]
@@ -297,16 +317,19 @@ class Base_Executor:
         send_message_to_controller(["workflow_sig", "workflow", self.md5, repr(workflow_info)])
         if env.config["exec_mode"] == "slave":
             env.tapping_listener_socket.send(
-                encode_msg({
-                    "msg_type": "workflow_status",
-                    "data": {
-                        "cell_id": env.config["slave_id"],
-                        "workflow_id": self.md5,
-                        "workflow_name": self.workflow.name,
-                        "start_time": time.time(),
-                        "status": "running",
-                    },
-                }))
+                encode_msg(
+                    {
+                        "msg_type": "workflow_status",
+                        "data": {
+                            "cell_id": env.config["slave_id"],
+                            "workflow_id": self.md5,
+                            "workflow_name": self.workflow.name,
+                            "start_time": time.time(),
+                            "status": "running",
+                        },
+                    }
+                )
+            )
 
     def run(self, targets: Optional[List[str]] = None, mode=None) -> Dict[str, Any]:
         #
@@ -351,7 +374,6 @@ class Base_Executor:
             env.config["master_id"] = None
 
     def reset_dict(self) -> None:
-
         prepare_env(
             self.workflow.global_def,
             self.workflow.global_vars,
@@ -504,14 +526,24 @@ class Base_Executor:
                         # if this is an index step... simply let it depends on previous steps
                         if node._node_index is not None:
                             indexed = [
-                                x for x in dag.nodes() if x._node_index is not None and
-                                x._node_index < node._node_index and not x._output_targets.valid()
+                                x
+                                for x in dag.nodes()
+                                if x._node_index is not None
+                                and x._node_index < node._node_index
+                                and not x._output_targets.valid()
                             ]
                             indexed.sort(key=lambda x: x._node_index)
-                            if ((not indexed) or (isinstance(target, sos_step) and not any(
-                                    self.workflow.section_by_id(x._step_uuid).match(target.target_name())
-                                    for x in indexed)) or
-                                (not any(x._status is None or x._status.endswith("pending") for x in indexed))):
+                            if (
+                                (not indexed)
+                                or (
+                                    isinstance(target, sos_step)
+                                    and not any(
+                                        self.workflow.section_by_id(x._step_uuid).match(target.target_name())
+                                        for x in indexed
+                                    )
+                                )
+                                or (not any(x._status is None or x._status.endswith("pending") for x in indexed))
+                            ):
                                 # all previous status has been failed or completed...
                                 raise RuntimeError(
                                     f"No rule to generate target '{target}'{dag.steps_depending_on(target, self.workflow)}."
@@ -522,7 +554,8 @@ class Base_Executor:
                                 node._depends_targets = sos_targets([])
                         else:
                             raise RuntimeError(
-                                f"No step to generate target {target}{dag.steps_depending_on(target, self.workflow)}")
+                                f"No step to generate target {target}{dag.steps_depending_on(target, self.workflow)}"
+                            )
                     if nodes:
                         resolved += 1
                     # cannot resolve, but the step is numerically indexed so we just wait
@@ -548,7 +581,8 @@ class Base_Executor:
                         # dag.show_nodes()
                         continue
                     raise RuntimeError(
-                        f'Multiple steps {", ".join(x.step_name() for x in mo)} to generate target {target}')
+                        f"Multiple steps {', '.join(x.step_name() for x in mo)} to generate target {target}"
+                    )
                 #
                 # m0[0] can be a tuple
                 #   section, context
@@ -586,7 +620,7 @@ class Base_Executor:
                     break
                 continue
 
-            existing_targets = (dag.dangling(targets)[1] if env.config["trace_existing"] else traced)
+            existing_targets = dag.dangling(targets)[1] if env.config["trace_existing"] else traced
 
             remaining_targets = existing_targets
             while remaining_targets:
@@ -600,7 +634,8 @@ class Base_Executor:
                 if len(mo) > 1:
                     # this is not ok.
                     raise RuntimeError(
-                        f'Multiple steps {", ".join(x.step_name() for x in mo)} to generate target {target}')
+                        f"Multiple steps {', '.join(x.step_name() for x in mo)} to generate target {target}"
+                    )
 
                 if isinstance(mo[0], tuple):
                     # for auxiliary, we need to set input and output, here
@@ -670,8 +705,8 @@ class Base_Executor:
             }
             # add variables to context if they exist (e.g. global parameter #1281)
             context.update(
-                env.sos_dict.clone_selected_vars(context["__signature_vars__"]
-                                                 | context["__environ_vars__"]))
+                env.sos_dict.clone_selected_vars(context["__signature_vars__"] | context["__environ_vars__"])
+            )
 
             # for nested workflow, the input is specified by sos_run, not None.
             if idx == 0:
@@ -726,7 +761,8 @@ class Base_Executor:
         if res["step_input"].unspecified() and section.index is not None:
             # there should be one step with that name
             prev_steps = [
-                x for x in self.workflow.auxiliary_sections
+                x
+                for x in self.workflow.auxiliary_sections
                 if x.name == section.name and x.index is not None and x.index <= section.index
             ]
             self.add_forward_workflow(dag, prev_steps, target)
@@ -736,7 +772,7 @@ class Base_Executor:
         # build DAG with input and output files of step
         env.log_to_file(
             "DAG",
-            f'Adding step {res["step_name"]} with output {short_repr(res["step_output"])} to resolve target {target}',
+            f"Adding step {res['step_name']} with output {short_repr(res['step_output'])} to resolve target {target}",
         )
 
         context["__signature_vars__"] = res["signature_vars"]
@@ -751,7 +787,7 @@ class Base_Executor:
         # with identical names.
         node_name = section.step_name()
         if env.sos_dict["__default_output__"]:
-            node_name += f' ({short_repr(env.sos_dict["__default_output__"])})'
+            node_name += f" ({short_repr(env.sos_dict['__default_output__'])})"
         dag.add_step(
             section.uuid,
             node_name,
@@ -788,7 +824,8 @@ class Base_Executor:
         cycle = dag.circular_dependencies()
         if cycle:
             raise RuntimeError(
-                f"Circular dependency detected {cycle}. It is likely a later step produces input of a previous step.")
+                f"Circular dependency detected {cycle}. It is likely a later step produces input of a previous step."
+            )
         dag.save(env.config["output_dag"])
         return dag
 
@@ -799,12 +836,15 @@ class Base_Executor:
         #    res.append(f"{self.completed['__subworkflow_completed__']} completed subworkflow{'s' if self.completed['__subworkflow_completed__'] > 1 else ''}")
         # if '__subworkflow_skipped__' in self.completed and self.completed['__subworkflow_skipped__']:
         #    res.append(f"{self.completed['__subworkflow_skipped__']} skipped subworkflow{'s' if self.completed['__subworkflow_skipped__'] > 1 else ''}")
-        if ("__step_completed__" in self.completed and self.completed["__step_completed__"]):
+        if "__step_completed__" in self.completed and self.completed["__step_completed__"]:
             res.append(
                 f"{round(self.completed['__step_completed__'], 1)} completed step{'s' if self.completed['__step_completed__'] > 1 else ''}"
             )
-            if ("__substep_completed__" in self.completed and self.completed["__substep_completed__"] and
-                    self.completed["__substep_completed__"] != self.completed["__step_completed__"]):
+            if (
+                "__substep_completed__" in self.completed
+                and self.completed["__substep_completed__"]
+                and self.completed["__substep_completed__"] != self.completed["__step_completed__"]
+            ):
                 res.append(
                     f"{self.completed['__substep_completed__']} completed substep{'s' if self.completed['__substep_completed__'] > 1 else ''}"
                 )
@@ -812,12 +852,15 @@ class Base_Executor:
             res.append(
                 f"{round(self.completed['__step_skipped__'], 1)} ignored step{'s' if self.completed['__step_skipped__'] > 1 else ''}"
             )
-            if ("__substep_skipped__" in self.completed and self.completed["__substep_skipped__"] and
-                    self.completed["__substep_skipped__"] != self.completed["__step_skipped__"]):
+            if (
+                "__substep_skipped__" in self.completed
+                and self.completed["__substep_skipped__"]
+                and self.completed["__substep_skipped__"] != self.completed["__step_skipped__"]
+            ):
                 res.append(
                     f"{self.completed['__substep_skipped__']} ignored substep{'s' if self.completed['__substep_skipped__'] > 1 else ''}"
                 )
-        if ("__task_completed__" in self.completed and self.completed["__task_completed__"]):
+        if "__task_completed__" in self.completed and self.completed["__task_completed__"]:
             res.append(
                 f"{self.completed['__task_completed__']} completed task{'s' if self.completed['__task_completed__'] > 1 else ''}"
             )
@@ -851,9 +894,12 @@ class Base_Executor:
             if node._node_index is not None and runnable._node_index is not None:
                 # and node._node_index == runnable._node_index + 1:
                 node._context.update(
-                    env.sos_dict.clone_selected_vars(node._context["__signature_vars__"]
-                                                     | node._context["__environ_vars__"]
-                                                     | {"_input", "__step_output__"}))
+                    env.sos_dict.clone_selected_vars(
+                        node._context["__signature_vars__"]
+                        | node._context["__environ_vars__"]
+                        | {"_input", "__step_output__"}
+                    )
+                )
             node._context.update(svar)
             if node._status == "target_pending":
                 if all(x.target_exists("target") for x in node._pending_targets):
@@ -895,7 +941,8 @@ class Base_Executor:
                 if len(mo) > 1:
                     # this is not ok.
                     raise RuntimeError(
-                        f'Multiple steps {", ".join(x.step_name() for x in mo)} to generate target {target}')
+                        f"Multiple steps {', '.join(x.step_name() for x in mo)} to generate target {target}"
+                    )
 
                 if isinstance(mo[0], tuple):
                     if mo[0][1]:
@@ -958,7 +1005,8 @@ class Base_Executor:
         else:
             if self.resolve_dangling_targets(dag, sos_targets(target)) == 0:
                 raise RuntimeError(
-                    f"Failed to regenerate or resolve {target}{dag.steps_depending_on(target, self.workflow)}.")
+                    f"Failed to regenerate or resolve {target}{dag.steps_depending_on(target, self.workflow)}."
+                )
             if runnable._depends_targets.valid():
                 runnable._depends_targets.extend(target)
             if runnable not in dag._all_depends_files[target]:
@@ -1016,12 +1064,13 @@ class Base_Executor:
         if env.config["output_dag"] and env.config["master_id"] == self.md5:
             workflow_info["dag"] = env.config["output_dag"]
         send_message_to_controller(["workflow_sig", "workflow", self.md5, repr(workflow_info)])
-        if (env.config["master_id"] == env.sos_dict["workflow_id"] and env.config["output_report"]):
+        if env.config["master_id"] == env.sos_dict["workflow_id"] and env.config["output_report"]:
             # if this is the outter most workflow
             render_report(env.config["output_report"], env.sos_dict["workflow_id"])
         if env.config["run_mode"] == "dryrun":
             for filename in request_answer_from_controller(
-                ["workflow_sig", "placeholders", env.sos_dict["workflow_id"]]):
+                ["workflow_sig", "placeholders", env.sos_dict["workflow_id"]]
+            ):
                 try:
                     if os.path.getsize(file_target(filename)) == 0:
                         file_target(filename).unlink()
@@ -1036,7 +1085,7 @@ class Base_Executor:
 
         self.reset_dict()
 
-        env.config["run_mode"] = (env.config.get("run_mode", "run") if mode is None else mode)
+        env.config["run_mode"] = env.config.get("run_mode", "run") if mode is None else mode
 
         # passing run_mode to SoS dict so that users can execute blocks of
         # python statements in different run modes.
@@ -1048,9 +1097,9 @@ class Base_Executor:
             if env.config["output_dag"] and os.path.isfile(env.config["output_dag"]):
                 os.unlink(env.config["output_dag"])
         except Exception as e:
-            env.logger.warning(f'Failed to remove existing DAG file {env.config["output_dag"]}: {e}')
+            env.logger.warning(f"Failed to remove existing DAG file {env.config['output_dag']}: {e}")
 
-        if (targets and sos_targets(targets).target_exists() and not env.config["trace_existing"]):
+        if targets and sos_targets(targets).target_exists() and not env.config["trace_existing"]:
             env.logger.info(
                 f'Target{"s" if len(sos_targets(targets)) > 1 else ""} {sos_targets(targets)} already exists. Remove or use option "-T" if you would like to regenerate {"them" if len(targets) > 1 else "it"}.'
             )
@@ -1109,14 +1158,18 @@ class Base_Executor:
                                 env.log_to_file("EXECUTOR", "Step becomes task_pending")
                             except Exception as e:
                                 proc.socket.send(
-                                    encode_msg({
-                                        x: {
-                                            "ret_code": 1,
-                                            "task": x,
-                                            "output": {},
-                                            "exception": e,
-                                        } for x in new_tasks
-                                    }))
+                                    encode_msg(
+                                        {
+                                            x: {
+                                                "ret_code": 1,
+                                                "task": x,
+                                                "output": {},
+                                                "exception": e,
+                                            }
+                                            for x in new_tasks
+                                        }
+                                    )
+                                )
                                 env.logger.error(str(e))
                                 proc.set_status("failed")
                                 if env.config["error_mode"] == "abort":
@@ -1216,12 +1269,12 @@ class Base_Executor:
                             manager.push_to_queue(
                                 runnable,
                                 spec={
-                                    'section': section,
-                                    'context': context,
-                                    'shared': shared,
-                                    'args': args,
-                                    'config': config,
-                                    'verbosity': verbosity,
+                                    "section": section,
+                                    "context": context,
+                                    "shared": shared,
+                                    "args": args,
+                                    "config": config,
+                                    "verbosity": verbosity,
                                 },
                             )
 
@@ -1262,13 +1315,13 @@ class Base_Executor:
                                 manager.push_to_queue(
                                     wfrunnable,
                                     spec={
-                                        'workflow_id': wid,
-                                        'wf': wf,
-                                        'targets': targets,
-                                        'args': args,
-                                        'shared': shared,
-                                        'config': config,
-                                        'blocking': blocking,
+                                        "workflow_id": wid,
+                                        "wf": wf,
+                                        "targets": targets,
+                                        "args": args,
+                                        "shared": shared,
+                                        "config": config,
+                                        "blocking": blocking,
                                     },
                                 )
                         else:
@@ -1287,7 +1340,7 @@ class Base_Executor:
                         env.log_to_file("EXECUTOR", "Master send res to nested")
                         manager.report()
                         dag.save(env.config["output_dag"])
-                        if (isinstance(res, Exception) and env.config["error_mode"] == "ignore"):
+                        if isinstance(res, Exception) and env.config["error_mode"] == "ignore":
                             env.log_to_file(
                                 "EXECUTOR",
                                 "master sent exception to nested {res}. Turnning to result.",
@@ -1324,7 +1377,7 @@ class Base_Executor:
                                 for midx, proc in enumerate(manager.procs):
                                     if proc is None:
                                         continue
-                                    if (proc.in_status("workflow_pending") and pwf in proc.step._pending_workflows):
+                                    if proc.in_status("workflow_pending") and pwf in proc.step._pending_workflows:
                                         proc.step._pending_workflows.remove(pwf)
                                         if not proc.step._pending_workflows:
                                             proc.set_status("failed")
@@ -1360,7 +1413,7 @@ class Base_Executor:
                     elif "__step_name__" in res:
                         env.log_to_file(
                             "EXECUTOR",
-                            f'Master receive result for step {res["__step_name__"]}',
+                            f"Master receive result for step {res['__step_name__']}",
                         )
                         self.step_completed(res, dag, runnable)
                     elif "__workflow_id__" in res:
@@ -1369,7 +1422,7 @@ class Base_Executor:
                         # notify the step that is waiting for the result
                         env.log_to_file(
                             "EXECUTOR",
-                            f'Master receive result for workflow {res["__workflow_id__"]}',
+                            f"Master receive result for workflow {res['__workflow_id__']}",
                         )
                         # aggregate steps etc with subworkflows
                         for k, v in res["__completed__"].items():
@@ -1382,8 +1435,10 @@ class Base_Executor:
                             # do not care about dummy processes
                             if proc is None:
                                 continue
-                            if (proc.in_status("workflow_pending") and
-                                    res["__workflow_id__"] in proc.step._pending_workflows):
+                            if (
+                                proc.in_status("workflow_pending")
+                                and res["__workflow_id__"] in proc.step._pending_workflows
+                            ):
                                 proc.step._pending_workflows.remove(res["__workflow_id__"])
                                 if not proc.step._pending_workflows:
                                     proc.set_status("running")
@@ -1405,7 +1460,7 @@ class Base_Executor:
                         if all(x in ("completed", "aborted", "failed") for x in res):
                             env.log_to_file(
                                 "EXECUTOR",
-                                f'Proc {proc_idx} puts results for {" ".join(proc.step._pending_tasks)} from step {proc.step._node_id}',
+                                f"Proc {proc_idx} puts results for {' '.join(proc.step._pending_tasks)} from step {proc.step._node_id}",
                             )
                             res = proc.step._host.retrieve_results(proc.step._pending_tasks)
                             proc.socket.send(encode_msg(res))
@@ -1416,13 +1471,17 @@ class Base_Executor:
                             continue
                         elif "missing" in res:
                             raise RuntimeError(
-                                f'Task no longer exists: {" ".join(x for x,y in zip(proc.step._pending_tasks, res) if y == "missing")}'
+                                f"Task no longer exists: {' '.join(x for x, y in zip(proc.step._pending_tasks, res) if y == 'missing')}"
                             )
                         else:
                             raise RuntimeError(
-                                f'Task {" ".join(proc.step._pending_tasks)} returned with status {" ".join(res)}')
-                    elif (proc.in_status("target_pending") and hasattr(proc.step, "_from_nested") and
-                          proc.step._child_socket.poll(0)):
+                                f"Task {' '.join(proc.step._pending_tasks)} returned with status {' '.join(res)}"
+                            )
+                    elif (
+                        proc.in_status("target_pending")
+                        and hasattr(proc.step, "_from_nested")
+                        and proc.step._child_socket.poll(0)
+                    ):
                         # see if the child node has sent something
                         res = decode_msg(proc.step._child_socket.recv())
                         if res == "target_resolved":
@@ -1467,12 +1526,12 @@ class Base_Executor:
                     manager.push_to_queue(
                         runnable,
                         spec={
-                            'section': section,
-                            'context': runnable._context,
-                            'shared': shared,
-                            'args': self.args,
-                            'config': env.config,
-                            'verbosity': env.verbosity,
+                            "section": section,
+                            "context": runnable._context,
+                            "shared": shared,
+                            "args": self.args,
+                            "config": env.config,
+                            "verbosity": env.verbosity,
                         },
                     )
 
@@ -1486,7 +1545,7 @@ class Base_Executor:
                 if dag.degraded() and manager.all_pending():
                     env.log_to_file(
                         "EXECUTOR",
-                        f'Master terminate because {"degration" if dag.degraded() else "" } {" all pending" if manager.all_pending() else ""}',
+                        f"Master terminate because {'degration' if dag.degraded() else ''} {' all pending' if manager.all_pending() else ''}",
                     )
                     break
                 time.sleep(0.1)
@@ -1498,7 +1557,8 @@ class Base_Executor:
                     exec_error.append(
                         self.workflow.name,
                         RuntimeError(
-                            f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'),
+                            f"{len(sections)} pending step{'s' if len(sections) > 1 else ''}: {', '.join(sections)}"
+                        ),
                     )
                     raise exec_error from e
             else:
@@ -1511,8 +1571,9 @@ class Base_Executor:
         #
         env.log_to_file(
             "EXECUTOR",
-            f"Master workflow {self.workflow.name} completed " + ("with" if exec_error.errors else "without") +
-            " error",
+            f"Master workflow {self.workflow.name} completed "
+            + ("with" if exec_error.errors else "without")
+            + " error",
         )
 
         if exec_error.errors:
@@ -1524,11 +1585,11 @@ class Base_Executor:
             msg = []
             if pending_sections:
                 msg.append(
-                    f'{len(pending_sections)} pending step{"s" if len(pending_sections) > 1 else ""} ({", ".join(pending_sections)})'
+                    f"{len(pending_sections)} pending step{'s' if len(pending_sections) > 1 else ''} ({', '.join(pending_sections)})"
                 )
             if running_sections:
                 msg.append(
-                    f'{len(running_sections)} running step{"s" if len(running_sections) > 1 else ""} ({", ".join(running_sections)})'
+                    f"{len(running_sections)} running step{'s' if len(running_sections) > 1 else ''} ({', '.join(running_sections)})"
                 )
 
             if msg:
@@ -1552,17 +1613,17 @@ class Base_Executor:
         self.completed = defaultdict(int)
 
         self.reset_dict()
-        env.config["run_mode"] = (env.config.get("run_mode", "run") if mode is None else mode)
+        env.config["run_mode"] = env.config.get("run_mode", "run") if mode is None else mode
         env.sos_dict.set("run_mode", env.config["run_mode"])
 
         wf_result = {"__workflow_id__": my_workflow_id, "shared": {}}
 
         env.log_to_file(
             "WORKER",
-            f'- SUBSTART - Run workflow W{env.config["workflow_vars"].get("idx", "?")}',
+            f"- SUBSTART - Run workflow W{env.config['workflow_vars'].get('idx', '?')}",
         )
 
-        if (targets and sos_targets(targets).target_exists() and not env.config["trace_existing"]):
+        if targets and sos_targets(targets).target_exists() and not env.config["trace_existing"]:
             env.logger.info(
                 f'Target{"s" if len(sos_targets(targets)) > 1 else ""} {sos_targets(targets)} already exists. Remove or use option "-T" if you would like to regenerate {"them" if len(targets) > 1 else "it"}.'
             )
@@ -1657,7 +1718,7 @@ class Base_Executor:
                     elif "__step_name__" in res:
                         env.log_to_file(
                             "EXECUTOR",
-                            f'Nested receives result for step {res["__step_name__"]}',
+                            f"Nested receives result for step {res['__step_name__']}",
                         )
                         self.step_completed(res, dag, runnable)
                     else:
@@ -1703,21 +1764,24 @@ class Base_Executor:
                     port = socket.bind_to_random_port(f"tcp://{self.local_ip}")
                     env.log_to_file(
                         "WORKER",
-                        f'- SUBRUN - SEND STEP S{env.config["workflow_vars"].get("idx", "?")}',
+                        f"- SUBRUN - SEND STEP S{env.config['workflow_vars'].get('idx', '?')}",
                     )
 
                     parent_socket.send(
-                        encode_msg([
-                            "step",
-                            step_id,
-                            section,
-                            runnable._context,
-                            shared,
-                            self.args,
-                            env.config,
-                            env.verbosity,
-                            f"tcp://{self.local_ip}:{port}",
-                        ]))
+                        encode_msg(
+                            [
+                                "step",
+                                step_id,
+                                section,
+                                runnable._context,
+                                shared,
+                                self.args,
+                                env.config,
+                                env.verbosity,
+                                f"tcp://{self.local_ip}:{port}",
+                            ]
+                        )
+                    )
                     # the nested workflow also needs a step to receive result
                     manager.add_placeholder_worker(runnable, socket)
 
@@ -1734,7 +1798,8 @@ class Base_Executor:
                     exec_error.append(
                         self.workflow.name,
                         RuntimeError(
-                            f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'),
+                            f"{len(sections)} pending step{'s' if len(sections) > 1 else ''}: {', '.join(sections)}"
+                        ),
                     )
                     raise exec_error from e
             else:
@@ -1759,7 +1824,8 @@ class Base_Executor:
                 exec_error.append(
                     self.workflow.name,
                     RuntimeError(
-                        f'{len(sections)} pending step{"s" if len(sections) > 1 else ""}: {", ".join(sections)}'),
+                        f"{len(sections)} pending step{'s' if len(sections) > 1 else ''}: {', '.join(sections)}"
+                    ),
                 )
             parent_socket.send(encode_msg(exec_error))
         else:

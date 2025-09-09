@@ -66,7 +66,7 @@ def test_remove_targets():
 
 def test_sos_targets_signature(clear_now_and_after):
     """Test save and validate signatures of sos_targets"""
-    clear_now_and_after('a.txt', 'b.txt')
+    clear_now_and_after("a.txt", "b.txt")
     with open("a.txt", "w") as a:
         a.write("text1")
     with open("b.txt", "w") as b:
@@ -104,9 +104,9 @@ def test_target_group_by():
 
 def test_target_paired_with():
     """Test paired_with targets with vars"""
-    res = sos_targets(
-        "e.txt", "f.ext", a=["a.txt", "b.txt"], b=["c.txt", "d.txt"],
-        group_by=1).paired_with("_name", ["e", "f", "a", "b", "c", "d"])
+    res = sos_targets("e.txt", "f.ext", a=["a.txt", "b.txt"], b=["c.txt", "d.txt"], group_by=1).paired_with(
+        "_name", ["e", "f", "a", "b", "c", "d"]
+    )
     for i, n in enumerate(["e", "f", "a", "b", "c", "d"]):
         assert res[i]._name == n
     #
@@ -121,9 +121,9 @@ def test_target_paired_with():
 
 def test_target_group_with():
     """Test group_with targets with vars"""
-    res = sos_targets(
-        "e.txt", "f.ext", a=["a.txt", "b.txt"], b=["c.txt", "d.txt"],
-        group_by=2).group_with("name", ["a1", "a2", "a3"])
+    res = sos_targets("e.txt", "f.ext", a=["a.txt", "b.txt"], b=["c.txt", "d.txt"], group_by=2).group_with(
+        "name", ["a1", "a2", "a3"]
+    )
     for i, n in enumerate(["a1", "a2", "a3"]):
         assert res.groups[i].name == n
     #
@@ -133,12 +133,10 @@ def test_target_group_with():
     #
     # test assert for length difference
     with pytest.raises(Exception):
-
-        sos_targets(
-            "e.txt", "f.ext", group_by=1).group_with(
-                "name",
-                ["e", "f", "g"],
-            )
+        sos_targets("e.txt", "f.ext", group_by=1).group_with(
+            "name",
+            ["e", "f", "g"],
+        )
 
 
 def test_group_with_with_no_output():
@@ -204,12 +202,14 @@ def test_target_format():
         (sos_targets("a b.txt"), "x", ".txt"),
     ]:
         if isinstance(res, str):
-            assert interpolate(f"{{target:{fmt}}}", globals(),
-                               locals()) == res, "Interpolation of {}:{} should be {}".format(target, fmt, res)
+            assert interpolate(f"{{target:{fmt}}}", globals(), locals()) == res, (
+                "Interpolation of {}:{} should be {}".format(target, fmt, res)
+            )
 
         else:
-            assert interpolate(f"{{target:{fmt}}}", globals(),
-                               locals()) in res, "Interpolation of {}:{} should be one of {}".format(target, fmt, res)
+            assert interpolate(f"{{target:{fmt}}}", globals(), locals()) in res, (
+                "Interpolation of {}:{} should be one of {}".format(target, fmt, res)
+            )
 
 
 def test_iter_targets():
@@ -371,7 +371,7 @@ def test_output_executable(clear_now_and_after):
     """Testing target executable."""
     # change $PATH so that lls can be found at the current
     # directory.
-    clear_now_and_after('lls')
+    clear_now_and_after("lls")
     os.environ["PATH"] += os.pathsep + "."
     script = SoS_Script("""
 [0]
@@ -479,8 +479,9 @@ touch {data1[0]} {_output}
 
 def test_shared_var_in_for_each(temp_factory, clear_now_and_after):
     temp_factory("1.txt", "2.txt")
-    clear_now_and_after("1.out", "2.out", "1.out2", "2.out2", '2.out_2.out2', '1.out_1.out2', '1.out_2.out2',
-                        '2.out_1.out2')
+    clear_now_and_after(
+        "1.out", "2.out", "1.out2", "2.out2", "2.out_2.out2", "1.out_1.out2", "1.out_2.out2", "2.out_1.out2"
+    )
     script = SoS_Script("""
 [work_1: shared = {'data': 'step_output'}]
 input: "1.txt", "2.txt", group_by = 'single', pattern = '{name}.{ext}'
@@ -503,7 +504,7 @@ touch {_output}
 def test_removed_depends(clear_now_and_after):
     """Test a case where a dependent file has signature, but
     gets removed before the next run."""
-    clear_now_and_after('a.txt', 'b.txt')
+    clear_now_and_after("a.txt", "b.txt")
     script = """
         [tet: provides='a.txt']
         run:
@@ -518,7 +519,7 @@ def test_removed_depends(clear_now_and_after):
     # this should be ok.
     execute_workflow(script)
     # now let us remove a.txt (but the signature is still there)
-    clear_now_and_after('a.txt', 'b.txt')
+    clear_now_and_after("a.txt", "b.txt")
     execute_workflow(script)
 
 
@@ -551,14 +552,14 @@ def test_sos_step(clear_now_and_after):
         touch 20.txt
         """
     # this should be ok.
-    execute_workflow(script, options={'sig_mode': 'force'})
+    execute_workflow(script, options={"sig_mode": "force"})
     for file in ["t1.txt", "t2.txt", "5.txt", "10.txt", "20.txt"]:
         assert file_target(file).target_exists(), file + " should exist"
 
 
 def test_zap(clear_now_and_after):
     """Test zap"""
-    clear_now_and_after('testzap1.txt.zapped', 'testzap.txt.zapped')
+    clear_now_and_after("testzap1.txt.zapped", "testzap.txt.zapped")
     with open("testzap.txt", "w") as sf:
         sf.write("some text")
     path("testzap.txt").zap()
@@ -598,7 +599,7 @@ def test_zap(clear_now_and_after):
 
 def test_zap_run(clear_now_and_after):
     """Test run with zapped input files"""
-    clear_now_and_after('zap1.txt.zapped')
+    clear_now_and_after("zap1.txt.zapped")
     with open("zap1.txt", "w") as sf:
         sf.write("seomething")
     script = """\

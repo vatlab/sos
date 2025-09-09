@@ -21,10 +21,10 @@ from typing import Any, Dict, List, Union
 import fasteners
 from importlib import metadata
 
-from .controller import (request_answer_from_controller, send_message_to_controller)
+from .controller import request_answer_from_controller, send_message_to_controller
 from .eval import get_config, interpolate
 from .pattern import extract_pattern
-from .utils import (Error, env, fileMD5, objectMD5, pickleable, short_repr, stable_repr, textMD5)
+from .utils import Error, env, fileMD5, objectMD5, pickleable, short_repr, stable_repr, textMD5
 
 __all__ = ["dynamic", "executable", "env_variable", "sos_variable"]
 
@@ -48,14 +48,12 @@ def is_basic_type(obj):
 
 
 class UnknownTarget(Error):
-
     def __init__(self, target: "BaseTarget"):
         Error.__init__(self, f"Target unavailable: {target}")
         self.target = target
 
 
 class RemovedTarget(Error):
-
     def __init__(self, target: "BaseTarget"):
         if isinstance(target, invalid_target):
             Error.__init__(self, "Invalid target from errored steps")
@@ -72,8 +70,7 @@ class UnavailableLock(Error):
         Error.__init__(
             self,
             f"Failed to obtain lock {signature[2]} for input {short_repr(signature[0])} and output {short_repr(signature[1])}. It is likely "
-            +
-            "that these files are protected by another SoS process or concurrant task that is generating the same set of files. Please manually remove the lockfile "
+            + "that these files are protected by another SoS process or concurrant task that is generating the same set of files. Please manually remove the lockfile "
             + "if you are certain that no other process is using the lock.",
         )
         self.input = signature[0]
@@ -106,7 +103,8 @@ class BaseTarget:
                 return self
             if hasattr(self, args[0]):
                 raise ValueError(
-                    f"Attribute {args[0]} conflicts with another attribute of type {self.__class__.__name__}.")
+                    f"Attribute {args[0]} conflicts with another attribute of type {self.__class__.__name__}."
+                )
             self._dict[args[0]] = args[1]
         #
         if kwargs:
@@ -116,7 +114,8 @@ class BaseTarget:
                     return self
                 if hasattr(self, name):
                     raise ValueError(
-                        f"Attribute {name} conflicts with another attribute of {value.__class__.__name__}.")
+                        f"Attribute {name} conflicts with another attribute of {value.__class__.__name__}."
+                    )
             self._dict.update(kwargs)
         return self
 
@@ -158,7 +157,7 @@ class BaseTarget:
         return self.target_signature() == sig
 
     def __eq__(self, obj):
-        return (isinstance(obj, self.__class__) and self.target_signature() == obj.target_signature())
+        return isinstance(obj, self.__class__) and self.target_signature() == obj.target_signature()
 
 
 class sos_variable(BaseTarget):
@@ -266,7 +265,7 @@ class system_resource(BaseTarget):
             res.append(f"mem={repr(self._mem)}")
         if self._disk:
             res.append(f"disk={repr(self._disk)}")
-        return f'system_resource({",".join(res)})'
+        return f"system_resource({','.join(res)})"
 
     def target_signature(self):
         return ""
@@ -324,7 +323,7 @@ class named_output(BaseTarget):
         return textMD5(f"named_output({self._output_name})")
 
     def __eq__(self, other):
-        return (isinstance(other, named_output) and self._output_name == other._output_name)
+        return isinstance(other, named_output) and self._output_name == other._output_name
 
     def __hash__(self):
         return hash(repr(self))
@@ -351,10 +350,12 @@ class dynamic(BaseTarget):
         if isinstance(self._target, str):
             return sorted([x for x in glob.glob(self._target) if os.path.isfile(x)])
         if isinstance(self._target, Sequence) and all(isinstance(x, str) for x in self._target):
-            return sorted(sum(
-                [[x for x in glob.glob(t) if os.path.isfile(x)] for t in self._target],
-                [],
-            ))
+            return sorted(
+                sum(
+                    [[x for x in glob.glob(t) if os.path.isfile(x)] for t in self._target],
+                    [],
+                )
+            )
         return self._target
 
     def __format__(self, format_spec):
@@ -377,14 +378,15 @@ class executable(BaseTarget):
             self._version = tuple(version)
 
     def __eq__(self, other):
-        return (isinstance(other, executable) and self._cmd == other._cmd and self._version == other._version)
+        return isinstance(other, executable) and self._cmd == other._cmd and self._version == other._version
 
     def target_exists(self, mode="any"):
         if mode in ("any", "target") and shutil.which(shlex.split(self._cmd)[0]):
             if self._version:
                 try:
                     output = subprocess.check_output(
-                        self._cmd, stderr=subprocess.STDOUT, shell=True, timeout=5).decode()
+                        self._cmd, stderr=subprocess.STDOUT, shell=True, timeout=5
+                    ).decode()
                 except subprocess.TimeoutExpired as e:
                     env.logger.warning(str(e))
                     return False
@@ -421,7 +423,7 @@ def collapseuser(path):
     if path == home:
         return "~"
     if path.startswith(home + os.sep):
-        return "~" + path[len(home):]
+        return "~" + path[len(home) :]
     return path
 
 
@@ -429,40 +431,25 @@ class path(type(Path())):
     """A regular target for files."""
 
     CONVERTERS = {
-        "u":
-            os.path.expanduser,
-        "U":
-            collapseuser,
-        "e":
-            lambda x: x.replace(" ", "\\ "),
-        "a":
-            lambda x: os.path.abspath(x),
-        "l":
-            lambda x: os.path.realpath(x),
-        "d":
-            lambda x: os.path.dirname(x) or ".",
-        "b":
-            os.path.basename,
-        "n":
-            lambda x: os.path.splitext(x)[0],
-        "x":
-            lambda x: os.path.splitext(x)[1],
+        "u": os.path.expanduser,
+        "U": collapseuser,
+        "e": lambda x: x.replace(" ", "\\ "),
+        "a": lambda x: os.path.abspath(x),
+        "l": lambda x: os.path.realpath(x),
+        "d": lambda x: os.path.dirname(x) or ".",
+        "b": os.path.basename,
+        "n": lambda x: os.path.splitext(x)[0],
+        "x": lambda x: os.path.splitext(x)[1],
         "q": (lambda x: subprocess.list2cmdline([x])) if sys.platform == "win32" else quote,
-        "p":
-            lambda x:
-            ("/" if len(x) > 1 and x[1] == ":" else "") + x.replace("\\", "/").replace(":/", "/").replace(":", "/"),
-        "r":
-            repr,
-        "s":
-            str,
+        "p": lambda x: ("/" if len(x) > 1 and x[1] == ":" else "")
+        + x.replace("\\", "/").replace(":/", "/").replace(":", "/"),
+        "r": repr,
+        "s": str,
         # these are handled elsewhere
-        ",":
-            lambda x: x,
-        "!":
-            lambda x: x,
+        ",": lambda x: x,
+        "!": lambda x: x,
         # this is deprecated $1535
-        "R":
-            lambda x: x,
+        "R": lambda x: x,
     }
 
     def is_relative_to(self, *other):
@@ -481,7 +468,7 @@ class path(type(Path())):
         return super(path, self.expanduser()).__str__()
 
     def __repr__(self):
-        raw_str = super().__str__().replace(self._flavour.sep, '/')
+        raw_str = super().__str__().replace(self._flavour.sep, "/")
         return f"{self.__class__.__name__}({raw_str})"
 
     def fullname(self):
@@ -489,7 +476,8 @@ class path(type(Path())):
 
     def __eq__(self, other):
         return os.path.abspath(self.fullname()) == os.path.abspath(
-            (other if isinstance(other, file_target) else path(other)).fullname())
+            (other if isinstance(other, file_target) else path(other)).fullname()
+        )
 
     def __add__(self, part):
         if isinstance(part, (str, path)):
@@ -536,7 +524,7 @@ class file_target(path, BaseTarget):
             path.__init__(self)
         BaseTarget.__init__(self, *args, **kwargs)
         if len(args) == 1 and isinstance(args[0], file_target):
-            self._md5 = args[0]._md5 if hasattr(args[0], '_md5') else None
+            self._md5 = args[0]._md5 if hasattr(args[0], "_md5") else None
         else:
             self._md5 = None
 
@@ -579,17 +567,17 @@ class file_target(path, BaseTarget):
 
     def target_signature(self):
         """Return file signature"""
-        if not hasattr(self, '_md5'):
+        if not hasattr(self, "_md5"):
             self._md5 = None
-        full_md5 = env.config['sig_type'] == 'md5'
+        full_md5 = env.config["sig_type"] == "md5"
         if self.exists():
             if full_md5:
-                md5_file = self + '.md5'
+                md5_file = self + ".md5"
                 if not md5_file.exists() or os.path.getmtime(self) > os.path.getmtime(md5_file):
-                    self._md5, md5 = fileMD5(self, sig_type='both')
+                    self._md5, md5 = fileMD5(self, sig_type="both")
                     # write md5 file
-                    with open(md5_file, 'w') as mfile:
-                        mfile.write(f'MD5 ({self.name}) = {md5}\n')
+                    with open(md5_file, "w") as mfile:
+                        mfile.write(f"MD5 ({self.name}) = {md5}\n")
             elif not self._md5:
                 self._md5 = fileMD5(self)
             return (os.path.getmtime(self), os.path.getsize(self), self._md5)
@@ -605,18 +593,19 @@ class file_target(path, BaseTarget):
     def sig_file(self):
         # self.resolve() does not resolve non-existing file and cannot be used here
         return os.path.join(
-            os.path.expanduser('~'), '.sos', 'signatures', f"{textMD5(os.path.abspath(self))}.file_info")
+            os.path.expanduser("~"), ".sos", "signatures", f"{textMD5(os.path.abspath(self))}.file_info"
+        )
 
     def validate(self, sig=None):
         """Check if file matches its signature"""
-        if not hasattr(self, '_md5'):
+        if not hasattr(self, "_md5"):
             self._md5 = None
-        if env.config['sig_type'] == 'md5':
-            md5_file = self + '.md5'
+        if env.config["sig_type"] == "md5":
+            md5_file = self + ".md5"
             if md5_file.exists():
                 # validate against md5
                 with open(md5_file) as mfile:
-                    return mfile.readline().strip().split()[-1] == fileMD5(self, sig_type='full')
+                    return mfile.readline().strip().split()[-1] == fileMD5(self, sig_type="full")
         if sig is not None:
             sig_mtime, sig_size, sig_md5 = sig
         else:
@@ -641,7 +630,7 @@ class file_target(path, BaseTarget):
 
     def write_sig(self):
         """Write signature to sig store"""
-        if not hasattr(self, '_md5'):
+        if not hasattr(self, "_md5"):
             self._md5 = None
         if not self._md5:
             self._md5 = fileMD5(self)
@@ -664,18 +653,16 @@ class file_target(path, BaseTarget):
         return ft
 
     def __reduce__(self):
-        return tuple([
-            self.__class__,
-            super().__reduce__()[1],
-            {
-                "_md5": self._md5 if hasattr(self, '_md5') else None,
-                "_dict": self._dict
-            },
-        ])
+        return tuple(
+            [
+                self.__class__,
+                super().__reduce__()[1],
+                {"_md5": self._md5 if hasattr(self, "_md5") else None, "_dict": self._dict},
+            ]
+        )
 
 
 class sos_tempfile(file_target):
-
     def __new__(cls, path=None, name=None, suffix=None, prefix=None, dir=None):
         if cls is Path:
             cls = WindowsPath if os.name == "nt" else PosixPath
@@ -780,7 +767,7 @@ class paths(Sequence, os.PathLike):
 
 
 class _sos_group(BaseTarget):
-    """A type that is similar to sos_targets but saves index of objects """
+    """A type that is similar to sos_targets but saves index of objects"""
 
     def __init__(self, indexes, labels=None, parent=None):
         super().__init__()
@@ -801,7 +788,7 @@ class _sos_group(BaseTarget):
         # add the last n elements of parent to group
         # this has to be called after the elements have been appended
         self._indexes.extend(range(len(parent._targets) - n, len(parent._targets)))
-        self._labels.extend(parent._labels[len(parent._targets) - n:len(parent._targets)])
+        self._labels.extend(parent._labels[len(parent._targets) - n : len(parent._targets)])
         return self
 
     def extend(self, grp, start, parent):
@@ -821,7 +808,7 @@ class _sos_group(BaseTarget):
         return ret
 
     def __getstate__(self):
-        return {'indexes': self._indexes, 'labels': self._labels, 'properties': self._dict}
+        return {"indexes": self._indexes, "labels": self._labels, "properties": self._dict}
 
     def __setstate__(self, sdict):
         self._indexes = sdict["indexes"]
@@ -1110,7 +1097,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             ret._undetermined = self._undetermined
             ret._targets = [x for x, y in zip(self._targets, self._labels) if y == i]
             index_map = {
-                o_idx: n_idx for n_idx, o_idx in zip(
+                o_idx: n_idx
+                for n_idx, o_idx in zip(
                     range(len(ret._targets)),
                     [x for x, y in enumerate(self._labels) if y == i],
                 )
@@ -1122,7 +1110,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     _sos_group(
                         [index_map[x] for x, y in zip(grp._indexes, grp._labels) if y == i],
                         labels=i,
-                    ).set(**grp._dict))
+                    ).set(**grp._dict)
+                )
             return ret
         if isinstance(i, (tuple, list)):
             ret = sos_targets()
@@ -1149,11 +1138,12 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     _sos_group(
                         [index_map[x] for x in grp._indexes if x in kept],
                         [y for x, y in zip(grp._indexes, grp._labels) if x in kept],
-                    ).set(**grp._dict))
+                    ).set(**grp._dict)
+                )
             return ret
         ret = sos_targets()
         ret._undetermined = self._undetermined
-        ret._targets = ([self._targets[i]] if isinstance(i, int) else self._targets[i])
+        ret._targets = [self._targets[i]] if isinstance(i, int) else self._targets[i]
         ret._labels = [self._labels[i]] if isinstance(i, int) else self._labels[i]
         ret._groups = []
         return ret
@@ -1164,7 +1154,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             ret._undetermined = self._undetermined
             ret._targets = [x for x, y in zip(self._targets, self._labels) if y == i]
             index_map = {
-                o_idx: n_idx for n_idx, o_idx in zip(
+                o_idx: n_idx
+                for n_idx, o_idx in zip(
                     range(len(ret._targets)),
                     [x for x, y in enumerate(self._labels) if y == i],
                 )
@@ -1176,7 +1167,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     _sos_group(
                         [index_map[x] for x, y in zip(grp._indexes, grp._labels) if y == i],
                         labels=i,
-                    ).set(**grp._dict))
+                    ).set(**grp._dict)
+                )
             if not ret._targets:
                 env.logger.warning(f'No target with label "{i}" is available.')
             return ret
@@ -1186,8 +1178,11 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         return tuple((x.target_signature(), y) for x, y in zip(self._targets, self._labels))
 
     def validate(self, sig):
-        return (isinstance(sig, tuple) and len(sig) == len(self._targets) and
-                all(x.validate(sig[0]) and src == sig[1] for x, src, sig in zip(self._targets, self._labels, sig)))
+        return (
+            isinstance(sig, tuple)
+            and len(sig) == len(self._targets)
+            and all(x.validate(sig[0]) and src == sig[1] for x, src, sig in zip(self._targets, self._labels, sig))
+        )
 
     def target_exists(self, mode="any"):
         return all(x.target_exists(mode) for x in self._targets)
@@ -1201,10 +1196,12 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     return getattr(self._targets[0], name)
                 except Exception as e:
                     raise AttributeError(
-                        f"{self.__class__.__name__} object or its first child has no attribute {name}") from e
+                        f"{self.__class__.__name__} object or its first child has no attribute {name}"
+                    ) from e
             else:
                 raise AttributeError(
-                    f"{self.__class__.__name__} object of length {len(self)} has no attribute {name}") from e
+                    f"{self.__class__.__name__} object of length {len(self)} has no attribute {name}"
+                ) from e
 
     def target_name(self):
         return f"sos_targets([{','.join(x.target_name() for x in self._targets)}],_labels=[{','.join(self._labels)}])"
@@ -1274,7 +1271,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                 group.set(name, property)
         else:
             raise ValueError(
-                f"Unacceptable properties {properties} of type {properties.__class__.__name__} for function group_with")
+                f"Unacceptable properties {properties} of type {properties.__class__.__name__} for function group_with"
+            )
         return self
 
     def get(self, name, default=None):
@@ -1290,7 +1288,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         for grp in grps:
             if not isinstance(grp, sos_targets):
                 raise RuntimeError(
-                    f"_output should be of type sos_targets: {grp} of type {grp.__class__.__name__} returned.")
+                    f"_output should be of type sos_targets: {grp} of type {grp.__class__.__name__} returned."
+                )
             start_idx = len(self._targets)
             grp_size = len(grp)
             self._targets.extend(grp._targets)
@@ -1351,7 +1350,7 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     gs = src_sizes[s] // n_groups
                     for i in range(n_groups):
                         # (0, 1, 2), (3, 4, 5), (6, 7, 8) ...
-                        indexes[i].extend(lookup[i * gs:(i + 1) * gs])
+                        indexes[i].extend(lookup[i * gs : (i + 1) * gs])
                 elif n_groups >= src_sizes[s] and n_groups % src_sizes[s] == 0:
                     for i in range(n_groups):
                         # (0 ), (0, ), (1, ), (1, ) ...
@@ -1371,20 +1370,20 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     raise ValueError(f"Invalid pairs option {by}") from e
             if grp_size == 1:
                 self._groups = [
-                    _sos_group(x, parent=self) for x in zip(range(0,
-                                                                  len(self) // 2), range(len(self) // 2, len(self)))
+                    _sos_group(x, parent=self) for x in zip(range(0, len(self) // 2), range(len(self) // 2, len(self)))
                 ]
             else:
                 if len(self) % grp_size != 0:
                     raise ValueError(
-                        f"Paired by with group size {grp_size} is not possible with input of size {len(self)}")
+                        f"Paired by with group size {grp_size} is not possible with input of size {len(self)}"
+                    )
                 self._groups = [
                     _sos_group(
                         list(range(x[0], x[0] + grp_size)) + list(range(x[1], x[1] + grp_size)),
                         parent=self,
-                    ) for x in zip(
-                        range(0,
-                              len(self) // 2, grp_size),
+                    )
+                    for x in zip(
+                        range(0, len(self) // 2, grp_size),
                         range(len(self) // 2, len(self), grp_size),
                     )
                 ]
@@ -1403,15 +1402,17 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
             else:
                 if len(self) % grp_size != 0:
                     raise ValueError(
-                        f"Paired by with group size {grp_size} is not possible with input of size {len(self)}")
+                        f"Paired by with group size {grp_size} is not possible with input of size {len(self)}"
+                    )
                 f1, f2 = tee(range(len(self) // grp_size))
                 next(f2, None)
                 self._groups = [
                     _sos_group(
-                        list(range(x[0] * grp_size,
-                                   (x[0] + 1) * grp_size)) + list(range(x[1] * grp_size, (x[1] + 1) * grp_size)),
+                        list(range(x[0] * grp_size, (x[0] + 1) * grp_size))
+                        + list(range(x[1] * grp_size, (x[1] + 1) * grp_size)),
                         parent=self,
-                    ) for x in zip(f1, f2)
+                    )
+                    for x in zip(f1, f2)
                 ]
         elif isinstance(by, str) and by.startswith("combinations"):
             if by == "combinations":
@@ -1565,7 +1566,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                     for_each = [{",".join(keys[0]): [[x[key] for key in keys[0]] for x in for_each]}]
                 elif len(set(keys)) != len(keys):
                     raise ValueError(
-                        "List of dictionaries for parameter for_each should have all different, or all the same keys.")
+                        "List of dictionaries for parameter for_each should have all different, or all the same keys."
+                    )
         else:
             raise ValueError(f"Unacceptable value for parameter for_each: {for_each}")
         #
@@ -1581,7 +1583,8 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
                             v = list(v)
                         if any(len(_v) != len(names) for _v in v):
                             raise ValueError(
-                                f"Unable to unpack object {short_repr(v)} for variables {k} (of length {len(names)})")
+                                f"Unable to unpack object {short_repr(v)} for variables {k} (of length {len(names)})"
+                            )
                         fe_iter_names.extend(names)
                         fe_values.extend(list(zip(*v)))
                     else:
@@ -1671,23 +1674,27 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         raise ValueError(f"Cannot treat an sos_targets object {self} with more than one targets as a single target")
 
     def __repr__(self):
-        return (("[" + ", ".join(repr(x) for x in self._targets) + "]") if self.valid() else
-                ("Unspecified" if self.unspecified() else self._undetermined))
+        return (
+            ("[" + ", ".join(repr(x) for x in self._targets) + "]")
+            if self.valid()
+            else ("Unspecified" if self.unspecified() else self._undetermined)
+        )
 
     def __short_repr__(self):
         grp_info = "" if self._num_groups() <= 1 else f" in {self._num_groups()} groups"
         if self.valid():
             if len(self._targets) <= 2:
                 return " ".join([x.target_name() for x in self._targets]) + grp_info
-            return (" ".join([x.target_name() for x in self._targets[:2]]) +
-                    f"... ({len(self._targets)} items{grp_info})")
+            return (
+                " ".join([x.target_name() for x in self._targets[:2]]) + f"... ({len(self._targets)} items{grp_info})"
+            )
         return "Unspecified" if self.unspecified() else self._undetermined
 
     def __stable_repr__(self):
         return repr(self)
 
     def __str__(self):
-        return (self.__format__("") if self.valid() else ("Unspecified" if self.unspecified() else self._undetermined))
+        return self.__format__("") if self.valid() else ("Unspecified" if self.unspecified() else self._undetermined)
 
     def __format__(self, format_spec):
         if not self.valid():
@@ -1713,15 +1720,14 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
 
 
 class InMemorySignature:
-
     def __init__(
-            self,
-            input_files: sos_targets,
-            output_files: sos_targets,
-            dependent_files: sos_targets,
-            signature_vars: set = set(),
-            sdict: dict = {},
-            shared_vars: list = [],
+        self,
+        input_files: sos_targets,
+        output_files: sos_targets,
+        dependent_files: sos_targets,
+        signature_vars: set = set(),
+        sdict: dict = {},
+        shared_vars: list = [],
     ):
         """Runtime information for specified output files"""
         self.content = None
@@ -1774,7 +1780,7 @@ class InMemorySignature:
             return self.content
         if self.output_files.undetermined():
             self.output_files = env.sos_dict["_output"]
-            env.log_to_file("TARGET", f'Set undetermined output files to {env.sos_dict["_output"]}')
+            env.log_to_file("TARGET", f"Set undetermined output files to {env.sos_dict['_output']}")
         input_sig = {}
         for f in self.input_files:
             try:
@@ -1891,7 +1897,7 @@ class InMemorySignature:
                     env.logger.debug(f"Wrong md5 in signature: {e}")
         #
         if not all(files_checked.values()):
-            return f'No MD5 signature for {", ".join(x for x,y in files_checked.items() if not y)}'
+            return f"No MD5 signature for {', '.join(x for x, y in files_checked.items() if not y)}"
         if "input_obj" in signature:
             # for new style signature, the entire objects are kept
             res["input"] = signature["input_obj"]
@@ -1906,14 +1912,14 @@ class RuntimeInfo(InMemorySignature):
     """
 
     def __init__(
-            self,
-            step_md5: str,
-            input_files: sos_targets,
-            output_files: sos_targets,
-            dependent_files: sos_targets,
-            signature_vars: set = set(),
-            sdict: dict = {},
-            shared_vars: list = [],
+        self,
+        step_md5: str,
+        input_files: sos_targets,
+        output_files: sos_targets,
+        dependent_files: sos_targets,
+        signature_vars: set = set(),
+        sdict: dict = {},
+        shared_vars: list = [],
     ):
         """Runtime information for specified output files"""
         if "sos_run" in signature_vars:
@@ -1933,7 +1939,7 @@ class RuntimeInfo(InMemorySignature):
             shared_vars=shared_vars,
         )
         self.sig_id = textMD5(
-            f'{self.step_md5} {self.input_files} {self.output_files} {self.dependent_files} {stable_repr(self.init_signature)}{sdict["_index"] if self.output_files.undetermined() else ""}'
+            f"{self.step_md5} {self.input_files} {self.output_files} {self.dependent_files} {stable_repr(self.init_signature)}{sdict['_index'] if self.output_files.undetermined() else ''}"
         )
 
     def __getstate__(self):
@@ -1969,11 +1975,13 @@ class RuntimeInfo(InMemorySignature):
         self._lock = fasteners.InterProcessLock(os.path.join(env.temp_dir, self.sig_id + ".lock"))
         if not self._lock.acquire(blocking=False):
             self._lock = None
-            raise UnavailableLock((
-                self.input_files,
-                self.output_files,
-                os.path.join(env.temp_dir, self.sig_id + ".lock"),
-            ))
+            raise UnavailableLock(
+                (
+                    self.input_files,
+                    self.output_files,
+                    os.path.join(env.temp_dir, self.sig_id + ".lock"),
+                )
+            )
         env.log_to_file(
             "TARGET",
             f"Lock acquired for output files {short_repr(self.output_files)}",
@@ -2025,16 +2033,22 @@ class RuntimeInfo(InMemorySignature):
             env.logger.debug(f"Failed to write signature {self.sig_id}")
             return ret
         send_message_to_controller(["step_sig", self.sig_id, ret])
-        send_message_to_controller([
-            "workflow_sig",
-            "tracked_files",
-            self.sig_id,
-            repr({
-                "input_files": [str(f.resolve()) for f in self.input_files if isinstance(f, file_target)],
-                "dependent_files": [str(f.resolve()) for f in self.dependent_files if isinstance(f, file_target)],
-                "output_files": [str(f.resolve()) for f in self.output_files if isinstance(f, file_target)],
-            }),
-        ])
+        send_message_to_controller(
+            [
+                "workflow_sig",
+                "tracked_files",
+                self.sig_id,
+                repr(
+                    {
+                        "input_files": [str(f.resolve()) for f in self.input_files if isinstance(f, file_target)],
+                        "dependent_files": [
+                            str(f.resolve()) for f in self.dependent_files if isinstance(f, file_target)
+                        ],
+                        "output_files": [str(f.resolve()) for f in self.output_files if isinstance(f, file_target)],
+                    }
+                ),
+            ]
+        )
         return True
 
     def validate(self):
