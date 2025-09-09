@@ -71,8 +71,12 @@ uv venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv sync --all-extras
 
-# Run tests
-cd test && pytest
+# Use invoke tasks for development
+invoke --list      # Show available tasks
+invoke test        # Run tests
+invoke format      # Format code
+invoke lint        # Check code style
+invoke check       # Run all checks
 ```
 
 ### Traditional Setup

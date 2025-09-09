@@ -14,15 +14,49 @@ This repository contains the SoS Workflow engine implementation.
 
 ### Installation
 ```bash
-# Development installation
-pip install -e .
-pip install -r requirements_dev.txt
+# Development installation with uv (recommended)
+uv venv
+source .venv/bin/activate
+uv sync --all-extras
 
-# Full installation with language modules
-pip install sos sos-pbs sos-notebook sos-bash sos-python sos-r
+# Traditional pip installation
+pip install -e ".[dev]"
 ```
 
-### Testing
+### Using Invoke Tasks (Recommended)
+```bash
+# Show all available tasks
+invoke --list
+
+# Common development tasks
+invoke format      # Format code with ruff
+invoke lint        # Check code style
+invoke test        # Run tests
+invoke check       # Run all checks (format, lint, test)
+invoke clean       # Clean build artifacts
+invoke build       # Build distribution packages
+
+# Test specific scenarios
+invoke test --verbose --coverage
+invoke test --keyword "test_name"
+invoke test --markers "not slow"
+invoke test-file test/test_actions.py
+
+# Dependency management
+invoke deps-show --outdated
+invoke deps-update
+invoke deps-update --package pytest
+
+# Version management
+invoke version              # Show current version
+invoke version --bump patch # Bump version (major/minor/patch)
+
+# Release
+invoke release              # Build and upload to PyPI
+invoke release --test-pypi  # Upload to TestPyPI
+```
+
+### Manual Testing
 ```bash
 # Run all tests
 cd test && python run_tests.py
@@ -37,12 +71,14 @@ pytest test/test_actions.py::test_function_name
 cd test && sh build_test_docker.sh
 ```
 
-### Linting and Code Quality
+### Code Quality
 ```bash
-# Run pylint
-python -m pylint --rcfile .github/linters/.python-lint src
+# Using invoke (recommended)
+invoke format && invoke lint && invoke test
 
-# Run pre-commit hooks
+# Manual commands
+ruff check src/
+ruff format src/
 pre-commit run --all-files
 ```
 

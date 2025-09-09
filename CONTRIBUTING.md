@@ -172,7 +172,52 @@ make html
 
 ## Running Tests
 
-### Running All Tests
+### Using Invoke Tasks (Recommended)
+
+The project includes an Invoke task system for common development operations:
+
+```bash
+# List all available tasks
+invoke --list
+
+# Run tests
+invoke test
+invoke test --verbose --coverage
+invoke test --keyword "test_bash"
+invoke test --markers "not slow"
+
+# Format code
+invoke format
+invoke format --check  # Check without modifying
+
+# Run linting
+invoke lint
+invoke lint --fix  # Auto-fix issues
+
+# Run all checks (format, lint, test)
+invoke check
+
+# Clean build artifacts
+invoke clean
+invoke clean --all  # Also remove .venv
+
+# Build distribution packages
+invoke build
+
+# Show or update dependencies
+invoke deps-show
+invoke deps-show --outdated
+invoke deps-update
+invoke deps-update --package pytest
+
+# Shortcuts (aliases)
+invoke t  # test
+invoke l  # lint
+invoke fmt  # format
+invoke c  # clean
+```
+
+### Manual Test Running
 
 ```bash
 # Change to test directory
@@ -194,36 +239,32 @@ pytest --cov=sos --cov-report=html
 ### Running Specific Tests
 
 ```bash
-# Run a specific test file
+# Using invoke
+invoke test-file test/test_actions.py
+invoke test --keyword "test_bash"
+
+# Using pytest directly
 pytest test/test_actions.py
-
-# Run a specific test function
 pytest test/test_actions.py::test_function_name
-
-# Run tests matching a pattern
 pytest -k "test_bash"
-
-# Run tests with verbose output
-pytest -v
-
-# Stop on first failure
-pytest -x
+pytest -v  # verbose
+pytest -x  # stop on first failure
 ```
 
-### Running Linting and Type Checks
+### Code Quality Checks
 
 ```bash
-# Run ruff for linting and formatting (fastest, recommended)
+# Using invoke (recommended)
+invoke format        # Format code with ruff
+invoke lint          # Check code with ruff
+invoke lint --fix    # Auto-fix linting issues
+invoke pre-commit    # Run pre-commit hooks
+invoke check         # Run all checks
+
+# Manual commands
 uv run ruff check src/
 uv run ruff format src/
-
-# Or fix issues automatically
 uv run ruff check --fix src/
-
-# Run pylint (legacy)
-python -m pylint --rcfile .github/linters/.python-lint src
-
-# Run pre-commit checks
 pre-commit run --all-files
 ```
 
@@ -257,7 +298,7 @@ def calculate_sum(numbers: List[int]) -> int:
 
 ## Making Changes
 
-### Workflow
+### Development Workflow
 
 1. **Create a new branch**
 
@@ -275,14 +316,20 @@ git checkout -b fix/issue-number
 # Update documentation if needed
 ```
 
-3. **Test your changes**
+3. **Use Invoke tasks for development**
 
 ```bash
-# Run relevant tests
-pytest test/test_your_changes.py
+# Format your code
+invoke format
 
-# Run linting
-pre-commit run --all-files
+# Check for linting issues
+invoke lint --fix
+
+# Run tests for your changes
+invoke test --keyword "your_test"
+
+# Run full check before committing
+invoke check
 ```
 
 4. **Commit your changes**
@@ -290,6 +337,19 @@ pre-commit run --all-files
 ```bash
 git add .
 git commit -m "Brief description of changes"
+```
+
+### Quick Development Commands
+
+```bash
+# One-line development cycle
+invoke format && invoke lint --fix && invoke test
+
+# Check everything before push
+invoke check
+
+# Clean and rebuild
+invoke clean && invoke build
 ```
 
 ### Commit Message Guidelines

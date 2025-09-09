@@ -63,6 +63,7 @@ unix = ["xxhash"]
 dev = [
     "build",
     "coverage",
+    "invoke>=2.0",
     "nose",
     "pandas",
     "pre-commit",
@@ -179,6 +180,7 @@ sources = ["src"]
 dev-dependencies = [
     "build>=1.0.0",
     "coverage>=7.0",
+    "invoke>=2.0",
     "ipykernel>=6.0",
     "jupyter>=1.0",
     "pandas>=1.5",
