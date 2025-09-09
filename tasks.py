@@ -9,8 +9,6 @@ Usage:
     invoke clean        # Clean build artifacts
 """
 
-import os
-import sys
 from pathlib import Path
 
 from invoke import task
@@ -60,37 +58,35 @@ def test(c, verbose=False, coverage=False, markers="", keyword="", failfast=Fals
     """
     print("Running tests...")
     
-    # Change to test directory
-    os.chdir(TEST_DIR)
-    
-    # Build test docker images if needed
-    if (TEST_DIR / "build_test_docker.sh").exists():
-        print("Building test Docker containers...")
-        c.run("sh build_test_docker.sh", pty=True)
-    
-    # Build pytest command
-    cmd = "pytest"
-    
-    if verbose:
-        cmd += " -v"
-    
-    if coverage:
-        cmd += " --cov=sos --cov-report=html --cov-report=term"
-    
-    if markers:
-        cmd += f" -m '{markers}'"
-    
-    if keyword:
-        cmd += f" -k '{keyword}'"
-    
-    if failfast:
-        cmd += " -x"
-    
-    # Run tests
-    c.run(cmd, pty=True)
-    
-    if coverage:
-        print("\nCoverage report generated in htmlcov/index.html")
+    with c.cd(TEST_DIR):
+        # Build test docker images if needed
+        if (TEST_DIR / "build_test_docker.sh").exists():
+            print("Building test Docker containers...")
+            c.run("sh build_test_docker.sh", pty=True)
+        
+        # Build pytest command
+        cmd = "pytest"
+        
+        if verbose:
+            cmd += " -v"
+        
+        if coverage:
+            cmd += " --cov=sos --cov-report=html --cov-report=term"
+        
+        if markers:
+            cmd += f" -m '{markers}'"
+        
+        if keyword:
+            cmd += f" -k '{keyword}'"
+        
+        if failfast:
+            cmd += " -x"
+        
+        # Run tests
+        c.run(cmd, pty=True)
+        
+        if coverage:
+            print("\nCoverage report generated in htmlcov/index.html")
 
 
 @task
@@ -198,16 +194,15 @@ def docs(c, serve=False, port=8000):
         print("No docs directory found. Skipping documentation build.")
         return
     
-    os.chdir(DOCS_DIR)
-    
-    print("Building documentation...")
-    c.run("make clean", warn=True)
-    c.run("make html", pty=True)
-    
-    if serve:
-        print(f"Serving documentation at http://localhost:{port}")
-        os.chdir("_build/html")
-        c.run(f"python -m http.server {port}", pty=True)
+    with c.cd(DOCS_DIR):
+        print("Building documentation...")
+        c.run("make clean", warn=True)
+        c.run("make html", pty=True)
+        
+        if serve:
+            print(f"Serving documentation at http://localhost:{port}")
+            with c.cd("_build/html"):
+                c.run(f"python -m http.server {port}", pty=True)
 
 
 @task
