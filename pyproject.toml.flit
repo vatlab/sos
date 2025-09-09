@@ -1,20 +1,19 @@
 [build-system]
-requires = ["hatchling>=1.21.0"]
-build-backend = "hatchling.build"
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
 
 [project]
 name = "sos"
-dynamic = ["version"]
-description = "Script of Scripts (SoS): an interactive, cross-platform, and cross-language workflow system for reproducible data analysis"
-readme = "README.md"
 authors = [
     {name = "Bo Peng", email = "Bo.Peng@bcm.edu"},
 ]
 maintainers = [
     {name = "Bo Peng", email = "Bo.Peng@bcm.edu"},
 ]
+readme = "README.md"
 license = {text = "3-clause BSD"}
 requires-python = ">=3.6"
+dynamic = ["version", "description"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
@@ -60,7 +59,6 @@ Issues = "https://github.com/vatlab/SoS/issues"
 
 [project.optional-dependencies]
 dot = ["graphviz", "pillow"]
-# Platform-specific dependencies
 win = ["colorama"]
 unix = ["xxhash"]
 dev = [
@@ -144,24 +142,5 @@ process = "sos.workflow_engines:BackgroundProcess_WorkflowEngine"
 [project.entry-points."sos_converters"]
 sos-html = "sos.converter:ScriptToHTMLConverter"
 
-[tool.hatch.build.targets.sdist]
-include = [
-    "/src",
-    "/README.md",
-    "/LICENSE",
-    "/MANIFEST.in",
-]
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/sos"]
-
-[tool.hatch.version]
-path = "src/sos/_version.py"
-pattern = '__version__ = "(?P<version>[^"]+)"'
-
-[tool.hatch.build]
-sources = ["src"]
-
-# Optional: For dynamic versioning from _version.py
-# [tool.hatch.metadata]
-# allow-direct-references = true
+[tool.flit.module]
+name = "sos"
