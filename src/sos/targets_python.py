@@ -33,7 +33,6 @@ class Py_Module(BaseTarget):
         """Check existence of Python module and install it using command
         pip install if necessary."""
         import importlib
-
         from importlib import metadata
 
         spam_spec = importlib.util.find_spec(name)

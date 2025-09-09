@@ -539,7 +539,7 @@ def analyze_section(
     default_output: Optional[sos_targets] = None,
     context=None,
     analysis_type="initial",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc."""
 

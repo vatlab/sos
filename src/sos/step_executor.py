@@ -58,7 +58,7 @@ from .utils import (
     textMD5,
 )
 
-__all__: List = []
+__all__: list = []
 
 
 class TaskManager:
@@ -1965,7 +1965,7 @@ class Step_Executor(Base_Step_Executor):
         """Wait for results from subworkflows"""
         try:
             allow_pending = int(allow_pending)
-        except:
+        except (ValueError, TypeError):
             allow_pending = min(max(os.cpu_count() // 2, 2), 8)
 
         while self._subworkflow_results:
@@ -1980,7 +1980,7 @@ class Step_Executor(Base_Step_Executor):
                 sys.exit(0)
             elif isinstance(res, Exception):
                 raise res
-            if not "__workflow_id__" in res:
+            if "__workflow_id__" not in res:
                 raise ValueError(f"Unrecognized result from subworkflows: {res}")
             # remove from _self._subworkflow_results
             result_with_id = [

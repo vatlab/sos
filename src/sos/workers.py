@@ -98,7 +98,7 @@ class SoS_Worker(mp.Process):
 
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None, **kwargs) -> None:
+    def __init__(self, config: Optional[dict[str, Any]] = None, **kwargs) -> None:
         """
 
         config:

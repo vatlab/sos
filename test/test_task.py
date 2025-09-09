@@ -312,7 +312,7 @@ sleep 20
         output = subprocess.check_output(["sos", "status", "-v", "1"]).decode()
         if "killed" in output or "aborted" in output or "completed" in output:
             break
-        assert i <= 10, "Task should be killed within 10 seconds, got {}".format(output)
+        assert i <= 10, f"Task should be killed within 10 seconds, got {output}"
         time.sleep(1)
     # test purge by status
     subprocess.call(["sos", "purge", "--status", "aborted"])
@@ -400,13 +400,13 @@ def test_task_tags():
     tag = f"tag{random.randint(1, 100000)}"
     with open("test_tags.sos", "w") as tt:
         tt.write(
-            """
+            f"""
 [10]
 input: for_each={{'i': range(10)}}
-task: tags='{}', trunk_size=2
+task: tags='{tag}', trunk_size=2
 sh: expand=True
-echo {} {{i}}
-""".format(tag, tag)
+echo {tag} {{i}}
+"""
         )
     wf = SoS_Script(filename="test_tags.sos").workflow()
     Base_Executor(
@@ -426,13 +426,13 @@ echo {} {{i}}
     tag2 = f"tag{random.randint(1, 100000)}"
     with open("test_tags.sos", "w") as tt:
         tt.write(
-            """
+            f"""
 [10]
 input: for_each={{'i': range(2)}}
-task: tags=['{}', '{}']
+task: tags=['{tag1}', '{tag2}']
 sh: expand=True
-echo {} {{i}}
-""".format(tag1, tag2, tag1)
+echo {tag1} {{i}}
+"""
         )
     wf = SoS_Script(filename="test_tags.sos").workflow()
     Base_Executor(

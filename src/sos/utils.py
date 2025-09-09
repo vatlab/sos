@@ -1620,8 +1620,8 @@ def version_info(module: str):
     # return the version of Python module
     try:
         code = f"import {module}; version=str({module}.__version__)"
-        ns_g: Dict = {}
-        ns_l: Dict = {}
+        ns_g: dict = {}
+        ns_l: dict = {}
         exec(compile(code, "<string>", "exec"), ns_g, ns_l)
         return ns_l["version"]
     except Exception:
@@ -1846,7 +1846,7 @@ def dot_to_gif(filename: str, warn=None):
         return b64_of(pngFiles[-1])
 
 
-def separate_options(options: str) -> List[str]:
+def separate_options(options: str) -> list[str]:
     pieces = options.split(",")
     idx = 0
     while True:

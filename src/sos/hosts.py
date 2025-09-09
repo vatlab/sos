@@ -13,10 +13,10 @@ import stat
 import subprocess
 import sys
 from collections.abc import Sequence
-from typing import Any, Dict, List, Optional, Union
+from importlib import metadata
+from typing import Any, Optional, Union
 
 import pexpect
-from importlib import metadata
 
 from .eval import Undetermined, cfg_interpolate, get_config
 from .syntax import SOS_LOGLINE
@@ -129,7 +129,7 @@ class LocalHost:
 
     def __init__(
         self,
-        config: Dict[str, Union[str, int, List[str]]],
+        config: dict[str, Union[str, int, list[str]]],
         test_connection: bool = True,
     ) -> None:
         super().__init__()
@@ -262,7 +262,7 @@ class LocalHost:
             p.start()
             p.join()
 
-    def receive_result(self, task_id: str) -> Dict[str, Any]:
+    def receive_result(self, task_id: str) -> dict[str, Any]:
         tf = TaskFile(task_id)
 
         res = tf.result
@@ -293,7 +293,7 @@ class RemoteHost:
 
     def __init__(
         self,
-        config: Dict[str, Union[str, int, List[str]]],
+        config: dict[str, Union[str, int, list[str]]],
         test_connection: bool = True,
     ) -> None:
         self.config = config
@@ -347,7 +347,7 @@ class RemoteHost:
             return textMD5(targets.target_name())
         return msg
 
-    def _get_shared_dirs(self) -> List[Any]:
+    def _get_shared_dirs(self) -> list[Any]:
         value = self.config.get("shared", [])
         if isinstance(value, str):
             return [value]
@@ -678,7 +678,7 @@ class RemoteHost:
             p.start()
             p.join()
 
-    def receive_result(self, task_id: str) -> Dict[str, int]:
+    def receive_result(self, task_id: str) -> dict[str, int]:
         # for filetype in ('res', 'status', 'out', 'err'):
         sys_task_dir = os.path.join(os.path.expanduser("~"), ".sos", "tasks")
         # use -p to preserve modification times so that we can keep the job status locally.
@@ -778,7 +778,7 @@ class RemoteHost:
 
 
 class Host:
-    host_instances: Dict = {}
+    host_instances: dict = {}
 
     def __init__(
         self,
@@ -1048,11 +1048,11 @@ class Host:
             raise RuntimeError(f"No task engine or invalid engine definition defined for host {self.alias}")
         return self._task_engine.submit_task(task_id)
 
-    def check_status(self, tasks: List[str]) -> List[str]:
+    def check_status(self, tasks: list[str]) -> list[str]:
         # find the task engine
         return [self._task_engine.check_task_status(task) for task in tasks]
 
-    def retrieve_results(self, tasks: List[str]):
+    def retrieve_results(self, tasks: list[str]):
         return self._task_engine.get_results(tasks)
 
     def execute_workflow(self, script, cmd, **template_args):

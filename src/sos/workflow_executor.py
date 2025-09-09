@@ -331,7 +331,7 @@ class Base_Executor:
                 )
             )
 
-    def run(self, targets: Optional[List[str]] = None, mode=None) -> Dict[str, Any]:
+    def run(self, targets: Optional[list[str]] = None, mode=None) -> dict[str, Any]:
         #
         env.zmq_context = zmq.Context()
 
@@ -475,7 +475,7 @@ class Base_Executor:
                 else:
                     raise ValueError(f"Unacceptable value for option pattern {patterns}")
 
-    def match(self, target: BaseTarget) -> Union[Dict[str, str], bool]:
+    def match(self, target: BaseTarget) -> Union[dict[str, str], bool]:
         if not hasattr(self, "_target_map"):
             self._build_target_map(self.workflow.auxiliary_sections)
         if target in self._target_map:
@@ -799,7 +799,7 @@ class Base_Executor:
         )
         return 1, res["step_output"]
 
-    def initialize_dag(self, targets: Optional[List[str]] = [], nested: bool = False) -> SoS_DAG:
+    def initialize_dag(self, targets: Optional[list[str]] = [], nested: bool = False) -> SoS_DAG:
         """Create a DAG by analyzing sections statically."""
         self.reset_dict()
 
@@ -1078,7 +1078,7 @@ class Base_Executor:
                 except Exception as e:
                     env.log_to_file("EXECUTOR", f"Failed to remove placeholder {filename}: {e}")
 
-    def run_as_master(self, targets=None, mode=None) -> Dict[str, Any]:
+    def run_as_master(self, targets=None, mode=None) -> dict[str, Any]:
         self.completed = defaultdict(int)
 
         self.write_workflow_info()
@@ -1604,7 +1604,7 @@ class Base_Executor:
         wf_result["__completed__"] = self.completed
         return wf_result
 
-    def run_as_nested(self, parent_socket, targets=None, my_workflow_id="", mode=None) -> Dict[str, Any]:
+    def run_as_nested(self, parent_socket, targets=None, my_workflow_id="", mode=None) -> dict[str, Any]:
         #
         # run a nested workflow, it simply send all steps and tasks to the master to execute
         #

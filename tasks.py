@@ -146,7 +146,7 @@ def build(c):
         c.run("which uv", hide=True, warn=True)
         print("Using uv to build...")
         c.run("uv build", pty=True)
-    except:
+    except Exception:
         print("Using python -m build...")
         c.run("python -m build", pty=True)
 
@@ -172,7 +172,7 @@ def install(c, dev=False, extras=""):
             print("Using uv for development installation...")
             extras_cmd = "--all-extras" if not extras else f"--extra {extras.replace(',', ' --extra ')}"
             c.run(f"uv sync {extras_cmd}", pty=True)
-        except:
+        except Exception:
             print("Using pip for development installation...")
             extras_str = "[dev]" if not extras else f"[dev,{extras}]"
             c.run(f"pip install -e '.{extras_str}'", pty=True)
@@ -255,7 +255,7 @@ def deps_update(c, package=""):
             print("Updating all dependencies...")
             c.run("uv lock --upgrade", pty=True)
         c.run("uv sync", pty=True)
-    except:
+    except Exception:
         print("uv not found. Please install uv for dependency management.")
         print("Install with: curl -LsSf https://astral.sh/uv/install.sh | sh")
 
@@ -376,7 +376,7 @@ def fmt(c, check=False):
 
 
 @task
-def l(c, fix=False):
+def linter(c, fix=False):
     """Alias for lint."""
     lint(c, fix=fix)
 

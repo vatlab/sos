@@ -280,7 +280,7 @@ class WorkflowPulse:
             try:
                 with open(res_file) as res:
                     content = res.read()
-            except:
+            except OSError:
                 pass
         self._content[ext] = content
         return content
@@ -315,7 +315,7 @@ class WorkflowPulse:
                 if not line.startswith("#"):
                     try:
                         last_active_time = line.split("\t", 1)[0]
-                    except:
+                    except (IndexError, ValueError):
                         pass
                     continue
                 fields = line.split("\t")
@@ -328,12 +328,12 @@ class WorkflowPulse:
                     if self._status == "running":
                         try:
                             self._start_time = float(fields[0][1:])
-                        except:
+                        except (ValueError, IndexError):
                             pass
                     elif self._status == "completed":
                         try:
                             self._complete_time = float(fields[0][1:])
-                        except:
+                        except (ValueError, IndexError):
                             pass
                 elif fields[1] == "tags":
                     self._tags = fields[2].strip()

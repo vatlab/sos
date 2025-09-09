@@ -17,7 +17,7 @@ SOS_TARGETS_OPTIONS = [
 ]
 SOS_INPUT_OPTIONS = ["concurrent"]
 SOS_OUTPUT_OPTIONS = []
-SOS_DEPENDS_OPTIONS: List = []
+SOS_DEPENDS_OPTIONS: list = []
 SOS_RUNTIME_OPTIONS = [
     "workdir",
     "walltime",
@@ -159,8 +159,8 @@ class LazyRegex:
     def __setstate__(self, sdict):
         """Restore from a pickled state."""
         self._real_regex = None
-        setattr(self, "_regex_args", sdict["args"])
-        setattr(self, "_regex_kwargs", sdict["kwargs"])
+        self._regex_args = sdict["args"]
+        self._regex_kwargs = sdict["kwargs"]
 
     def __getattr__(self, attr: str) -> Callable:
         """Return a member from the proxied regex object.

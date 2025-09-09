@@ -15,7 +15,7 @@ import textwrap
 import typing
 from io import StringIO, TextIOBase
 from tokenize import generate_tokens
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Optional, Union
 from uuid import UUID, uuid4
 
 from .eval import on_demand_options
@@ -55,7 +55,7 @@ class ParsingError(Error):
             f"File contains parsing errors: {filename if filename != '<string>' else ''}",
         )
         self.filename = filename
-        self.errors: List[Tuple[int, str]] = []
+        self.errors: list[tuple[int, str]] = []
         self.args = (filename,)
 
     def append(self, lineno: int, line: str, msg: str) -> None:
@@ -140,7 +140,7 @@ def is_type_hint(stmt: str) -> bool:
     return True
 
 
-def extract_option_from_arg_list(options: str, optname: str, default_value: None) -> Tuple[Any, str]:
+def extract_option_from_arg_list(options: str, optname: str, default_value: None) -> tuple[Any, str]:
     if not options:
         return default_value, options
     try:
@@ -240,10 +240,10 @@ class SoS_Step:
         # it initially hold multiple names with/without wildcard characters
         self.names = [] if names is None else names
         # everything before step process
-        self.statements: List = []
-        self.global_parameters: Dict = {}
-        self.parameters: Dict = {}
-        self.substep_parameters: Set = set()
+        self.statements: list = []
+        self.global_parameters: dict = {}
+        self.parameters: dict = {}
+        self.substep_parameters: set = set()
         # step processes
         self.global_stmts = ""
         self.global_def = ""
@@ -256,10 +256,10 @@ class SoS_Step:
         # will be inserted to each step of the workflow.
         self.is_global = is_global
         # indicate the type of input of the last line
-        self.values: List = []
+        self.values: list = []
         self.lineno = 0
         #
-        self.runtime_options: Dict = {}
+        self.runtime_options: dict = {}
         self.options = on_demand_options(options)
         #
         # string mode to collect all strings as part of an action
@@ -495,7 +495,7 @@ class SoS_Step:
         def _get_tokens(statement):
             return [x[1] for x in generate_tokens(StringIO(statement).readline) if x[1] not in ("", "\n")]
 
-        tokens: List = []
+        tokens: list = []
         for statement in self.statements:
             tokens.extend(_get_tokens(statement[2] if statement[0] == ":" else statement[1]))
 
@@ -629,14 +629,14 @@ class SoS_Workflow:
         content: "SoS_ScriptContent",
         workflow_name: str,
         allowed_steps: Optional[str],
-        sections: List[SoS_Step],
+        sections: list[SoS_Step],
         global_stmts: str,
     ) -> None:
         """create a workflow from its name and a list of SoS_Sections (using name matching)"""
         self.content = content
         self.name = workflow_name if workflow_name else "default"
-        self.sections: List = []
-        self.auxiliary_sections: List = []
+        self.sections: list = []
+        self.auxiliary_sections: list = []
         self.global_stmts = global_stmts
         #
         for section in sections:
@@ -734,9 +734,9 @@ class SoS_Workflow:
             x.has_external_task() for x in self.auxiliary_sections
         )
 
-    def parameters(self) -> Dict[str, str]:
+    def parameters(self) -> dict[str, str]:
         # collect parameters defined by `parameter:` of steps
-        par: Dict = {}
+        par: dict = {}
         for x in self.sections + self.auxiliary_sections:
             par.update(x.parameters)
         return {x: y[0] for x, y in par.items()}
@@ -868,7 +868,7 @@ class SoS_Script:
             if section.is_global:
                 section.names = self.workflows
 
-    def _find_include_file(self, sos_file: str) -> Tuple[str, str]:
+    def _find_include_file(self, sos_file: str) -> tuple[str, str]:
         # we could almost use SoS_script directly but we need to be able to start searching
         # from path of the master file.
         try:
@@ -906,7 +906,7 @@ class SoS_Script:
         self._last_comment = ""
 
     def _read(self, fp: TextIOBase) -> None:
-        self.sections: List = []
+        self.sections: list = []
         self.format_version: str = "1.0"
         self.gloal_def: str = ""
         #
@@ -1284,7 +1284,7 @@ class SoS_Script:
         #
         # if there is no section in the script, we create a default section with global
         # definition being the content.
-        global_parameters: Dict = {}
+        global_parameters: dict = {}
         if not [x for x in self.sections if not x.is_global]:
             self.sections.append(SoS_Step(self.content, [("default", None, None)]))
             for section in [x for x in self.sections if x.is_global]:

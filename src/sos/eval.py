@@ -8,7 +8,7 @@ import contextlib
 import copy
 import pickle
 import sys
-from typing import Any, Dict, Optional, Set
+from typing import Any, Optional
 
 from ._version import __version__
 from .utils import ArgumentError, as_fstring, env, load_config_files, pickleable
@@ -221,7 +221,7 @@ def get_accessed(node):
     return names
 
 
-def accessed_vars(statement: str, mode: str = "exec") -> Set[str]:
+def accessed_vars(statement: str, mode: str = "exec") -> set[str]:
     """Parse a Python statement and analyze the symbols used. The result
     will be used to determine what variables a step depends upon."""
     try:
@@ -293,7 +293,7 @@ def SoS_exec(script: str, _dict: dict = None, return_result: bool = True) -> Non
     if _dict is None:
         _dict = env.sos_dict.dict()
 
-    if not "sos_tagets" in _dict:
+    if "sos_tagets" not in _dict:
         exec("from sos.runtime import *", _dict)
 
     if not return_result:
@@ -401,7 +401,7 @@ class Undetermined:
 class on_demand_options:
     """Expression that will be evaluated upon request."""
 
-    def __init__(self, items: Optional[Dict[str, Any]]) -> None:
+    def __init__(self, items: Optional[dict[str, Any]]) -> None:
         self._expressions = {}
         if items:
             self._expressions.update(items)

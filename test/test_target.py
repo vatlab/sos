@@ -203,12 +203,12 @@ def test_target_format():
     ]:
         if isinstance(res, str):
             assert interpolate(f"{{target:{fmt}}}", globals(), locals()) == res, (
-                "Interpolation of {}:{} should be {}".format(target, fmt, res)
+                f"Interpolation of {target}:{fmt} should be {res}"
             )
 
         else:
             assert interpolate(f"{{target:{fmt}}}", globals(), locals()) in res, (
-                "Interpolation of {}:{} should be one of {}".format(target, fmt, res)
+                f"Interpolation of {target}:{fmt} should be one of {res}"
             )
 
 

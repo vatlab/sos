@@ -548,7 +548,7 @@ class TaskFile:
                         with open(cache_file, "rb") as f:
                             while True:
                                 res = pickle.load(f)
-                                if not "task" in res:
+                                if "task" not in res:
                                     # something is wrong
                                     break
                                 missing_tasks.remove(res["task"])
@@ -1065,7 +1065,7 @@ def remove_task_files(task: str, exts: list):
                     pass
 
 
-def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
+def check_task(task, hint={}) -> dict[str, Union[str, dict[str, float]]]:
     # when testing. if the timestamp is 0, the file does not exist originally, it should
     # still does not exist. Otherwise the file should exist and has the same timestamp
     if (
@@ -1231,7 +1231,7 @@ def check_tasks(tasks, is_all: bool):
         return {}
     cache_file: str = os.path.join(os.path.expanduser("~"), ".sos", "tasks", "status_cache.pickle")
     #
-    status_cache: Dict = {}
+    status_cache: dict = {}
     if os.path.isfile(cache_file):
         try:
             with fasteners.InterProcessLock(cache_file + "_"):
@@ -1278,7 +1278,7 @@ def print_task_status(
     #     ]
     import glob
 
-    all_tasks: List = []
+    all_tasks: list = []
     if check_all:
         tasks = glob.glob(os.path.join(os.path.expanduser("~"), ".sos", "tasks", "*.task"))
         all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x)) for x in tasks]

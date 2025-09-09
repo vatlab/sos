@@ -102,9 +102,7 @@ class Visualizer:
         # pylint: disable=consider-using-f-string
         code = (
             "".join(
-                """{} &nbsp; <i class="fa fa-sort" style="color:lightgray" onclick="sortDataFrame('{}', {}, '{}')"></th>""".format(
-                    x, tid, idx, index_type if idx == 0 else col_type[idx - 1]
-                )
+                f"""{x} &nbsp; <i class="fa fa-sort" style="color:lightgray" onclick="sortDataFrame('{tid}', {idx}, '{index_type if idx == 0 else col_type[idx - 1]}')"></th>"""
                 if "<th" in x
                 else x
                 for idx, x in enumerate(hr.split("</th>"))

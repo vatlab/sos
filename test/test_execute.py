@@ -1059,13 +1059,13 @@ run: expand=True
     Base_Executor(wf).run()
     assert env.sos_dict["test"], (
         sos_targets([os.path.join("temp", f"test_{x}.txt.bak") for x in range(5)])
-        == f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
+        == f"Expecting {[os.path.join('temp', f'test_{x}.txt.bak') for x in range(5)]} observed {env.sos_dict['test']}"
     )
     # this time we use th existing signature
     Base_Executor(wf).run()
     assert env.sos_dict["test"], (
         sos_targets([os.path.join("temp", f"test_{x}.txt.bak") for x in range(5)])
-        == f"Expecting {[os.path.join('temp', 'test_{}.txt.bak'.format(x)) for x in range(5)]} observed {env.sos_dict['test']}"
+        == f"Expecting {[os.path.join('temp', f'test_{x}.txt.bak') for x in range(5)]} observed {env.sos_dict['test']}"
     )
 
 

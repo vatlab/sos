@@ -108,11 +108,11 @@ def execute_workflow(script: str, workflow=None, targets=None, args=None, option
         # for convenience,
         parser = get_run_parser(interactive=True, with_workflow=False)
         for arg in args:
-            if arg.startswith("-") and not arg.startswith("--") and not arg in ["-c"]:
+            if arg.startswith("-") and not arg.startswith("--") and arg not in ["-c"]:
                 raise ValueError('SoS options should be specified with parameter "option"')
         # check args
         sos_args, workflow_args = parser.parse_known_args(args)
-        if sos_args.__config__ and not "config_file" in options:
+        if sos_args.__config__ and "config_file" not in options:
             options["config_file"] = sos_args.__config__
     else:
         workflow_args = []

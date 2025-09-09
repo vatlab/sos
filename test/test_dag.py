@@ -29,7 +29,7 @@ def assertDAG(dag, content):
         dot = out.getvalue()
 
     def sorted_dot(dot):
-        return sorted([x.strip() for x in dot.split("\n") if x.strip() and not "digraph" in x])
+        return sorted([x.strip() for x in dot.split("\n") if x.strip() and "digraph" not in x])
 
     if isinstance(content, str):
         assert sorted_dot(dot) == sorted_dot(content), f"expect {content}, got {dot}"

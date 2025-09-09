@@ -13,13 +13,13 @@ import subprocess
 import sys
 from collections.abc import Iterable, Sequence
 from copy import deepcopy
+from importlib import metadata
 from itertools import combinations, tee
 from pathlib import Path, PosixPath, WindowsPath
 from shlex import quote
 from typing import Any, Dict, List, Union
 
 import fasteners
-from importlib import metadata
 
 from .controller import request_answer_from_controller, send_message_to_controller
 from .eval import get_config, interpolate
@@ -839,9 +839,9 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         **kwargs,
     ):
         super().__init__()
-        self._targets: List = []
-        self._labels: List = []
-        self._groups: List = []
+        self._targets: list = []
+        self._labels: list = []
+        self._groups: list = []
         if isinstance(_undetermined, (bool, str)):
             self._undetermined = _undetermined
         else:
@@ -1955,7 +1955,7 @@ class RuntimeInfo(InMemorySignature):
             "sig_id": self.sig_id,
         }
 
-    def __setstate__(self, sdict: Dict[str, Any]):
+    def __setstate__(self, sdict: dict[str, Any]):
         if not sdict:
             self.sig_id = ""
             return
