@@ -12,3 +12,26 @@ process.sh
 process_homepage.sh
 *.pem
 *.pyc
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# uv
+uv.lock
+.python-version
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Documentation
+docs/_build/

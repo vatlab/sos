@@ -21,7 +21,22 @@ if you have helped fixing bugs or making improvements to the source code. In add
 
 ## Quick Install
 
-### Using pip (recommended for most users)
+### Using uv (fastest, recommended)
+
+[uv](https://github.com/astral-sh/uv) is a fast Python package installer written in Rust.
+
+```bash
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install SoS
+uv pip install sos
+
+# Install with optional dependencies
+uv pip install "sos[dot]"  # For graphviz support
+```
+
+### Using pip
 
 ```bash
 # Install from PyPI
@@ -44,15 +59,28 @@ conda install sos sos-pbs sos-notebook jupyterlab-sos sos-bash sos-python sos-r 
 
 For developers and contributors, please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed setup instructions.
 
+### Quick Start with uv
+
 ```bash
 # Clone the repository
 git clone https://github.com/vatlab/SoS.git
 cd SoS
 
-# Install in development mode
-pip install -e .
+# Set up development environment with uv
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv sync --all-extras
 
-# Install with development dependencies
+# Run tests
+cd test && pytest
+```
+
+### Traditional Setup
+
+```bash
+# Clone and install in development mode
+git clone https://github.com/vatlab/SoS.git
+cd SoS
 pip install -e ".[dev]"
 ```
 
@@ -61,10 +89,14 @@ pip install -e ".[dev]"
 With the modern build system using `pyproject.toml`:
 
 ```bash
-# Build wheel and sdist
+# Using uv (fastest)
+uv build
+
+# Using Python build module
+pip install build
 python -m build
 
-# Or using pip
+# Or using pip directly
 pip wheel . --no-deps
 ```
 

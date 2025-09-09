@@ -16,9 +16,27 @@ Thank you for your interest in contributing to SoS! This document provides guide
 
 ### Prerequisites
 
-- Python 3.6 or higher (Python 3.8+ recommended)
+- Python 3.9 or higher
 - Git
-- pip or conda
+- uv (recommended) or pip
+
+### Installing uv (Recommended Package Manager)
+
+uv is a fast Python package installer and resolver written in Rust. It's significantly faster than pip and provides better dependency resolution.
+
+```bash
+# Install uv on macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or using pip
+pip install uv
+
+# Or using Homebrew (macOS)
+brew install uv
+
+# On Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
 
 ### Setting Up Your Development Environment
 
@@ -31,37 +49,93 @@ cd SoS
 git remote add upstream https://github.com/vatlab/SoS.git
 ```
 
-2. **Create a virtual environment** (recommended)
+2. **Set up Python environment with uv** (recommended)
 
 ```bash
-# Using venv
+# uv will automatically create a virtual environment and use Python 3.9
+# (specified in .python-version file)
+uv venv
+
+# Activate the virtual environment
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Sync all dependencies including dev dependencies
+uv sync --all-extras
+
+# Or sync with specific extras
+uv sync --extra dev --extra unix  # On Linux/macOS
+uv sync --extra dev --extra win   # On Windows
+```
+
+3. **Alternative: Traditional pip setup**
+
+```bash
+# Create virtual environment
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Or using conda
-conda create -n sos-dev python=3.9
-conda activate sos-dev
-```
-
-3. **Install in development mode**
-
-```bash
-# Install the package in editable mode with development dependencies
+# Install in development mode
 pip install -e ".[dev]"
 
 # For platform-specific dependencies
 pip install -e ".[dev,unix]"  # On Linux/macOS
 pip install -e ".[dev,win]"   # On Windows
-
-# For all optional dependencies
-pip install -e ".[dev,dot,unix]"
 ```
 
-4. **Install pre-commit hooks** (optional but recommended)
+4. **Install pre-commit hooks**
 
 ```bash
+# With uv
+uv pip install pre-commit
+pre-commit install
+
+# Or with pip
 pip install pre-commit
 pre-commit install
+```
+
+## Managing Dependencies
+
+### Adding Dependencies
+
+```bash
+# Add a runtime dependency
+uv add requests
+
+# Add a development dependency
+uv add --dev pytest-mock
+
+# Add an optional dependency to an extra group
+uv add --optional dot graphviz
+
+# Update all dependencies to latest compatible versions
+uv lock --upgrade
+```
+
+### Installing Dependencies
+
+```bash
+# Install all dependencies (including dev)
+uv sync --all-extras
+
+# Install only runtime dependencies
+uv sync
+
+# Install with specific extras
+uv sync --extra dot --extra dev
+```
+
+### Updating Dependencies
+
+```bash
+# Update a specific package
+uv lock --upgrade-package pytest
+
+# Update all packages
+uv lock --upgrade
+
+# Show outdated packages
+uv pip list --outdated
 ```
 
 ## Building the Project
@@ -71,10 +145,11 @@ SoS now uses modern Python packaging with `pyproject.toml` and the `hatchling` b
 ### Building Distributions
 
 ```bash
-# Install build tool
-pip install build
+# Using uv (fastest)
+uv build
 
-# Build both wheel and source distribution
+# Or using pip with build
+pip install build
 python -m build
 
 # Output will be in dist/
@@ -138,17 +213,18 @@ pytest -x
 ### Running Linting and Type Checks
 
 ```bash
-# Run pylint
+# Run ruff for linting and formatting (fastest, recommended)
+uv run ruff check src/
+uv run ruff format src/
+
+# Or fix issues automatically
+uv run ruff check --fix src/
+
+# Run pylint (legacy)
 python -m pylint --rcfile .github/linters/.python-lint src
 
 # Run pre-commit checks
 pre-commit run --all-files
-
-# Format code with black (if configured)
-black src/
-
-# Sort imports with isort (if configured)
-isort src/
 ```
 
 ## Code Style
