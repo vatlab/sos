@@ -9,7 +9,7 @@ import subprocess
 import time
 
 from .eval import cfg_interpolate
-from .utils import env, expand_time, format_duration, textMD5
+from .utils import env, expand_time, format_duration
 
 
 class WorkflowEngine:
@@ -280,7 +280,7 @@ class WorkflowPulse:
             try:
                 with open(res_file) as res:
                     content = res.read()
-            except:
+            except Exception:
                 pass
         self._content[ext] = content
         return content
@@ -315,7 +315,7 @@ class WorkflowPulse:
                 if not line.startswith("#"):
                     try:
                         last_active_time = line.split("\t", 1)[0]
-                    except:
+                    except Exception:
                         pass
                     continue
                 fields = line.split("\t")
@@ -328,12 +328,12 @@ class WorkflowPulse:
                     if self._status == "running":
                         try:
                             self._start_time = float(fields[0][1:])
-                        except:
+                        except (ValueError, TypeError):
                             pass
                     elif self._status == "completed":
                         try:
                             self._complete_time = float(fields[0][1:])
-                        except:
+                        except (ValueError, TypeError):
                             pass
                 elif fields[1] == "tags":
                     self._tags = fields[2].strip()
@@ -355,7 +355,7 @@ def print_workflow_status(
 ):
     import glob
 
-    all_workflows: List = []
+    all_workflows: list = []
     if check_all:
         workflows = glob.glob(os.path.join(os.path.expanduser("~"), ".sos", "workflows", "*.pulse"))
         all_workflows = [(os.path.basename(x)[:-6], os.path.getmtime(x)) for x in workflows]
@@ -377,7 +377,7 @@ def print_workflow_status(
         else:
             all_workflows = [x for x in all_workflows if time.time() - x[1] <= -age]
 
-    all_workflows = sorted(list(set(all_workflows)), key=lambda x: 0 if x[1] is None else x[1])
+    all_workflows = sorted(set(all_workflows), key=lambda x: 0 if x[1] is None else x[1])
 
     if tags:
         all_workflows = [
@@ -418,7 +418,6 @@ def print_workflow_status(
                 f"{info.id}\t{info.tags.ljust(tsize)}\t{info.created:<14}\t{info.started:<14}\t{info.duration:<14}\t{info.status}"
             )
     elif verbosity == 4:
-        import pprint
 
         for info in workflow_info:
             if info.status == "missing":
@@ -494,7 +493,7 @@ def kill_workflows(workflows, tags=None):
     if not all_workflows:
         # env.logger.warning("No workflow to kill")
         return
-    all_workflows = sorted(list(set(all_workflows)))
+    all_workflows = sorted(set(all_workflows))
     # at most 20 threads
     for wf in all_workflows:
         ret = kill_workflow(wf)

@@ -5,8 +5,6 @@
 import subprocess
 import textwrap
 
-import pytest
-
 from sos.converter import extract_workflow
 
 

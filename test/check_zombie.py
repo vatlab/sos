@@ -12,8 +12,8 @@ def run_process(args):
     ret.wait()
 
     proc_after = subprocess.check_output("ps aux | grep -v root", shell=True).decode().splitlines()
-    pid_before = [int(x.split()[1]) for x in proc_before if not "PID" in x and "TIME" in x]
-    pid_after = [int(x.split()[1]) for x in proc_after if not "PID" in x and "TIME" in x]
+    pid_before = [int(x.split()[1]) for x in proc_before if "PID" not in x and "TIME" in x]
+    pid_after = [int(x.split()[1]) for x in proc_after if "PID" not in x and "TIME" in x]
     possible_zombies = [
         name
         for pid, name in zip(pid_after, proc_after)

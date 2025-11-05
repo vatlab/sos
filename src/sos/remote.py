@@ -14,7 +14,9 @@ from .targets import path
 from .utils import env
 
 
-def list_queues(cfg, hosts=[], verbosity=1):
+def list_queues(cfg, hosts=None, verbosity=1):
+    if hosts is None:
+        hosts = []
     env.verbosity = 1
     all_hosts = cfg.get("hosts", [])
     if not all_hosts:
@@ -64,7 +66,9 @@ def list_queues(cfg, hosts=[], verbosity=1):
         print("\n".join(" ".join([t.ljust(w) for t, w in zip(row, max_width)]) for row in host_description))
 
 
-def status_of_queues(cfg, hosts=[], verbosity=1):
+def status_of_queues(cfg, hosts=None, verbosity=1):
+    if hosts is None:
+        hosts = []
     env.verbosity = 1
     all_hosts = cfg.get("hosts", [])
     if not all_hosts:
@@ -223,7 +227,9 @@ def test_queue(host, cmd=None, verbosity=1):
     ] + ([] if cmd is None else [test_cmd(h._host_agent, cmd)])
 
 
-def test_queues(cfg, hosts=[], cmd=None, verbosity=1):
+def test_queues(cfg, hosts=None, cmd=None, verbosity=1):
+    if hosts is None:
+        hosts = []
     env.verbosity = verbosity
     all_hosts = cfg.get("hosts", [])
     if not all_hosts:
@@ -377,7 +383,9 @@ def create_public_key():
         raise RuntimeError(f"Failed to create a public key: {e}") from e
 
 
-def setup_remote_access(cfg, hosts=[], password="", verbosity=1):
+def setup_remote_access(cfg, hosts=None, password="", verbosity=1):
+    if hosts is None:
+        hosts = []
     env.verbosity = verbosity
     all_hosts = cfg.get("hosts", [])
     if not all_hosts and not hosts:

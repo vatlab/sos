@@ -28,7 +28,7 @@ from collections.abc import KeysView, Mapping, Sequence, Set
 from hashlib import md5 as full_md5
 from html.parser import HTMLParser
 from io import BytesIO, FileIO, StringIO
-from typing import Dict, List, Optional
+from typing import Optional
 
 import fasteners
 import psutil
@@ -37,9 +37,9 @@ from tqdm import tqdm as ProgressBar
 from zmq.log.handlers import PUBHandler
 
 try:
-    from xxhash import xxh64 as hash_md5
+    from xxhash import xxh64 as hash_md5  # type: ignore[assignment,misc]
 except ImportError:
-    hash_md5 = full_md5
+    hash_md5 = full_md5  # type: ignore[assignment,misc]
 
 __all__ = ["get_output"]
 
@@ -738,7 +738,7 @@ class Error(Exception):
     message = property(_get_message, _set_message)
 
     def __init__(self, msg: str = "") -> None:
-        self.message: str = msg
+        self.message = msg  # type: ignore[assignment]
         Exception.__init__(self, msg)
 
     def __repr__(self) -> str:
@@ -878,7 +878,7 @@ def locate_script(filename, start=""):
     #
     token = urllib.parse.urlparse(filename)
     # if no scheme or netloc, the URL is not acceptable
-    if all([getattr(token, qualifying_attr) for qualifying_attr in ("scheme", "netloc")]):
+    if all(getattr(token, qualifying_attr) for qualifying_attr in ("scheme", "netloc")):
         try:
             local_filename, _ = urllib.request.urlretrieve(filename)
             with open(local_filename) as script:
@@ -912,7 +912,7 @@ def locate_script(filename, start=""):
         # is it an URL?
         token = urllib.parse.urlparse(path)
         # if no scheme or netloc, the URL is not acceptable
-        if all([getattr(token, qualifying_attr) for qualifying_attr in ("scheme", "netloc")]):
+        if all(getattr(token, qualifying_attr) for qualifying_attr in ("scheme", "netloc")):
             url = path + ("" if path.endswith("/") else "/") + filename
             try:
                 local_filename, _ = urllib.request.urlretrieve(url)
@@ -1067,7 +1067,7 @@ def dict_merge(dct, merge_dct):
 # for its compact size
 
 
-def pretty_size(n, pow=0, b=1024, u="B", pre=[""] + [p + "i" for p in "KMGTPEZY"]):
+def pretty_size(n, pow=0, b=1024, u="B", pre=[""] + [p + "i" for p in "KMGTPEZY"]):  # type: ignore[name-defined]
     pow, n = min(int(math.log(max(n * b**pow, 1), b)), len(pre) - 1), n * b**pow
 
     # pylint: disable=consider-using-f-string
@@ -1203,7 +1203,7 @@ def sos_get_param(key, defvalue):
     ret_type = None
 
     if isinstance(defvalue, type) or defvalue is None:
-        if defvalue == bool:
+        if defvalue is bool:
             feature_parser = parser.add_mutually_exclusive_group(required=True)
             feature_parser.add_argument(f"--{key}", dest=key, action="store_true")
             feature_parser.add_argument(f"--no-{key}", dest=key, action="store_false")
@@ -1450,7 +1450,7 @@ def load_config_files(filename=None, default_config_files=True):
                     if k not in item:
                         item[k] = v
             return item
-        for k, v in item.items():
+        for _k, v in item.items():
             if isinstance(v, dict):
                 # v should be processed in place
                 process_based_on(cfg, v)
@@ -1620,15 +1620,15 @@ def version_info(module: str):
     # return the version of Python module
     try:
         code = f"import {module}; version=str({module}.__version__)"
-        ns_g: Dict = {}
-        ns_l: Dict = {}
+        ns_g: dict = {}
+        ns_l: dict = {}
         exec(compile(code, "<string>", "exec"), ns_g, ns_l)
         return ns_l["version"]
     except Exception:
         from importlib import metadata
 
         try:
-            return metadata.require(module)[0].version
+            return metadata.version(module)
         except Exception:
             return "na"
 
@@ -1725,7 +1725,7 @@ def format_par(name, par):
         val = eval(par)
         # specify type
         if isinstance(val, type) or val is None:
-            if val == bool:
+            if val is bool:
                 return f"--[no-]{name} (required)"
             if val is None:
                 return f"--{name} VAL (required)"
@@ -1846,7 +1846,7 @@ def dot_to_gif(filename: str, warn=None):
         return b64_of(pngFiles[-1])
 
 
-def separate_options(options: str) -> List[str]:
+def separate_options(options: str) -> list[str]:
     pieces = options.split(",")
     idx = 0
     while True:

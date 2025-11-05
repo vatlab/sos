@@ -31,7 +31,7 @@ class SoS_DockerClient:
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            cls._instance = super(SoS_DockerClient, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
     def total_memory(self, image="ubuntu"):

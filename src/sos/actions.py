@@ -22,7 +22,7 @@ import zipfile
 from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor
 from functools import wraps
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Union
 
 from tqdm import tqdm as ProgressBar
 
@@ -54,7 +54,7 @@ __all__ = [
 ]
 
 
-def get_actions() -> List[Any]:
+def get_actions() -> list[Any]:
     # get the name of all actions, which are identified by an attribute
     # run_mode of the function
     return [k for k, v in globals().items() if hasattr(v, "run_mode")]
@@ -68,10 +68,12 @@ def get_actions() -> List[Any]:
 
 
 def SoS_Action(
-    run_mode: Union[str, List[str]] = "deprecated",
-    acceptable_args: Union[Tuple[str], List[str]] = ("*",),
-    default_args: Dict[str, Dict[str, str]] = {},
+    run_mode: Union[str, list[str]] = "deprecated",
+    acceptable_args: Union[tuple[str], list[str]] = ("*",),
+    default_args: dict[str, dict[str, str]] = None,
 ) -> Callable:
+    if default_args is None:
+        default_args = {}
     def runtime_decorator(func):
         @wraps(func)
         def action_wrapper(*args, **kwargs):
@@ -177,9 +179,7 @@ def SoS_Action(
                     ):
                         return None
                 elif isinstance(kwargs["active"], Sequence):
-                    allowed_index = list(
-                        [x if x >= 0 else env.sos_dict["__num_groups__"] + x for x in kwargs["active"]]
-                    )
+                    allowed_index = [x if x >= 0 else env.sos_dict["__num_groups__"] + x for x in kwargs["active"]]
                     if env.sos_dict["_index"] not in allowed_index:
                         return None
                 elif isinstance(kwargs["active"], slice):
@@ -776,7 +776,7 @@ def sos_run(workflow=None, targets=None, shared=None, args=None, source=None, **
         if not blocking:
             return {"pending_workflows": wf_ids}
         res = {}
-        for wf in wfs:
+        for _wf in wfs:
             wf_res = decode_msg(env.__socket__.recv())
             res.update(wf_res)
             if wf_res is None:
@@ -1033,10 +1033,10 @@ def download(URLs, dest_dir=".", dest_file=None, decompress=False, max_jobs=5):
     #
     if dest_file is None:
         filenames = []
-        for idx, url in enumerate(urls):
+        for _idx, url in enumerate(urls):
             token = urllib.parse.urlparse(url)
             # if no scheme or netloc, the URL is not acceptable
-            if not all([getattr(token, qualifying_attr) for qualifying_attr in ("scheme", "netloc")]):
+            if not all(getattr(token, qualifying_attr) for qualifying_attr in ("scheme", "netloc")):
                 raise ValueError(f"Invalid URL {url}")
             filename = os.path.split(token.path)[-1]
             if not filename:
@@ -1044,7 +1044,7 @@ def download(URLs, dest_dir=".", dest_file=None, decompress=False, max_jobs=5):
             filenames.append(os.path.join(dest_dir, filename))
     else:
         token = urllib.parse.urlparse(urls[0])
-        if not all([getattr(token, qualifying_attr) for qualifying_attr in ("scheme", "netloc")]):
+        if not all(getattr(token, qualifying_attr) for qualifying_attr in ("scheme", "netloc")):
             raise ValueError(f"Invalid URL {url}")
         filenames = [dest_file]
     #

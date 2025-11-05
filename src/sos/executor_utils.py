@@ -12,7 +12,6 @@ import sys
 import traceback
 from collections.abc import Sequence
 from io import StringIO
-from secrets import token_hex
 from tokenize import generate_tokens
 from typing import Any
 
@@ -189,9 +188,13 @@ def get_traceback_msg(e):
     return f"{error_class}: {detail}"
 
 
-def prepare_env(gdef="", gvars={}, extra_vars={}, host="localhost"):
+def prepare_env(gdef="", gvars=None, extra_vars=None, host="localhost"):
     """clear current sos_dict, execute global_def (definitions and imports),
     and inject global variables"""
+    if extra_vars is None:
+        extra_vars = {}
+    if gvars is None:
+        gvars = {}
     env.sos_dict.clear()
 
     if not gdef and not gvars:

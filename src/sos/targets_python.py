@@ -10,7 +10,7 @@ from .utils import env, textMD5
 class Py_Module(BaseTarget):
     """A target for a Python module."""
 
-    LIB_STATUS_CACHE = {}
+    LIB_STATUS_CACHE: dict[str, str] = {}
 
     def __init__(self, module, version=None, autoinstall=False):
         super().__init__()
@@ -33,7 +33,6 @@ class Py_Module(BaseTarget):
         """Check existence of Python module and install it using command
         pip install if necessary."""
         import importlib
-
         from importlib import metadata
 
         spam_spec = importlib.util.find_spec(name)

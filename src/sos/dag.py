@@ -112,7 +112,7 @@ class SoS_Node:
                     []
                     if context is None
                     else [
-                        (k, sorted(list(context[k])) if isinstance(context[k], set) else context[k])
+                        (k, sorted(context[k]) if isinstance(context[k], set) else context[k])
                         for k in sorted(context.keys())
                     ],
                 )
@@ -167,8 +167,10 @@ class SoS_DAG(nx.DiGraph):
         input_targets: sos_targets,
         depends_targets: sos_targets,
         output_targets: sos_targets,
-        context: dict = {},
+        context: dict = None,
     ):
+        if context is None:
+            context = {}
         if "DAG" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
             env.log_to_file("DAG", f"add step {node_name}")
         node = SoS_Node(

@@ -13,7 +13,7 @@ from collections import namedtuple
 from collections.abc import Sequence
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Union
+from typing import Union
 
 import fasteners
 
@@ -187,7 +187,7 @@ class MasterTaskParams(TaskParams):
                 self.sos_dict[key].extend(params.sos_dict[key])
         #
         self.task_stack.append([task_id, params])
-        self.tags = sorted(list(set(self.tags)))
+        self.tags = sorted(set(self.tags))
         #
         id_prefix = f"t{len(self.task_stack)}"
         self.ID = f"{id_prefix}{self.task_stack[0][0][: -(len(id_prefix))]}"
@@ -534,7 +534,9 @@ class TaskFile:
                 if signature_size > 0 and signature:
                     fh.write(signature)
 
-    def add_result(self, result: dict = {}):
+    def add_result(self, result: dict | None = None):
+        if result is None:
+            result = {}
         if not result:
             params = self._get_params()
             # this is a master task, get all sub task IDs
@@ -548,7 +550,7 @@ class TaskFile:
                         with open(cache_file, "rb") as f:
                             while True:
                                 res = pickle.load(f)
-                                if not "task" in res:
+                                if "task" not in res:
                                     # something is wrong
                                     break
                                 missing_tasks.remove(res["task"])
@@ -1065,9 +1067,11 @@ def remove_task_files(task: str, exts: list):
                     pass
 
 
-def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
+def check_task(task, hint=None) -> dict[str, Union[str, dict[str, float]]]:
     # when testing. if the timestamp is 0, the file does not exist originally, it should
     # still does not exist. Otherwise the file should exist and has the same timestamp
+    if hint is None:
+        hint = {}
     if (
         hint
         and hint["status"] not in ("pending", "running")
@@ -1231,7 +1235,7 @@ def check_tasks(tasks, is_all: bool):
         return {}
     cache_file: str = os.path.join(os.path.expanduser("~"), ".sos", "tasks", "status_cache.pickle")
     #
-    status_cache: Dict = {}
+    status_cache: dict = {}
     if os.path.isfile(cache_file):
         try:
             with fasteners.InterProcessLock(cache_file + "_"):
@@ -1278,7 +1282,7 @@ def print_task_status(
     #     ]
     import glob
 
-    all_tasks: List = []
+    all_tasks: list = []
     if check_all:
         tasks = glob.glob(os.path.join(os.path.expanduser("~"), ".sos", "tasks", "*.task"))
         all_tasks = [(os.path.basename(x)[:-5], os.path.getmtime(x)) for x in tasks]
@@ -1299,7 +1303,7 @@ def print_task_status(
         else:
             all_tasks = [x for x in all_tasks if time.time() - x[1] <= -age]
 
-    all_tasks = sorted(list(set(all_tasks)), key=lambda x: 0 if x[1] is None else x[1])
+    all_tasks = sorted(set(all_tasks), key=lambda x: 0 if x[1] is None else x[1])
 
     if tags:
         all_tasks = [
@@ -1757,7 +1761,7 @@ def kill_tasks(tasks, tags=None):
     if not all_tasks:
         env.logger.debug("No task to kill")
         return
-    all_tasks = sorted(list(set(all_tasks)))
+    all_tasks = sorted(set(all_tasks))
     # at most 20 threads
     killed = [kill_task(x) for x in all_tasks]
     for s, t in zip(killed, all_tasks):

@@ -22,8 +22,10 @@ class TaskMonitor(threading.Thread):
         max_walltime=None,
         max_mem=None,
         max_procs=None,
-        sos_dict={},
+        sos_dict=None,
     ):
+        if sos_dict is None:
+            sos_dict = {}
         threading.Thread.__init__(self)
         self.task_id = task_id
         self.pid = os.getpid()
@@ -163,8 +165,10 @@ class WorkflowMonitor(threading.Thread):
         max_walltime=None,
         max_mem=None,
         max_procs=None,
-        sos_dict={},
+        sos_dict=None,
     ):
+        if sos_dict is None:
+            sos_dict = {}
         threading.Thread.__init__(self)
         self.workflow_id = workflow_id
         self.pid = os.getpid()

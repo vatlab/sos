@@ -4,7 +4,6 @@
 # Distributed under the terms of the 3-clause BSD License.
 
 import os
-import shutil
 import subprocess
 import sys
 import time
@@ -12,10 +11,8 @@ import time
 import pytest
 
 from sos import execute_workflow
-from sos.parser import SoS_Script
 from sos.targets import file_target, sos_targets
 from sos.utils import env
-from sos.workflow_executor import Base_Executor
 
 
 def _testSignature(script, steps):

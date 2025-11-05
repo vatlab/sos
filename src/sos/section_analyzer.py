@@ -5,7 +5,7 @@
 
 import ast
 from collections.abc import Mapping, Sequence
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from .eval import SoS_eval, SoS_exec, accessed_vars, used_in_func
 from .executor_utils import __null_func__, prepare_env, strip_param_defs
@@ -18,7 +18,9 @@ from .utils import env
 assert file_target
 
 
-def get_param_of_function(name, param_list, extra_dict={}):
+def get_param_of_function(name, param_list, extra_dict=None):
+    if extra_dict is None:
+        extra_dict = {}
     tree = ast.parse(f"__null_func__({param_list})")
     # x.func can be an attribute (e.g. a.b()) and do not have id
     funcs = [
@@ -86,7 +88,9 @@ def get_param_of_function(name, param_list, extra_dict={}):
     return params
 
 
-def get_names_of_param(name, param_list, extra_dict={}):
+def get_names_of_param(name, param_list, extra_dict=None):
+    if extra_dict is None:
+        extra_dict = {}
     tree = ast.parse(f"__null_func__({param_list})")
     kwargs = [x for x in ast.walk(tree) if x.__class__.__name__ == "keyword" and x.arg == name]
 
@@ -414,7 +418,7 @@ def get_step_output(section, default_output, analysis_type):
                 try:
                     SoS_exec(statement[1], return_result=False)
                 except Exception as e:
-                    raise f'Failed to evaluate an statement "{statement[1]}" of an auxiliary step: {e}'
+                    raise RuntimeError(f'Failed to evaluate an statement "{statement[1]}" of an auxiliary step: {e}') from e
             continue
 
         if statement[1] == "input" and analysis_type != "backward":
@@ -539,7 +543,7 @@ def analyze_section(
     default_output: Optional[sos_targets] = None,
     context=None,
     analysis_type="initial",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Analyze a section for how it uses input and output, what variables
     it uses, and input, output, etc."""
 

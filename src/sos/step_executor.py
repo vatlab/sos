@@ -11,7 +11,6 @@ import sys
 import time
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import List
 
 import zmq
 
@@ -58,7 +57,7 @@ from .utils import (
     textMD5,
 )
 
-__all__: List = []
+__all__: list = []
 
 
 class TaskManager:
@@ -99,7 +98,7 @@ class TaskManager:
             slot == len(self._slots) - 1 and len(self._slots[slot]) == self._last_slot_size
         ):
             # if there are valida tasks
-            if not all([x[1] is None for x in self._slots[slot]]):
+            if not all(x[1] is None for x in self._slots[slot]):
                 # remove empty tasks and sort by id
                 if self.trunk_size == 1 or any(x[1] is None for x in self._slots[slot]):
                     # if partial, sent to partial list
@@ -347,7 +346,9 @@ def evaluate_shared(vars, option):
     return shared_vars
 
 
-def get_value_of_param(name, param_list, extra_dict={}):
+def get_value_of_param(name, param_list, extra_dict=None):
+    if extra_dict is None:
+        extra_dict = {}
     tree = ast.parse(f"__null_func__({param_list})")
     # x.func can be an attribute (e.g. a.b()) and do not have id
     kwargs = [x for x in ast.walk(tree) if x.__class__.__name__ == "keyword" and x.arg == name]
@@ -1965,7 +1966,7 @@ class Step_Executor(Base_Step_Executor):
         """Wait for results from subworkflows"""
         try:
             allow_pending = int(allow_pending)
-        except:
+        except (ValueError, TypeError):
             allow_pending = min(max(os.cpu_count() // 2, 2), 8)
 
         while self._subworkflow_results:
@@ -1980,7 +1981,7 @@ class Step_Executor(Base_Step_Executor):
                 sys.exit(0)
             elif isinstance(res, Exception):
                 raise res
-            if not "__workflow_id__" in res:
+            if "__workflow_id__" not in res:
                 raise ValueError(f"Unrecognized result from subworkflows: {res}")
             # remove from _self._subworkflow_results
             result_with_id = [

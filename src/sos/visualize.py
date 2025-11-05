@@ -102,9 +102,7 @@ class Visualizer:
         # pylint: disable=consider-using-f-string
         code = (
             "".join(
-                """{} &nbsp; <i class="fa fa-sort" style="color:lightgray" onclick="sortDataFrame('{}', {}, '{}')"></th>""".format(
-                    x, tid, idx, index_type if idx == 0 else col_type[idx - 1]
-                )
+                f"""{x} &nbsp; <i class="fa fa-sort" style="color:lightgray" onclick="sortDataFrame('{tid}', {idx}, '{index_type if idx == 0 else col_type[idx - 1]}')"></th>"""
                 if "<th" in x
                 else x
                 for idx, x in enumerate(hr.split("</th>"))
@@ -195,7 +193,7 @@ class Visualizer:
         # small scale, let flop decide
         if logh - logl < 3:
             return None
-        return list(10**x for x in range(logl, logh + 1))
+        return [10**x for x in range(logl, logh + 1)]
 
     def _handle_scatterplot(self, df):
         parser = self._get_scatterplot_parser()
@@ -261,7 +259,7 @@ class Visualizer:
             # create seris with _by
             vals = []
             for by_col in args.by:
-                vals.append(sorted(list(set(data[by_col]))))
+                vals.append(sorted(set(data[by_col])))
             # outer product
             import itertools
 

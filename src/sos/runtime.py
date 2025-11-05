@@ -11,17 +11,28 @@ from .pattern import expand_pattern
 from .targets import path, paths
 from .utils import get_output, sos_get_param
 
-# silent pyflakes
-sos_get_param, get_output, path, paths, expand_pattern, done_if, fail_if, skip_if, stop_if, warn_if
+# Explicitly export these names for backward compatibility
+__all__ = [
+    "sos_get_param",
+    "get_output",
+    "path",
+    "paths",
+    "expand_pattern",
+    "done_if",
+    "fail_if",
+    "skip_if",
+    "stop_if",
+    "warn_if",
+]
 
 
 def _load_group(group: str) -> None:
-    for _entrypoint in metadata.entry_points(group=group):
+    for _entrypoint in metadata.entry_points(group=group):  # type: ignore[call-arg]
         # import all targets and actions from entry_points
         # Grab the function that is the actual plugin.
-        _name = _entrypoint.name
+        _name = _entrypoint.name  # type: ignore[attr-defined]
         try:
-            _plugin = _entrypoint.load()
+            _plugin = _entrypoint.load()  # type: ignore[attr-defined]
             globals()[_name] = _plugin
         except Exception as e:
             # look for sos version requirement
@@ -38,14 +49,14 @@ def _load_group(group: str) -> None:
                 if m:
                     if parse_version(__version__) < parse_version(m.group(1)):
                         get_logger().warning(
-                            f"Failed to load target {_entrypoint.name}: please upgrade your version of sos from {__version__} to at least version {m.group(1)}"
+                            f"Failed to load target {_name}: please upgrade your version of sos from {__version__} to at least version {m.group(1)}"
                         )
                         continue
             if _name == "run":
                 # this is critical so we print the warning
-                get_logger().warning(f"Failed to load target {_entrypoint.name}: {e}")
+                get_logger().warning(f"Failed to load target {_name}: {e}")
             else:
-                get_logger().debug(f"Failed to load target {_entrypoint.name}: {e}")
+                get_logger().debug(f"Failed to load target {_name}: {e}")
 
 
 _load_group("sos_targets")

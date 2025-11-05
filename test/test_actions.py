@@ -757,17 +757,16 @@ touch temp/{ff}
         # test first iteration
         execute_workflow(
             (
-                """
+                f"""
             [1]
             rep = range(5)
             input: for_each = 'rep'
             # ff should change and be usable inside run
-            ff = f"{_rep}.txt"
-            run:  expand=True, active=%s
-            echo {ff}
-            touch temp/{ff}
+            ff = f"{{_rep}}.txt"
+            run:  expand=True, active={active}
+            echo {{ff}}
+            touch temp/{{ff}}
             """
-                % active
             ).replace("/", os.sep),
             options={"sig_mode": "force"},
         )

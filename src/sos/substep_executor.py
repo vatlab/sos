@@ -48,9 +48,9 @@ def execute_substep(
     global_vars,
     task="",
     task_params="",
-    proc_vars={},
-    shared_vars=[],
-    config={},
+    proc_vars=None,
+    shared_vars=None,
+    config=None,
     cwd=None,
 ):
     """Execute a substep with specific input etc
@@ -95,6 +95,12 @@ def execute_substep(
     stderr: (optional) if in interactive mode
     exception: (optional) if an exception occures
     """
+    if config is None:
+        config = {}
+    if shared_vars is None:
+        shared_vars = []
+    if proc_vars is None:
+        proc_vars = {}
     assert not env.zmq_context.closed
     assert "workflow_id" in proc_vars
     assert "step_id" in proc_vars

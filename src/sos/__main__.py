@@ -8,7 +8,6 @@ import ast
 import datetime
 import os
 import sys
-
 from importlib import metadata
 
 script_help = """A SoS script that defines one or more workflows, in format
@@ -2428,7 +2427,9 @@ def cmd_config(args, workflow_args):
     elif args.__get_config__ is not None:
         cfg = load_config_files(args.__config_file__)
 
-        def disp_matched(obj, options, prefix=[]):
+        def disp_matched(obj, options, prefix=None):
+            if prefix is None:
+                prefix = []
             for k, v in obj.items():
                 key = ".".join(prefix + [k])
                 if isinstance(v, dict):

@@ -10,7 +10,6 @@ import pytest
 from sos import execute_workflow
 
 # if the test is imported under sos/test, test interacive executor
-from sos.workflow_executor import Base_Executor
 
 
 def test_plain_target(clear_now_and_after):

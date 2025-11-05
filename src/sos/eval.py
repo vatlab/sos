@@ -8,7 +8,7 @@ import contextlib
 import copy
 import pickle
 import sys
-from typing import Any, Dict, Optional, Set
+from typing import Any, Optional
 
 from ._version import __version__
 from .utils import ArgumentError, as_fstring, env, load_config_files, pickleable
@@ -24,9 +24,11 @@ def interpolate(text, global_dict=None, local_dict=None):
         raise ValueError(f"Failed to interpolate {text}: {e}") from e
 
 
-def cfg_interpolate(text, local_dict={}):
+def cfg_interpolate(text, local_dict=None):
     # handle nested interpolate ...
     # we need to avoid containing our CONFIG with all the modules created by eval
+    if local_dict is None:
+        local_dict = {}
     cfg_dict = copy.deepcopy(env.sos_dict.get("CONFIG", {}))
     if "os.environ" in text:
         exec("import os", cfg_dict)
@@ -221,7 +223,7 @@ def get_accessed(node):
     return names
 
 
-def accessed_vars(statement: str, mode: str = "exec") -> Set[str]:
+def accessed_vars(statement: str, mode: str = "exec") -> set[str]:
     """Parse a Python statement and analyze the symbols used. The result
     will be used to determine what variables a step depends upon."""
     try:
@@ -243,8 +245,8 @@ def get_used_in_func(node):
     if isinstance(node, ast.FunctionDef):
         return {node.name: get_accessed(node.body)}
     names = {}
-    for node in ast.iter_child_nodes(node):
-        names.update(get_used_in_func(node))
+    for child_node in ast.iter_child_nodes(node):
+        names.update(get_used_in_func(child_node))
     return names
 
 
@@ -257,8 +259,10 @@ def used_in_func(statement: str, filename: str = "<string>", mode: str = "exec")
         raise RuntimeError(f"Failed to parse statement: {statement} {e}") from e
 
 
-def SoS_eval(expr: str, extra_dict: dict = {}) -> Any:
+def SoS_eval(expr: str, extra_dict: dict | None = None) -> Any:
     """Evaluate an expression with sos dict."""
+    if extra_dict is None:
+        extra_dict = {}
     return eval(expr, env.sos_dict.dict(), extra_dict)
 
 
@@ -271,7 +275,7 @@ def _is_expr(expr):
 
 
 class StatementHash:
-    stmt_hash = {}
+    stmt_hash: dict[int, str] = {}
 
     def __init__(self) -> None:
         pass
@@ -288,12 +292,12 @@ class StatementHash:
 stmtHash = StatementHash()
 
 
-def SoS_exec(script: str, _dict: dict = None, return_result: bool = True) -> None:
+def SoS_exec(script: str, _dict: dict | None = None, return_result: bool = True) -> None:
     """Execute a statement."""
     if _dict is None:
         _dict = env.sos_dict.dict()
 
-    if not "sos_tagets" in _dict:
+    if "sos_tagets" not in _dict:
         exec("from sos.runtime import *", _dict)
 
     if not return_result:
@@ -401,7 +405,7 @@ class Undetermined:
 class on_demand_options:
     """Expression that will be evaluated upon request."""
 
-    def __init__(self, items: Optional[Dict[str, Any]]) -> None:
+    def __init__(self, items: Optional[dict[str, Any]]) -> None:
         self._expressions = {}
         if items:
             self._expressions.update(items)

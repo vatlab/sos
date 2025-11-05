@@ -6,7 +6,6 @@
 import argparse
 import base64
 import io
-
 from importlib import metadata
 
 from sos.utils import dehtml, dot_to_gif, env, linecount_of_file

@@ -29,7 +29,7 @@ class SoS_SingularityClient:
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            cls._instance = super(SoS_SingularityClient, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
     def _ensure_singularity(self):
@@ -140,7 +140,7 @@ class SoS_SingularityClient:
         if not dest:
             raise ValueError("Please specify result of sigularity build with option dest")
 
-        if os.path.isfile(dest) and not "force" in kwargs:
+        if os.path.isfile(dest) and "force" not in kwargs:
             raise ValueError(
                 f'Destination image {dest} already exists. Please remove or overwrite it with option "force=True"'
             )

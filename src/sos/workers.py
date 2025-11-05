@@ -8,7 +8,7 @@ import os
 import pickle
 import signal
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import zmq
 
@@ -98,7 +98,7 @@ class SoS_Worker(mp.Process):
 
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None, **kwargs) -> None:
+    def __init__(self, config: Optional[dict[str, Any]] = None, **kwargs) -> None:
         """
 
         config:

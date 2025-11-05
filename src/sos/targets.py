@@ -13,16 +13,15 @@ import subprocess
 import sys
 from collections.abc import Iterable, Sequence
 from copy import deepcopy
+from importlib import metadata
 from itertools import combinations, tee
 from pathlib import Path, PosixPath, WindowsPath
 from shlex import quote
-from typing import Any, Dict, List, Union
+from typing import Any, Union
 
 import fasteners
-from importlib import metadata
 
 from .controller import request_answer_from_controller, send_message_to_controller
-from .eval import get_config, interpolate
 from .pattern import extract_pattern
 from .utils import Error, env, fileMD5, objectMD5, pickleable, short_repr, stable_repr, textMD5
 
@@ -653,13 +652,11 @@ class file_target(path, BaseTarget):
         return ft
 
     def __reduce__(self):
-        return tuple(
-            [
+        return (
                 self.__class__,
                 super().__reduce__()[1],
                 {"_md5": self._md5 if hasattr(self, "_md5") else None, "_dict": self._dict},
-            ]
-        )
+            )
 
 
 class sos_tempfile(file_target):
@@ -833,15 +830,15 @@ class sos_targets(BaseTarget, Sequence, os.PathLike):
         pattern=None,
         group_with=None,
         for_each=None,
-        _undetermined: Union[bool, str] = None,
+        _undetermined: Union[bool, str, None] = None,
         _source="",
         _verify_existence=False,
         **kwargs,
     ):
         super().__init__()
-        self._targets: List = []
-        self._labels: List = []
-        self._groups: List = []
+        self._targets: list = []
+        self._labels: list = []
+        self._groups: list = []
         if isinstance(_undetermined, (bool, str)):
             self._undetermined = _undetermined
         else:
@@ -1725,11 +1722,17 @@ class InMemorySignature:
         input_files: sos_targets,
         output_files: sos_targets,
         dependent_files: sos_targets,
-        signature_vars: set = set(),
-        sdict: dict = {},
-        shared_vars: list = [],
+        signature_vars: set | None = None,
+        sdict: dict | None = None,
+        shared_vars: list | None = None,
     ):
         """Runtime information for specified output files"""
+        if shared_vars is None:
+            shared_vars = []
+        if sdict is None:
+            sdict = {}
+        if signature_vars is None:
+            signature_vars = set()
         self.content = None
         if not sdict:
             sdict = env.sos_dict
@@ -1917,11 +1920,17 @@ class RuntimeInfo(InMemorySignature):
         input_files: sos_targets,
         output_files: sos_targets,
         dependent_files: sos_targets,
-        signature_vars: set = set(),
-        sdict: dict = {},
-        shared_vars: list = [],
+        signature_vars: set | None = None,
+        sdict: dict | None = None,
+        shared_vars: list | None = None,
     ):
         """Runtime information for specified output files"""
+        if shared_vars is None:
+            shared_vars = []
+        if sdict is None:
+            sdict = {}
+        if signature_vars is None:
+            signature_vars = set()
         if "sos_run" in signature_vars:
             # if a step has nested workflow, we cannot save signature
             # because we do not know the exact content of the nested workflow.
@@ -1955,7 +1964,7 @@ class RuntimeInfo(InMemorySignature):
             "sig_id": self.sig_id,
         }
 
-    def __setstate__(self, sdict: Dict[str, Any]):
+    def __setstate__(self, sdict: dict[str, Any]):
         if not sdict:
             self.sig_id = ""
             return
