@@ -11,12 +11,11 @@ import sys
 from typing import Any, Dict, Optional, Set
 
 from ._version import __version__
-from .utils import (ArgumentError, as_fstring, env, load_config_files,
-                    pickleable)
+from .utils import ArgumentError, as_fstring, env, load_config_files, pickleable
 
 
 def interpolate(text, global_dict=None, local_dict=None):
-    """Evaluate expressions in `text` """
+    """Evaluate expressions in `text`"""
     # step 1, make it a f-string (add quotation marks and f
     # step 2, evaluate as a string
     try:
@@ -99,17 +98,22 @@ def get_config(*args, **kwargs):
         else:
             raise ValueError(f"Unacceptable parameter {arg} for get_config.")
     #
-    custom_dict.update({
-        x: y for x, y in kwargs.items() if x not in (
-            "default",
-            "allowed_keys",
-            "excluded_keys",
-            "raw_keys",
-            "expand_keys",
-            "expected_type",
-            "raw",
-        )
-    })
+    custom_dict.update(
+        {
+            x: y
+            for x, y in kwargs.items()
+            if x
+            not in (
+                "default",
+                "allowed_keys",
+                "excluded_keys",
+                "raw_keys",
+                "expand_keys",
+                "expected_type",
+                "raw",
+            )
+        }
+    )
     #
     local_dict = {}
     val = env.sos_dict.get("CONFIG", {})
@@ -117,9 +121,7 @@ def get_config(*args, **kwargs):
         if not keys:
             break
         if not isinstance(val, dict):
-            raise ValueError(
-                f'A dictionary is expected to get item with key {".".join(keys)}: {val} obtained.'
-            )
+            raise ValueError(f"A dictionary is expected to get item with key {'.'.join(keys)}: {val} obtained.")
         local_dict = val
         key = keys[0]
         if key in val:
@@ -130,11 +132,11 @@ def get_config(*args, **kwargs):
             found = False
             subkeys = key.split(".")
             for j in range(len(subkeys)):
-                subkey = ".".join(subkeys[:j + 1])
+                subkey = ".".join(subkeys[: j + 1])
                 if subkey in val:
                     found = True
                     val = val[subkey]
-                    keys[0] = ".".join(subkeys[j + 1:])
+                    keys[0] = ".".join(subkeys[j + 1 :])
                     if not keys[0]:
                         keys.pop(0)
                     break
@@ -144,8 +146,7 @@ def get_config(*args, **kwargs):
             val = default
 
     if expected_type is not None and not isinstance(val, expected_type):
-        raise ValueError(
-            f'A value of type {expected_type} is expected, "{val}" specified.')
+        raise ValueError(f'A value of type {expected_type} is expected, "{val}" specified.')
 
     if raw is True:
         return val
@@ -226,13 +227,11 @@ def accessed_vars(statement: str, mode: str = "exec") -> Set[str]:
     try:
         if mode == "exec":
             return get_accessed(ast.parse(statement, "<string>", "exec"))
-        res = get_accessed(
-            ast.parse("__NULL__(" + statement + ")", "<string>", "eval"))
+        res = get_accessed(ast.parse("__NULL__(" + statement + ")", "<string>", "eval"))
         res.remove("__NULL__")
         return res
     except Exception as e:
-        raise RuntimeError(
-            f"Failed to parse statement: {statement} in {mode} mode") from e
+        raise RuntimeError(f"Failed to parse statement: {statement} in {mode} mode") from e
 
 
 def get_used_in_func(node):
@@ -249,9 +248,7 @@ def get_used_in_func(node):
     return names
 
 
-def used_in_func(statement: str,
-                 filename: str = "<string>",
-                 mode: str = "exec"):
+def used_in_func(statement: str, filename: str = "<string>", mode: str = "exec"):
     """Parse a Python statement and analyze the symbols used. The result
     will be used to determine what variables a step depends upon."""
     try:
@@ -291,27 +288,20 @@ class StatementHash:
 stmtHash = StatementHash()
 
 
-def SoS_exec(script: str,
-             _dict: dict = None,
-             return_result: bool = True) -> None:
+def SoS_exec(script: str, _dict: dict = None, return_result: bool = True) -> None:
     """Execute a statement."""
     if _dict is None:
         _dict = env.sos_dict.dict()
 
-    if not 'sos_tagets' in _dict:
-        exec('from sos.runtime import *', _dict)
+    if not "sos_tagets" in _dict:
+        exec("from sos.runtime import *", _dict)
 
     if not return_result:
         if env.verbosity == 0:
             with contextlib.redirect_stdout(None):
-                exec(
-                    compile(
-                        script, filename=stmtHash.hash(script), mode="exec"),
-                    _dict)
+                exec(compile(script, filename=stmtHash.hash(script), mode="exec"), _dict)
         else:
-            exec(
-                compile(script, filename=stmtHash.hash(script), mode="exec"),
-                _dict)
+            exec(compile(script, filename=stmtHash.hash(script), mode="exec"), _dict)
         return None
 
     try:
@@ -366,16 +356,11 @@ def SoS_exec(script: str,
             if env.verbosity == 0:
                 with contextlib.redirect_stdout(None):
                     exec(
-                        compile(
-                            script, filename=stmtHash.hash(script),
-                            mode="exec"),
+                        compile(script, filename=stmtHash.hash(script), mode="exec"),
                         _dict,
                     )
             else:
-                exec(
-                    compile(
-                        script, filename=stmtHash.hash(script), mode="exec"),
-                    _dict)
+                exec(compile(script, filename=stmtHash.hash(script), mode="exec"), _dict)
             res = None
     except SyntaxError as e:
         raise SyntaxError(f"Invalid code {script}: {e}") from e
@@ -392,11 +377,9 @@ def SoS_exec(script: str,
 
 
 class Undetermined:
-
     def __init__(self, expr: str = "") -> None:
         if not isinstance(expr, str):
-            raise RuntimeError(
-                f'Undetermined expression has to be a string: "{expr}" passed')
+            raise RuntimeError(f'Undetermined expression has to be a string: "{expr}" passed')
         self.expr = expr.strip()
 
     def value(self):
@@ -408,7 +391,8 @@ class Undetermined:
     def __hash__(self):
         raise RuntimeError(
             "Undetermined expression should be evaluated before used. "
-            "This is certainly a bug so please report this to SoS developer.")
+            "This is certainly a bug so please report this to SoS developer."
+        )
 
     def targets(self) -> "Undetermined":
         return self
@@ -442,24 +426,19 @@ class on_demand_options:
                 raise ValueError(
                     f"Failed to evaluate option {key} with value {self._expressions[key]}: Only constant values are allowed for section option skip"
                 ) from e
-            raise ValueError(
-                f"Failed to evaluate option {key} with value {self._expressions[key]}: {e}"
-            ) from e
+            raise ValueError(f"Failed to evaluate option {key} with value {self._expressions[key]}: {e}") from e
 
     def __repr__(self):
         return repr(self._expressions)
 
 
 class KeepOnlyImportAndDefine(ast.NodeTransformer):
-
     def __init__(self):
         self.level = 0
 
     def generic_visit(self, node):
         self.level += 1
-        if self.level == 2 and not isinstance(
-                node,
-            (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.ClassDef)):
+        if self.level == 2 and not isinstance(node, (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.ClassDef)):
             # print(f'remove {node}')
             ret = None
         else:
@@ -481,8 +460,7 @@ def analyze_global_statements(global_stmt):
 
     # run only import, def, and class of the global_def
     transformer = KeepOnlyImportAndDefine()
-    global_def = transformer.visit(
-        ast.parse("from sos.runtime import *\n" + global_stmt))
+    global_def = transformer.visit(ast.parse("from sos.runtime import *\n" + global_stmt))
     exec(compile(global_def, filename="<ast>", mode="exec"), env.sos_dict._dict)
     defined_keys = set(env.sos_dict.keys())
 
@@ -494,10 +472,7 @@ def analyze_global_statements(global_stmt):
     except Exception as e:
         raise RuntimeError(f"Failed to execute global statement: {e}") from e
     #
-    global_vars = {
-        k: env.sos_dict[k] for k in (set(env.sos_dict.keys()) - defined_keys)
-        | {"SOS_VERSION", "CONFIG"}
-    }
+    global_vars = {k: env.sos_dict[k] for k in (set(env.sos_dict.keys()) - defined_keys) | {"SOS_VERSION", "CONFIG"}}
     # test if global vars can be pickled
     try:
         pickle.dumps(global_vars)

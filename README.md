@@ -17,45 +17,112 @@ We welcome and value community contributions: please [post issues](https://githu
 to provide us feedback or get our support; please [send pull requests](https://github.com/vatlab/SoS/pulls)
 if you have helped fixing bugs or making improvements to the source code. In addition, if you are interesting in extending SoS, for example adding a new target type or task engine, please have a look at our tutorial on extending SoS [here](https://vatlab.github.io/sos-docs/doc/user_guide/extending_sos.html).
 
-# Installing SoS Workflow and Notebook
+# Installation
 
-* If you are using conda, you can install sos using command
+## Quick Install
 
-  ```bash
-  conda install sos -c conda-forge
-  ```
-  You can also install a majority of the SoS suite of tools using commands such as
-  ```bash
-  conda install sos sos-pbs sos-notebook jupyterlab-sos sos-bash sos-python sos-r -c conda-forge
-  ```
-  This will install SoS Workflow, SoS Notebook and its JupyterLab extension, language modules for
-  `Bash`, `Python2`, `Python3`, `R`, `R` itself (`r-base` and `r-irkernel` etc) and needed
-  libraries (e.g. `feather`) if needed.
+### Using uv (fastest, recommended)
 
-* If you are not using conda, you will have to install all the pieces one by one, but you will also have the freedom to use non-conda installation of `R`, `Julia` etc. With a working Python 3.6 installation, you can install SoS Workflow with command
+[uv](https://github.com/astral-sh/uv) is a fast Python package installer written in Rust.
 
-  ```bash
-  pip install sos
-  ```
-  and also
-  ```bash
-  pip install sos-pbs
-  ```
-  if you would like to use SoS with a remote batch system such as LSF or Slurm.
+```bash
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-  You can install SoS Notebook, and register the sos kernel with Jupyter using the following commands
+# Install SoS
+uv pip install sos
 
-  ```bash
-  pip install sos-notebook
-  python -m sos_notebook.install
-  ```
+# Install with optional dependencies
+uv pip install "sos[dot]"  # For graphviz support
+```
 
-  To exchange data between live kernels in SoS Notebook, you will need to install individual kernels (e.g. `irkernel` for `R`), make sure they work under Jupyter, and install SoS language modules using commands such as
+### Using pip
 
-  ```bash
-  pip install sos-r sos-matlab sos-python sos-bash
-  ```
-  Different modules might be needed to assist data exchange among kernels. Please refer to [the installation page of sos website](https://vatlab.github.io/sos-docs/#runningsos) for details.
+```bash
+# Install from PyPI
+pip install sos
+
+# Install with optional dependencies
+pip install sos[dot]  # For graphviz support
+```
+
+### Using conda
+
+```bash
+conda install sos -c conda-forge
+
+# Install complete SoS suite
+conda install sos sos-pbs sos-notebook jupyterlab-sos sos-bash sos-python sos-r -c conda-forge
+```
+
+## Development Installation
+
+For developers and contributors, please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed setup instructions.
+
+### Quick Start with uv
+
+```bash
+# Clone the repository
+git clone https://github.com/vatlab/SoS.git
+cd SoS
+
+# Set up development environment with uv
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv sync --all-extras
+
+# Use invoke tasks for development
+invoke --list      # Show available tasks
+invoke test        # Run tests
+invoke format      # Format code
+invoke lint        # Check code style
+invoke check       # Run all checks
+```
+
+### Traditional Setup
+
+```bash
+# Clone and install in development mode
+git clone https://github.com/vatlab/SoS.git
+cd SoS
+pip install -e ".[dev]"
+```
+
+## Building from Source
+
+With the modern build system using `pyproject.toml`:
+
+```bash
+# Using uv (fastest)
+uv build
+
+# Using Python build module
+pip install build
+python -m build
+
+# Or using pip directly
+pip wheel . --no-deps
+```
+
+## Additional Components
+
+### SoS Notebook
+```bash
+pip install sos-notebook
+python -m sos_notebook.install
+```
+
+### Language Modules
+```bash
+pip install sos-r sos-matlab sos-python sos-bash
+```
+
+### Remote Execution (PBS, Slurm, LSF)
+```bash
+pip install sos-pbs
+```
+
+For more details, see [the installation page](https://vatlab.github.io/sos-docs/#runningsos).
 
 ### Change Log of SoS Workflow and SoS Notebook
 

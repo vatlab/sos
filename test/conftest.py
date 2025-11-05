@@ -16,17 +16,16 @@ from sos.utils import env
 
 @pytest.fixture
 def config_factory():
-    filename = tempfile.NamedTemporaryFile(suffix='.yml', delete=False).name
+    filename = tempfile.NamedTemporaryFile(suffix=".yml", delete=False).name
 
     def get_config(text_or_dict):
-        with open(filename, 'w') as conf:
+        with open(filename, "w") as conf:
             if isinstance(text_or_dict, str):
                 conf.write(textwrap.dedent(text_or_dict))
             elif isinstance(text_or_dict, dict):
                 yaml.dump(text_or_dict, conf)
             else:
-                raise ValueError(
-                    'A text or dictionary is expected for config_factory.')
+                raise ValueError("A text or dictionary is expected for config_factory.")
         return filename
 
     yield get_config
@@ -35,10 +34,10 @@ def config_factory():
 
 @pytest.fixture
 def script_factory():
-    default_filename = tempfile.NamedTemporaryFile(suffix='.sos', delete=False).name
+    default_filename = tempfile.NamedTemporaryFile(suffix=".sos", delete=False).name
 
     def get_script(text, filename=None):
-        with open(filename or default_filename, 'w') as conf:
+        with open(filename or default_filename, "w") as conf:
             conf.write(textwrap.dedent(text))
         return filename or default_filename
 
@@ -48,12 +47,11 @@ def script_factory():
 
 @pytest.fixture
 def temp_factory():
-
     temp_fds = []
     temp_dirs = []
 
     def get_tempfiles(*args, **kwargs):
-        content = kwargs.get('content', None)
+        content = kwargs.get("content", None)
         for names in args:
             if isinstance(names, (str, os.PathLike)):
                 names = [names]
@@ -61,27 +59,27 @@ def temp_factory():
                 if content is None:
                     pathlib.Path(name).touch()
                 else:
-                    with open(name, 'w') as tf:
+                    with open(name, "w") as tf:
                         tf.write(content)
                 temp_fds.append(name)
-        if 'dir' in kwargs:
-            if isinstance(kwargs['dir'], (str, os.PathLike)):
-                dirs = [kwargs['dir']]
+        if "dir" in kwargs:
+            if isinstance(kwargs["dir"], (str, os.PathLike)):
+                dirs = [kwargs["dir"]]
             else:
-                dirs = kwargs['dir']
+                dirs = kwargs["dir"]
             for dir in dirs:
                 if os.path.isdir(dir):
                     shutil.rmtree(dir)
                 os.makedirs(dir, exist_ok=True)
                 temp_dirs.append(dir)
-        if 'size' in kwargs:
-            fsize = kwargs['size']
+        if "size" in kwargs:
+            fsize = kwargs["size"]
             letters = string.ascii_letters
-            content = ''.join(random.choice(letters) for i in range(983)).encode()
+            content = "".join(random.choice(letters) for i in range(983)).encode()
             ntimes = fsize // 983
             remaining = fsize - (ntimes * 983)
             for name in temp_fds:
-                with open(name, 'wb') as tmp:
+                with open(name, "wb") as tmp:
                     for i in range(ntimes):
                         tmp.write(content)
                     tmp.write(content[:remaining])
@@ -118,7 +116,7 @@ def clear_now_and_after():
                 elif os.path.isdir(temp_fd):
                     shutil.rmtree(temp_fd)
                 else:
-                    for tmpfile in glob.glob(temp_fd + '.??????.bak'):
+                    for tmpfile in glob.glob(temp_fd + ".??????.bak"):
                         os.remove(tmpfile)
             except Exception:
                 pass
@@ -142,9 +140,11 @@ def clear_now_and_after():
 def purge_tasks():
     subprocess.call(["sos", "purge", "--all"])
 
+
 @pytest.fixture
 def clear_signatures():
     subprocess.call(["sos", "remove", "-s"])
+
 
 @pytest.fixture
 def reset_env():
@@ -153,8 +153,8 @@ def reset_env():
 
 @pytest.fixture
 def sample_workflow():
-    with open('sample_workflow.ipynb', 'w') as sn:
-        sn.write(r'''{
+    with open("sample_workflow.ipynb", "w") as sn:
+        sn.write(r"""{
  "cells": [
   {
    "cell_type": "code",
@@ -291,18 +291,19 @@ def sample_workflow():
  "nbformat": 4,
  "nbformat_minor": 2
 }
-''')
+""")
 
-    yield 'sample_workflow.ipynb'
+    yield "sample_workflow.ipynb"
 
-    os.remove('sample_workflow.ipynb')
+    os.remove("sample_workflow.ipynb")
+
 
 @pytest.fixture
 def fastq_files():
-    if not os.path.isdir('data'):
-        os.mkdir('data')
-    with open('data/S20_R1.fastq', 'w') as R1:
-        R1.write('''\
+    if not os.path.isdir("data"):
+        os.mkdir("data")
+    with open("data/S20_R1.fastq", "w") as R1:
+        R1.write("""\
 @ST-J00106:29:H3C5HBBXX:4:1101:1172:1000 1:N:0:TGACCA
 CCTCAGTTCCTCAAACACAGTGAGTGAGTACGGACCTCAGGCTGTCTCTTCGCGTCACACCCGCTGTGAAATGGCAGATACAGCATCAGGGCAGACACTC
 +
@@ -403,9 +404,9 @@ A<<FAA,,FFKA<FKKKKKKKAAFKFFKKAKKKFAF7AA,F<AKFFKAAAAKFKF,FFK,7,FFK,,<AA7FKFF<,7AF
 AGTGAAAATAGCGTTAACTGATGACATTCCACAATTGTGATTTGTTTCTGCCCCACCCTAACTGATCAATGTACTTTGTAATCTCCCCCACCCTTAAGA
 +
 AAAFFKKKKKKKKKKKKKKKKKKKKKKKFKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKFKKK7FK<AAKKK,7FAKK,<FAFKKKKKKK<KKKFK
-''')
-    with open('data/S20_R2.fastq', 'w') as R2:
-        R2.write('''\
+""")
+    with open("data/S20_R2.fastq", "w") as R2:
+        R2.write("""\
 @ST-J00106:29:H3C5HBBXX:4:1101:1172:1000 2:N:0:TGACCA
 AGGATAAGCAGTCCAAGGAGGCATTGACCAAAACATGCAGTGAAATGTTGATGCGGAGCCTAAAGGACGGGGATCTGGGGGAGCCACGCCTGGAGGCG
 +
@@ -506,20 +507,20 @@ CTCCGCACATGTGAGGGAGAGCGAGGGGCCACTGGGATTGTGTGGAGGTGAGATCAGAGGTCGAACAGTTGGGAGGAGCA
 AGGGTGGGGAGAATTACAAAGAACCTTCTTAAGAGTGGGGGAGATTACAAAGAACATTCTTAAGGGTGAGGGAGATTACAAAGTACATTGATCAGTTAGG
 +
 <A<FAF7A(<AFFKKA<KKKAFKF7<FKFKKKKK7,7,,(AFAKFKKFKAKKAKAFK7A,,FFA,<F7,,AAFFFK<FFAKKAFKF<,AAAFAFAK7FKK
-''')
+""")
 
     yield
 
-    shutil.rmtree('data')
+    shutil.rmtree("data")
 
 
 @pytest.fixture
 def test_workflow(clear_now_and_after):
-    clear_now_and_after('temp')
-    os.mkdir('temp')
-    os.chdir('temp')
-    with open('test.sos', 'w') as script:
-        script.write('''
+    clear_now_and_after("temp")
+    os.mkdir("temp")
+    os.chdir("temp")
+    with open("test.sos", "w") as script:
+        script.write("""
 [0]
 output:  't_f1'
 run:
@@ -536,28 +537,29 @@ output:  't_d2/t_d3/t_f3'
 run:
     touch t_d2/t_d3/t_f3
 
-''')
-    subprocess.call('sos run test -s force', shell=True)
+""")
+    subprocess.call("sos run test -s force", shell=True)
     # create some other files and directory
-    for d in ('ut_d1', 'ut_d2', 'ut_d2/ut_d3'):
+    for d in ("ut_d1", "ut_d2", "ut_d2/ut_d3"):
         os.mkdir(d)
-    for f in ('ut_f1', 'ut_d1/ut_f2', 'ut_d2/ut_d3/ut_f3'):
-        with open(f, 'w') as tf:
+    for f in ("ut_f1", "ut_d1/ut_f2", "ut_d2/ut_d3/ut_f3"):
+        with open(f, "w") as tf:
             tf.write(f)
+
 
 #
 # We do not apply this automatically for now.
 #
-#@pytest.fixture(autouse=True)
-def check_extra_files(request, output_file='extra_files.txt'):
-    file_list = os.listdir('.') + [output_file]
+# @pytest.fixture(autouse=True)
+def check_extra_files(request, output_file="extra_files.txt"):
+    file_list = os.listdir(".") + [output_file]
 
     yield
 
-    with open(output_file, 'a') as ofile:
-        for item in os.listdir('.'):
+    with open(output_file, "a") as ofile:
+        for item in os.listdir("."):
             if item not in file_list:
-                ofile.write(f'{request.node.name}:\t{item}\n')
+                ofile.write(f"{request.node.name}:\t{item}\n")
                 if os.path.isfile(item):
                     os.remove(item)
                 elif os.path.isdir(item):

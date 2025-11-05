@@ -45,16 +45,17 @@ def cd_new(path):
 
 def get_tasks():
     from sos.signatures import WorkflowSignatures
+
     env.exec_dir = os.path.join(os.path.expanduser("~"), ".sos", textMD5(os.getcwd()))
     db = WorkflowSignatures()
     conn = db.conn
-    #conn = sqlite3.connect(os.path.join(env.exec_dir, "workflow_signatures.db"))
+    # conn = sqlite3.connect(os.path.join(env.exec_dir, "workflow_signatures.db"))
     cur = conn.cursor()
     cur.execute('SELECT DISTINCT id FROM workflows WHERE entry_type = "task"')
     return [
         x[0]
         for x in cur.fetchall()
-        if os.path.isfile(os.path.join(os.path.expanduser('~'), '.sos', 'tasks', x[0] + '.task'))
+        if os.path.isfile(os.path.join(os.path.expanduser("~"), ".sos", "tasks", x[0] + ".task"))
     ]
 
 
@@ -76,8 +77,8 @@ def test_task_file():
     assert a.tags == "a b"
     for ext in (".pulse", ".out", ".err", ".sh"):
         with open(
-                os.path.join(os.path.expanduser("~"), ".sos", "tasks", "ffffffffffffffff" + ext),
-                "w",
+            os.path.join(os.path.expanduser("~"), ".sos", "tasks", "ffffffffffffffff" + ext),
+            "w",
         ) as fh:
             fh.write(ext)
     assert not a.has_stdout()
@@ -144,14 +145,15 @@ task: workdir={0!r}
 with open(os.path.join({1!r}, 'result.txt'), 'w') as res:
     for file in os.listdir({1!r}):
         res.write(file + '\n')
-""".format(os.path.split(tdir)[0],
-           os.path.split(tdir)[1])
+""".format(os.path.split(tdir)[0], os.path.split(tdir)[1])
 
     execute_workflow(
-        script, options={
+        script,
+        options={
             "sig_mode": "force",
             "default_queue": "localhost",
-        })
+        },
+    )
     with open(os.path.join(tdir, "result.txt")) as res:
         content = [x.strip() for x in res.readlines()]
         assert "aaa.pp" in content
@@ -173,10 +175,7 @@ print('I am {}, waited {} seconds'.format(_index, _repeat + 1))
 time.sleep(_repeat + 1)
 print('I am {}, done'.format(_index))
 """,
-        options={
-            "default_queue": "localhost",
-            "sig_mode": "force"
-        },
+        options={"default_queue": "localhost", "sig_mode": "force"},
     )
 
 
@@ -203,10 +202,7 @@ task: env={'PATH': 'temp' + os.pathsep + os.environ['PATH']}
 run:
 temp_cmd
 """,
-        options={
-            "default_queue": "localhost",
-            "sig_mode": "force"
-        },
+        options={"default_queue": "localhost", "sig_mode": "force"},
     )
     #
     #
@@ -231,8 +227,9 @@ def test_no_task():
         """,
         options={
             "default_queue": None,
-            'sig_mode': 'force',
-        })
+            "sig_mode": "force",
+        },
+    )
     #
     env.config["sig_mode"] = "force"
     execute_workflow(
@@ -244,8 +241,9 @@ def test_no_task():
         """,
         options={
             "default_queue": "localhost",
-            'sig_mode': 'force',
-        })
+            "sig_mode": "force",
+        },
+    )
 
 
 def test_passing_var_to_task(clear_now_and_after):
@@ -271,11 +269,8 @@ def test_passing_var_to_task(clear_now_and_after):
         echo {_tt}_{_index} > {_output:q}
 
         """,
-        config={
-            "default_queue": "localhost",
-            "sig_mode": "force",
-            "max_jobs": 4
-        })
+        config={"default_queue": "localhost", "sig_mode": "force", "max_jobs": 4},
+    )
     for t in range(10, 13):
         with open(f"myfile_{t}.txt") as tmp:
             assert tmp.read().strip() == str(t) + "_" + str(t - 10)
@@ -295,7 +290,8 @@ def test_max_jobs():
         options={
             "max_running_jobs": 2,
             "default_queue": "localhost",
-        })
+        },
+    )
 
 
 def test_kill_and_purge():
@@ -337,10 +333,8 @@ def test_concurrent_task(clear_now_and_after):
         run: expand=True
         echo {i} > {_output}
         """,
-        options={
-            "sig_mode": "force",
-            "default_queue": "localhost"
-        })
+        options={"sig_mode": "force", "default_queue": "localhost"},
+    )
 
 
 def test_shared_option(clear_now_and_after):
@@ -358,10 +352,8 @@ def test_shared_option(clear_now_and_after):
         run: expand=True
         touch a{a}.txt
         """,
-        options={
-            "sig_mode": "force",
-            "default_queue": "localhost"
-        })
+        options={"sig_mode": "force", "default_queue": "localhost"},
+    )
     assert os.path.isfile("a100.txt")
     # sequence of var or mapping
     clear_now_and_after("a.txt", "a100.txt")
@@ -379,10 +371,8 @@ def test_shared_option(clear_now_and_after):
         run: expand=True
         touch a{a}_{b}.txt
         """,
-        options={
-            "sig_mode": "force",
-            "default_queue": "localhost"
-        })
+        options={"sig_mode": "force", "default_queue": "localhost"},
+    )
     assert os.path.isfile("a100_20.txt")
 
     execute_workflow(
@@ -394,7 +384,8 @@ def test_shared_option(clear_now_and_after):
         import random
         rng = random.randint(1, 1000)
         """,
-        options={"default_queue": "localhost"})
+        options={"default_queue": "localhost"},
+    )
 
     var = env.sos_dict["rng"]
     assert isinstance(var, int)
@@ -408,13 +399,15 @@ def test_task_tags():
 
     tag = f"tag{random.randint(1, 100000)}"
     with open("test_tags.sos", "w") as tt:
-        tt.write("""
+        tt.write(
+            """
 [10]
 input: for_each={{'i': range(10)}}
 task: tags='{}', trunk_size=2
 sh: expand=True
 echo {} {{i}}
-""".format(tag, tag))
+""".format(tag, tag)
+        )
     wf = SoS_Script(filename="test_tags.sos").workflow()
     Base_Executor(
         wf,
@@ -432,13 +425,15 @@ echo {} {{i}}
     tag1 = f"tag{random.randint(1, 100000)}"
     tag2 = f"tag{random.randint(1, 100000)}"
     with open("test_tags.sos", "w") as tt:
-        tt.write("""
+        tt.write(
+            """
 [10]
 input: for_each={{'i': range(2)}}
 task: tags=['{}', '{}']
 sh: expand=True
 echo {} {{i}}
-""".format(tag1, tag2, tag1))
+""".format(tag1, tag2, tag1)
+        )
     wf = SoS_Script(filename="test_tags.sos").workflow()
     Base_Executor(
         wf,
@@ -522,9 +517,7 @@ def test_override_max_cores():
             "config_file": "~/docker.yml",
             "default_queue": "docker_limited",
             "sig_mode": "force",
-            "queue_args": {
-                "cores": 1
-            },
+            "queue_args": {"cores": 1},
         },
     )
 
@@ -652,7 +645,7 @@ sh: expand=True
         subprocess.call("sos run test -q localhost", shell=True)
         assert time.time() - st < 2
         #
-        clear_now_and_after('a.txt')
+        clear_now_and_after("a.txt")
         st = time.time()
         subprocess.call("sos run test -q localhost", shell=True)
         assert time.time() - st > 2
@@ -666,7 +659,8 @@ def test_wrong_host():
             task: walltime='1:00:00', queue='undefined'
             print('test_wrong_host')
             """,
-            options={"default_queue": "localhost"})
+            options={"default_queue": "localhost"},
+        )
 
 
 def test_output_in_task():
@@ -688,11 +682,12 @@ def test_output_in_task():
             open("${_output['summary_stats']}", 'w').close()
             open("${_output['ld_matrix']}", 'w').close()
         """,
-        options={"default_queue": "localhost"})
+        options={"default_queue": "localhost"},
+    )
 
 
 def test_repeated_tasks():
-    """Test statement before task #1142 """
+    """Test statement before task #1142"""
     for i in range(5):
         execute_workflow(
             """
@@ -704,10 +699,8 @@ def test_repeated_tasks():
             print(f'this is task {i}')
 
             """,
-            options={
-                "sig_mode": "force",
-                "default_queue": "localhost"
-            })
+            options={"sig_mode": "force", "default_queue": "localhost"},
+        )
 
 
 def test_passing_parameters_to_task():
@@ -723,15 +716,13 @@ def test_passing_parameters_to_task():
         task:
         a()
         """,
-        options={
-            "sig_mode": "force",
-            "default_queue": "localhost"
-        })
+        options={"sig_mode": "force", "default_queue": "localhost"},
+    )
 
 
 def test_trunk_size_with_stop_if(clear_now_and_after):
     """Test a case when some tasks are not submitted due to holes in slots #1159"""
-    clear_now_and_after([f"{i+1}.txt" for i in range(5)])
+    clear_now_and_after([f"{i + 1}.txt" for i in range(5)])
     execute_workflow(
         """\
         [1]
@@ -752,10 +743,8 @@ def test_trunk_size_with_stop_if(clear_now_and_after):
         task: trunk_size = 80
         _output.touch()
         """,
-        options={
-            "sig_mode": "force",
-            "default_queue": "localhost"
-        })
+        options={"sig_mode": "force", "default_queue": "localhost"},
+    )
 
 
 def test_output_from_master_task():
@@ -774,14 +763,15 @@ def test_output_from_master_task():
         [3]
         assert _input == f'{_index+1}.out'
         """,
-        options={"default_queue": "localhost"})
+        options={"default_queue": "localhost"},
+    )
 
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remotely_generated_output(clear_now_and_after):
     """Test delayed interpolation with expression involving remote objects"""
     # purge all previous tasks
-    clear_now_and_after('test.py', 'test.py.bak')
+    clear_now_and_after("test.py", "test.py.bak")
     execute_workflow(
         """
         [10]
@@ -992,11 +982,7 @@ run: expand=True
   echo {I} > {I}.txt
   sleep 1
 """,
-        options={
-            "max_running_jobs": 10,
-            "worker_procs": ["4"],
-            "default_queue": "localhost"
-        },
+        options={"max_running_jobs": 10, "worker_procs": ["4"], "default_queue": "localhost"},
     )
     for i in range(12):
         assert os.path.isfile(f"{i}.txt")
@@ -1005,10 +991,11 @@ run: expand=True
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_sync_input_output_and_rerun(clear_now_and_after, purge_tasks):
     """Test sync input and output with remote host"""
-    clear_now_and_after([f'test_{i}.txt' for i in range(4)])
-    clear_now_and_after([f'test_{i}.bak' for i in range(4)])
+    clear_now_and_after([f"test_{i}.txt" for i in range(4)])
+    clear_now_and_after([f"test_{i}.bak" for i in range(4)])
 
     import random
+
     val = random.randint(1, 10000)
     wf = """
         parameter: g = 100
@@ -1049,8 +1036,8 @@ def test_sync_input_output_and_rerun(clear_now_and_after, purge_tasks):
             assert outf.read() == f"test_{i}_{val}.bak"
     #
     # test rerun the task file on local host
-    clear_now_and_after([f'test_{i}.txt' for i in range(4)])
-    clear_now_and_after([f'test_{i}.bak' for i in range(4)])
+    clear_now_and_after([f"test_{i}.txt" for i in range(4)])
+    clear_now_and_after([f"test_{i}.bak" for i in range(4)])
 
     execute_workflow(wf, args=["--g", str(val)], options={"sig_mode": "force"})
 

@@ -18,9 +18,19 @@ from typing import Dict, List, Union
 import fasteners
 
 from .targets import sos_targets
-from .utils import (DelayedAction, env, expand_size, expand_time,
-                    format_duration, format_HHMMSS, linecount_of_file,
-                    pretty_size, sample_lines, short_repr, tail_of_file)
+from .utils import (
+    DelayedAction,
+    env,
+    expand_size,
+    expand_time,
+    format_duration,
+    format_HHMMSS,
+    linecount_of_file,
+    pretty_size,
+    sample_lines,
+    short_repr,
+    tail_of_file,
+)
 
 monitor_interval = 5
 resource_monitor_interval = 60
@@ -46,7 +56,6 @@ class TaskParams:
 
 
 class MasterTaskParams(TaskParams):
-
     def __init__(self, num_workers=None):
         self.ID = "t0"
         self.name = self.ID
@@ -54,9 +63,7 @@ class MasterTaskParams(TaskParams):
         self.task = ""
 
         self.sos_dict = {
-            "_runtime": {
-                "num_workers": num_workers
-            },
+            "_runtime": {"num_workers": num_workers},
             "_input": sos_targets(),
             "_output": sos_targets(),
             "_depends": sos_targets(),
@@ -78,7 +85,7 @@ class MasterTaskParams(TaskParams):
             n_workers = val.rsplit(":", 1)[-1] if ":" in val else val
             n_nodes = len(num_workers)
         elif isinstance(num_workers, str):
-            n_workers = (num_workers.rsplit(":", 1)[-1] if ":" in num_workers else num_workers)
+            n_workers = num_workers.rsplit(":", 1)[-1] if ":" in num_workers else num_workers
             n_nodes = 1
         elif isinstance(num_workers, int):
             n_workers = num_workers
@@ -113,33 +120,33 @@ class MasterTaskParams(TaskParams):
 
         if not self.task_stack:
             for key in (
-                    "walltime",
-                    "max_walltime",
-                    "cores",
-                    "nodes",
-                    "max_cores",
-                    "mem",
-                    "max_mem",
-                    "name",
-                    "workdir",
-                    "verbosity",
-                    "sig_mode",
-                    "run_mode",
+                "walltime",
+                "max_walltime",
+                "cores",
+                "nodes",
+                "max_cores",
+                "mem",
+                "max_mem",
+                "name",
+                "workdir",
+                "verbosity",
+                "sig_mode",
+                "run_mode",
             ):
-                if (key in params.sos_dict["_runtime"] and params.sos_dict["_runtime"][key] is not None):
+                if key in params.sos_dict["_runtime"] and params.sos_dict["_runtime"][key] is not None:
                     self.sos_dict["_runtime"][key] = params.sos_dict["_runtime"][key]
             self.sos_dict["step_name"] = params.sos_dict["step_name"]
             self.tags = params.tags
         else:
             for key in (
-                    "walltime",
-                    "max_walltime",
-                    "cores",
-                    "max_cores",
-                    "mem",
-                    "max_mem",
-                    "name",
-                    "workdir",
+                "walltime",
+                "max_walltime",
+                "cores",
+                "max_cores",
+                "mem",
+                "max_mem",
+                "name",
+                "workdir",
             ):
                 val0 = self.task_stack[0][1].sos_dict["_runtime"].get(key, None)
                 val = params.sos_dict["_runtime"].get(key, None)
@@ -168,7 +175,7 @@ class MasterTaskParams(TaskParams):
             self.tags.extend(params.tags)
 
         # if cores is unspecified but there are more than one workers
-        if ("cores" not in self.sos_dict["_runtime"] and n_workers is not None and n_workers > 1):
+        if "cores" not in self.sos_dict["_runtime"] and n_workers is not None and n_workers > 1:
             self.sos_dict["_runtime"]["cores"] = n_workers
         #
         # input, output, preserved vars etc
@@ -182,8 +189,8 @@ class MasterTaskParams(TaskParams):
         self.task_stack.append([task_id, params])
         self.tags = sorted(list(set(self.tags)))
         #
-        id_prefix = f't{len(self.task_stack)}'
-        self.ID = f"{id_prefix}{self.task_stack[0][0][:-(len(id_prefix))]}"
+        id_prefix = f"t{len(self.task_stack)}"
+        self.ID = f"{id_prefix}{self.task_stack[0][0][: -(len(id_prefix))]}"
         self.name = self.ID
 
     def finalize(self):
@@ -257,9 +264,9 @@ def combine_results(task_id, results):
                 env.logger.debug(f"All {len(results)} tasks in {task_id} ``failed``")
         else:
             if env.config["run_mode"] == "run":
-                env.logger.info(f'{all_res["ret_code"]} of {len(results)} tasks in {task_id} ``failed``')
+                env.logger.info(f"{all_res['ret_code']} of {len(results)} tasks in {task_id} ``failed``")
             else:
-                env.logger.debug(f'{all_res["ret_code"]} of {len(results)} tasks in {task_id} ``failed``')
+                env.logger.debug(f"{all_res['ret_code']} of {len(results)} tasks in {task_id} ``failed``")
 
         # if some failed, some skipped, not skipped
         if "skipped" in all_res:
@@ -273,9 +280,9 @@ def combine_results(task_id, results):
         else:
             # if only partial skip, we still save signature and result etc
             if env.config["run_mode"] == "run":
-                env.logger.info(f'{all_res["skipped"]} of {len(results)} tasks in {task_id} ``ignored`` or skipped')
+                env.logger.info(f"{all_res['skipped']} of {len(results)} tasks in {task_id} ``ignored`` or skipped")
             else:
-                env.logger.debug(f'{all_res["skipped"]} of {len(results)} tasks in {task_id} ``ignored`` or skipped')
+                env.logger.debug(f"{all_res['skipped']} of {len(results)} tasks in {task_id} ``ignored`` or skipped")
 
             all_res.pop("skipped")
     else:
@@ -480,8 +487,8 @@ class TaskFile:
         with fasteners.InterProcessLock(os.path.join(env.temp_dir, self.task_id + ".lck")):
             with open(self.task_file, "r+b") as fh:
                 header = self._read_header(fh)
-                result = ''
-                signature = ''
+                result = ""
+                signature = ""
                 if header.result_size != 0:
                     if not keep_result:
                         result_size = 0
@@ -490,8 +497,13 @@ class TaskFile:
                         result_size = header.result_size
                         signature_size = header.signature_size
                         fh.seek(
-                            self.header_size + header.params_size + header.runtime_size + header.shell_size +
-                            header.pulse_size + header.stdout_size + header.stderr_size,
+                            self.header_size
+                            + header.params_size
+                            + header.runtime_size
+                            + header.shell_size
+                            + header.pulse_size
+                            + header.stdout_size
+                            + header.stderr_size,
                             0,
                         )
                         result = fh.read(header.result_size)
@@ -549,12 +561,17 @@ class TaskFile:
                     # if there is no result at all, do not save result
                     return
                 # now, if we have some results, we need to fill the rest of the aborted ones
-                results.extend([{
-                    "task": t,
-                    "ret_code": 2,
-                    "shared": {},
-                    "exception": RuntimeError(f"Subtask {t} is aborted"),
-                } for t in missing_tasks])
+                results.extend(
+                    [
+                        {
+                            "task": t,
+                            "ret_code": 2,
+                            "shared": {},
+                            "exception": RuntimeError(f"Subtask {t} is aborted"),
+                        }
+                        for t in missing_tasks
+                    ]
+                )
                 result = combine_results(self.task_id, results)
             else:
                 # single task, no result, do not save
@@ -573,8 +590,15 @@ class TaskFile:
                     signature_size=len(signature_block),
                 )
                 self._write_header(fh, header)
-                fh.seek(self.header_size + header.params_size + header.runtime_size + header.shell_size +
-                        header.pulse_size + header.stdout_size + header.stderr_size)
+                fh.seek(
+                    self.header_size
+                    + header.params_size
+                    + header.runtime_size
+                    + header.shell_size
+                    + header.pulse_size
+                    + header.stdout_size
+                    + header.stderr_size
+                )
                 fh.write(result_block)
                 if signature:
                     fh.write(signature_block)
@@ -655,9 +679,17 @@ class TaskFile:
                         fh.write(result)
                     if signature:
                         fh.write(signature)
-                    fh.truncate(self.header_size + header.params_size + header.runtime_size + header.shell_size +
-                                header.pulse_size + header.stdout_size + header.stderr_size + header.result_size +
-                                header.signature_size)
+                    fh.truncate(
+                        self.header_size
+                        + header.params_size
+                        + header.runtime_size
+                        + header.shell_size
+                        + header.pulse_size
+                        + header.stdout_size
+                        + header.stderr_size
+                        + header.result_size
+                        + header.signature_size
+                    )
 
     params = property(_get_params, _set_params)
 
@@ -690,7 +722,7 @@ class TaskFile:
                     stdout = fh.read(header.stdout_size) if header.stdout_size else b""
                     stderr = fh.read(header.stderr_size) if header.stderr_size else b""
                     result = fh.read(header.result_size) if header.result_size else b""
-                    signature = (fh.read(header.signature_size) if header.signature_size else b"")
+                    signature = fh.read(header.signature_size) if header.signature_size else b""
                     header = header._replace(runtime_size=len(runtime_block))
                     self._write_header(fh, header)
                     fh.write(params)
@@ -707,9 +739,17 @@ class TaskFile:
                         fh.write(result)
                     if signature:
                         fh.write(signature)
-                    fh.truncate(self.header_size + header.params_size + header.runtime_size + header.shell_size +
-                                header.pulse_size + header.stdout_size + header.stderr_size + header.result_size +
-                                header.signature_size)
+                    fh.truncate(
+                        self.header_size
+                        + header.params_size
+                        + header.runtime_size
+                        + header.shell_size
+                        + header.pulse_size
+                        + header.stdout_size
+                        + header.stderr_size
+                        + header.result_size
+                        + header.signature_size
+                    )
 
     runtime = property(_get_runtime, _set_runtime)
 
@@ -794,7 +834,7 @@ class TaskFile:
                         )
                         with open(pulse_file, "w") as pd:
                             pd.write(f"#task: {self.task_id}\n")
-                            pd.write(f'#started at {datetime.now().strftime("%A, %d. %B %Y %I:%M%p")}\n#\n')
+                            pd.write(f"#started at {datetime.now().strftime('%A, %d. %B %Y %I:%M%p')}\n#\n")
                         # wait for the pulse file to be created before updating task status
                         while True:
                             if os.path.isfile(pulse_file):
@@ -904,8 +944,12 @@ class TaskFile:
             if header.stderr_size == 0:
                 return ""
             fh.seek(
-                self.header_size + header.params_size + header.runtime_size + header.shell_size + header.pulse_size +
-                header.stdout_size,
+                self.header_size
+                + header.params_size
+                + header.runtime_size
+                + header.shell_size
+                + header.pulse_size
+                + header.stdout_size,
                 0,
             )
             try:
@@ -922,8 +966,13 @@ class TaskFile:
             if header.result_size == 0:
                 return {}
             fh.seek(
-                self.header_size + header.params_size + header.runtime_size + header.shell_size + header.pulse_size +
-                header.stdout_size + header.stderr_size,
+                self.header_size
+                + header.params_size
+                + header.runtime_size
+                + header.shell_size
+                + header.pulse_size
+                + header.stdout_size
+                + header.stderr_size,
                 0,
             )
             try:
@@ -940,8 +989,14 @@ class TaskFile:
             if header.signature_size == 0:
                 return {}
             fh.seek(
-                self.header_size + header.params_size + header.runtime_size + header.shell_size + header.pulse_size +
-                header.stdout_size + header.stderr_size + header.result_size,
+                self.header_size
+                + header.params_size
+                + header.runtime_size
+                + header.shell_size
+                + header.pulse_size
+                + header.stdout_size
+                + header.stderr_size
+                + header.result_size,
                 0,
             )
             try:
@@ -1013,16 +1068,21 @@ def remove_task_files(task: str, exts: list):
 def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
     # when testing. if the timestamp is 0, the file does not exist originally, it should
     # still does not exist. Otherwise the file should exist and has the same timestamp
-    if (hint and hint["status"] not in ("pending", "running") and all(
-        (os.path.isfile(f) and os.stat(f).st_mtime == v) if v else (not os.path.isfile(f))
-            for f, v in hint["files"].items())):
+    if (
+        hint
+        and hint["status"] not in ("pending", "running")
+        and all(
+            (os.path.isfile(f) and os.stat(f).st_mtime == v) if v else (not os.path.isfile(f))
+            for f, v in hint["files"].items()
+        )
+    ):
         return {}
     # status of the job, please refer to https://github.com/vatlab/SOS/issues/529
     # for details.
     #
     task_file = os.path.join(os.path.expanduser("~"), ".sos", "tasks", task + ".task")
     if not os.path.isfile(task_file):
-        return {"status": 'missing', "files": {task_file: 0}}
+        return {"status": "missing", "files": {task_file: 0}}
 
     mtime = os.stat(task_file).st_mtime
 
@@ -1048,7 +1108,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
             stdout_file: 0,
             stderr_file: 0,
         }
-        return {'status': status, 'files': status_files}
+        return {"status": status, "files": status_files}
 
     pulse_file = os.path.join(os.path.expanduser("~"), ".sos", "tasks", task + ".pulse")
 
@@ -1062,12 +1122,12 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
 
             # if we have hint, we know the time stamp of last
             # status file.
-            if (not hint or pulse_file not in hint["files"] or status_files[pulse_file] != hint["files"][pulse_file]):
-                return {'status': "running", 'files': status_files}
+            if not hint or pulse_file not in hint["files"] or status_files[pulse_file] != hint["files"][pulse_file]:
+                return {"status": "running", "files": status_files}
 
             elapsed = time.time() - status_files[pulse_file]
             if elapsed < 60:
-                return {'status': "running", 'files': status_files}
+                return {"status": "running", "files": status_files}
 
             syserr_file = os.path.join(os.path.expanduser("~"), ".sos", "tasks", task + ".err")
 
@@ -1083,7 +1143,8 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
                 with open(soserr_file, "a") as err:
                     err.write(f"Task {task} inactive for more than {int(elapsed)} seconds, might have been killed.")
                 env.logger.warning(
-                    f"Task {task} inactive for more than {int(elapsed)} seconds, might have been killed.")
+                    f"Task {task} inactive for more than {int(elapsed)} seconds, might have been killed."
+                )
 
             tf.add_outputs()
             # 1323
@@ -1091,7 +1152,7 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
 
             # assume aborted
             tf.status = "aborted"
-            return {'status': "aborted", 'files': {task_file: os.stat(task_file).st_mtime, pulse_file: 0}}
+            return {"status": "aborted", "files": {task_file: os.stat(task_file).st_mtime, pulse_file: 0}}
         except Exception:
             # the pulse file could disappear when the job is completed.
             if task_changed():
@@ -1103,8 +1164,8 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         # if there is no pulse file .
         tf.status = "aborted"
         with open(
-                os.path.join(os.path.expanduser("~"), ".sos", "tasks", task + ".soserr"),
-                "a",
+            os.path.join(os.path.expanduser("~"), ".sos", "tasks", task + ".soserr"),
+            "a",
         ) as err:
             err.write(f"Task {task} considered as aborted due to missing pulse file.")
         env.logger.warning(f"Task {task} considered as aborted due to missing pulse file.")
@@ -1112,11 +1173,8 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
         # 1323
         tf.add_result()
         return {
-            'status': "aborted",
-            'files': {
-                task_file: os.stat(task_file).st_mtime,
-                pulse_file: 0
-            },
+            "status": "aborted",
+            "files": {task_file: os.stat(task_file).st_mtime, pulse_file: 0},
         }
 
     # if there is no pulse file
@@ -1124,16 +1182,20 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
 
     def has_job():
         job_id_file = os.path.join(os.path.expanduser("~"), ".sos", "tasks", task + ".job_id")
-        return (os.path.isfile(job_file) and os.stat(job_file).st_mtime >= os.stat(task_file).st_mtime and
-                os.path.isfile(job_id_file) and os.stat(job_id_file).st_mtime >= os.stat(job_file).st_mtime)
+        return (
+            os.path.isfile(job_file)
+            and os.stat(job_file).st_mtime >= os.stat(task_file).st_mtime
+            and os.path.isfile(job_id_file)
+            and os.stat(job_id_file).st_mtime >= os.stat(job_file).st_mtime
+        )
 
     if has_job():
         try:
             if status != "submitted":
                 tf.status = "submitted"
             return {
-                'status': "submitted",
-                'files': {
+                "status": "submitted",
+                "files": {
                     task_file: os.stat(task_file).st_mtime,
                     job_file: os.stat(job_file).st_mtime,
                     pulse_file: 0,
@@ -1147,15 +1209,15 @@ def check_task(task, hint={}) -> Dict[str, Union[str, Dict[str, float]]]:
     else:
         # status not changed
         try:
-            if (hint and hint["status"] in ("new", "pending") and
-                    hint["files"][task_file] == os.stat(task_file).st_mtime):
+            if (
+                hint
+                and hint["status"] in ("new", "pending")
+                and hint["files"][task_file] == os.stat(task_file).st_mtime
+            ):
                 return {}
             return {
-                'status': status,
-                'files': {
-                    task_file: os.stat(task_file).st_mtime,
-                    job_file: 0
-                },
+                "status": status,
+                "files": {task_file: os.stat(task_file).st_mtime, job_file: 0},
             }
         except Exception:
             # the pulse file could disappear when the job is completed.
@@ -1253,7 +1315,8 @@ def print_task_status(
     #
     # automatically remove non-running tasks that are more than 30 days old
     to_be_removed = [
-        t for s, (t, d) in zip(obtained_status, all_tasks)
+        t
+        for s, (t, d) in zip(obtained_status, all_tasks)
         if d is not None and time.time() - d > 30 * 24 * 60 * 60 and s != "running"
     ]
 
@@ -1328,7 +1391,7 @@ def print_task_status(
                             format_duration(res["end_time"] - res["start_time"]),
                         )
                     if "peak_cpu" in res:
-                        row("Peak CPU", f'{res["peak_cpu"]*100} %')
+                        row("Peak CPU", f"{res['peak_cpu'] * 100} %")
                     if "peak_mem" in res:
                         row("Peak mem", pretty_size(res["peak_mem"]))
 
@@ -1363,7 +1426,8 @@ def print_task_status(
                     row(
                         "stdout",
                         "(empty)"
-                        if numLines == 0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}',
+                        if numLines == 0
+                        else f"{numLines} lines{'' if numLines < 200 else ' (showing last 200)'}",
                     )
                     if numLines > 200:
                         stdout = "\n".join(stdout.splitlines()[-200:])
@@ -1374,7 +1438,8 @@ def print_task_status(
                     row(
                         "stderr",
                         "(empty)"
-                        if numLines == 0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}',
+                        if numLines == 0
+                        else f"{numLines} lines{'' if numLines < 200 else ' (showing last 200)'}",
                     )
                     if numLines > 200:
                         stderr = "\n".join(stderr.splitlines()[-200:])
@@ -1399,11 +1464,13 @@ def print_task_status(
                     row(
                         rhead,
                         "(empty)"
-                        if numLines == 0 else f'{numLines} lines{"" if numLines < 200 else " (showing last 200)"}',
+                        if numLines == 0
+                        else f"{numLines} lines{'' if numLines < 200 else ' (showing last 200)'}",
                     )
                     try:
-                        row(td=f'<small><pre style="text-align:left">{tail_of_file(f, 200, ansi2html=True)}</pre></small>'
-                           )
+                        row(
+                            td=f'<small><pre style="text-align:left">{tail_of_file(f, 200, ansi2html=True)}</pre></small>'
+                        )
                     except Exception:
                         row(td='<small><pre style="text-align:left">ignored.</pre><small>')
             print("</table>")
@@ -1432,7 +1499,8 @@ def print_task_status(
             except Exception:
                 return
             #
-            print("""
+            print(
+                """
 <script>
     function loadFiles(files, fn) {
         if (!files.length) {
@@ -1466,19 +1534,35 @@ def print_task_status(
         loadFile(0);
     }
 
-function plotResourcePlot_""" + t + """() {
+function plotResourcePlot_"""
+                + t
+                + """() {
     // get the item
     // parent element is a table cell, needs enlarge
     document.getElementById(
-        "res_""" + t + """").parentElement.setAttribute("height", "300px;");
-    $("#res_""" + t + """").css("height", "300px");
-    $("#res_""" + t + """").css("width", "100%");
-    $("#res_""" + t + """").css("min-height", "300px");
+        "res_"""
+                + t
+                + """").parentElement.setAttribute("height", "300px;");
+    $("#res_"""
+                + t
+                + """").css("height", "300px");
+    $("#res_"""
+                + t
+                + """").css("width", "100%");
+    $("#res_"""
+                + t
+                + """").css("min-height", "300px");
 
-    var cpu = [""" + ",".join([f"[{x*1000},{y}]" for x, y in zip(etime, cpu)]) + """];
-    var mem = [""" + ",".join([f"[{x*1000},{y}]" for x, y in zip(etime, mem)]) + """];
+    var cpu = ["""
+                + ",".join([f"[{x * 1000},{y}]" for x, y in zip(etime, cpu)])
+                + """];
+    var mem = ["""
+                + ",".join([f"[{x * 1000},{y}]" for x, y in zip(etime, mem)])
+                + """];
 
-    $.plot('#res_""" + t + """', [{
+    $.plot('#res_"""
+                + t
+                + """', [{
                 data: cpu,
                 label: "CPU (%)"
             },
@@ -1507,21 +1591,34 @@ function plotResourcePlot_""" + t + """() {
 
 var dt = 100;
 // the frontend might be notified before the table is inserted as results.
-function showResourceFigure_""" + t + """() {
-    if ( $("#res_""" + t + """").length === 0) {
+function showResourceFigure_"""
+                + t
+                + """() {
+    if ( $("#res_"""
+                + t
+                + """").length === 0) {
           dt = dt * 1.5; // slow-down checks for datatable as time goes on;
-          setTimeout(showResourceFigure_""" + t + """, dt);
+          setTimeout(showResourceFigure_"""
+                + t
+                + """, dt);
           return;
     } else {
-        $("#res_""" + t + """").css('width', "100%").css('height', "300px");
+        $("#res_"""
+                + t
+                + """").css('width', "100%").css('height', "300px");
         loadFiles(["http://www.flotcharts.org/flot/jquery.flot.js",
              "http://www.flotcharts.org/flot/jquery.flot.time.js"
-            ], plotResourcePlot_""" + t + """);
+            ], plotResourcePlot_"""
+                + t
+                + """);
     }
 }
-showResourceFigure_""" + t + """()
+showResourceFigure_"""
+                + t
+                + """()
 </script>
-""")
+"""
+            )
     elif verbosity == 0:
         print("\n".join(obtained_status))
     elif verbosity == 1:
@@ -1582,11 +1679,11 @@ showResourceFigure_""" + t + """()
                     res = tf.result
                     print("EXECUTION STATS:\n================")
                     if "start_time" in res and "end_time" in res:
-                        print(f'Duration:\t{format_duration(res["end_time"] - res["start_time"])}')
+                        print(f"Duration:\t{format_duration(res['end_time'] - res['start_time'])}")
                     if "peak_cpu" in res:
-                        print(f'Peak CPU:\t{res["peak_cpu"]*100} %')
+                        print(f"Peak CPU:\t{res['peak_cpu'] * 100} %")
                     if "peak_mem" in res:
-                        print(f'Peak mem:\t{pretty_size(res["peak_mem"])}')
+                        print(f"Peak mem:\t{pretty_size(res['peak_mem'])}")
 
             elif s == "running":
                 # we have separate pulse, out and err files
@@ -1604,7 +1701,7 @@ showResourceFigure_""" + t + """()
                     f = os.path.join(os.path.expanduser("~"), ".sos", "tasks", task + ext)
                     if not os.path.isfile(f) or os.path.getsize(f) == 0:
                         return
-                    print(f'\n{os.path.basename(f)}:\n{"="*(len(os.path.basename(f))+1)}')
+                    print(f"\n{os.path.basename(f)}:\n{'=' * (len(os.path.basename(f)) + 1)}")
                     try:
                         with open(f) as fc:
                             print(fc.read())
@@ -1752,7 +1849,7 @@ def purge_tasks(tasks, purge_all=None, age=None, status=None, tags=None, verbosi
             for f in to_be_removed[task]:
                 try:
                     if verbosity > 3:
-                        if ("TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]):
+                        if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
                             env.log_to_file("TASK", f"Remove {f}")
                     os.remove(f)
                 except Exception as e:

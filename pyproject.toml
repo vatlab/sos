@@ -1,0 +1,242 @@
+[build-system]
+requires = ["hatchling>=1.21.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sos"
+dynamic = ["version"]
+description = "Script of Scripts (SoS): an interactive, cross-platform, and cross-language workflow system for reproducible data analysis"
+readme = "README.md"
+authors = [
+    {name = "Bo Peng", email = "Bo.Peng@bcm.edu"},
+]
+maintainers = [
+    {name = "Bo Peng", email = "Bo.Peng@bcm.edu"},
+]
+license = {text = "3-clause BSD"}
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "License :: OSI Approved :: BSD License",
+    "Natural Language :: English",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+    "psutil",
+    "tqdm",
+    "fasteners",
+    "pyyaml",
+    "pygments",
+    "networkx!=2.8.3",
+    "pydot",
+    "pydotplus",
+    "pexpect",
+    "ptyprocess",
+    "jinja2",
+    "nbformat",
+    "pyzmq",
+]
+
+[project.urls]
+Homepage = "https://github.com/vatlab/SoS"
+Documentation = "http://vatlab.github.io/sos-docs"
+Repository = "https://github.com/vatlab/SoS"
+Issues = "https://github.com/vatlab/SoS/issues"
+
+[project.optional-dependencies]
+dot = ["graphviz", "pillow"]
+# Platform-specific dependencies
+win = ["colorama"]
+unix = ["xxhash"]
+dev = [
+    "build",
+    "coverage",
+    "invoke>=2.0",
+    "nose",
+    "pandas",
+    "pre-commit",
+    "pytest>=7.0",
+    "pytest-cov",
+    "pytest-timeout",
+    "ruff",
+    "sos-pbs>=0.20.0",
+    "tabulate>=0.9.0",
+    "twine",
+]
+test = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "pytest-timeout",
+    "pandas",
+    "sos-pbs>=0.20.0",
+]
+
+[project.scripts]
+sos = "sos.__main__:main"
+sos-runner = "sos.__main__:sosrunner"
+
+[project.entry-points."pygments.lexers"]
+sos = "sos.converter:SoS_Lexer"
+
+[project.entry-points."sos_targets"]
+file_target = "sos.targets:file_target"
+sos_tempfile = "sos.targets:sos_tempfile"
+dynamic = "sos.targets:dynamic"
+executable = "sos.targets:executable"
+sos_variable = "sos.targets:sos_variable"
+sos_step = "sos.targets:sos_step"
+env_variable = "sos.targets:env_variable"
+sos_targets = "sos.targets:sos_targets"
+system_resource = "sos.targets:system_resource"
+Py_Module = "sos.targets_python:Py_Module"
+R_library = "sos.targets_r:R_library"
+
+[project.entry-points."sos_actions"]
+script = "sos.actions:script"
+sos_run = "sos.actions:sos_run"
+download = "sos.actions:download"
+run = "sos.actions:run"
+bash = "sos.actions_bash:bash"
+csh = "sos.actions_bash:csh"
+tcsh = "sos.actions_bash:tcsh"
+zsh = "sos.actions_bash:zsh"
+sh = "sos.actions_bash:sh"
+node = "sos.actions_javascript:node"
+julia = "sos.actions_julia:julia"
+matlab = "sos.actions_matlab:matlab"
+octave = "sos.actions_matlab:octave"
+python = "sos.actions_python:python"
+python2 = "sos.actions_python:python2"
+python3 = "sos.actions_python:python3"
+R = "sos.actions_r:R"
+Rmarkdown = "sos.actions_r:Rmarkdown"
+ruby = "sos.actions_ruby:ruby"
+perl = "sos.actions:perl"
+report = "sos.actions:report"
+pandoc = "sos.actions:pandoc"
+docker_build = "sos.docker.actions:docker_build"
+singularity_build = "sos.singularity.actions:singularity_build"
+
+[project.entry-points."sos_taskengines"]
+process = "sos.task_engines:BackgroundProcess_TaskEngine"
+
+[project.entry-points."sos_workflowengines"]
+process = "sos.workflow_engines:BackgroundProcess_WorkflowEngine"
+
+[project.entry-points."sos_previewers"]
+"*.pdf,1" = "sos.preview:preview_pdf"
+"*.html,1" = "sos.preview:preview_html"
+"*.csv,1" = "sos.preview:preview_csv"
+"*.xls,1" = "sos.preview:preview_xls"
+"*.xlsx,1" = "sos.preview:preview_xls"
+"*.gz,1" = "sos.preview:preview_gz"
+"*.txt,1" = "sos.preview:preview_txt"
+"*.md,1" = "sos.preview:preview_md"
+"*.dot,1" = "sos.preview:preview_dot"
+"*.svg,1" = "sos.preview:preview_svg"
+"imghdr:what,1" = "sos.preview:preview_img"
+"zipfile:is_zipfile,1" = "sos.preview:preview_zip"
+"tarfile:is_tarfile,1" = "sos.preview:preview_tar"
+"*,0" = "sos.preview:preview_txt"
+
+[project.entry-points."sos_converters"]
+sos-html = "sos.converter:ScriptToHTMLConverter"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/README.md",
+    "/LICENSE",
+    "/MANIFEST.in",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sos"]
+
+[tool.hatch.version]
+path = "src/sos/_version.py"
+pattern = '__version__ = "(?P<version>[^"]+)"'
+
+[tool.hatch.build]
+sources = ["src"]
+
+# Optional: For dynamic versioning from _version.py
+# [tool.hatch.metadata]
+# allow-direct-references = true
+
+[tool.uv]
+dev-dependencies = [
+    "build>=1.0.0",
+    "coverage>=7.0",
+    "invoke>=2.0",
+    "ipykernel>=6.0",
+    "jupyter>=1.0",
+    "pandas>=1.5",
+    "pre-commit>=3.0",
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-timeout>=2.0",
+    "ruff>=0.1.0",
+    "sos-pbs>=0.20.0",
+    "tabulate>=0.9.0",
+    "twine>=4.0",
+]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501", # line too long, handled by formatter
+    "B008", # do not perform function calls in argument defaults
+    "C901", # too complex
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+"test/**/*.py" = ["B", "C4"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["test"]
+python_files = "test_*.py"
+python_functions = "test_*"
+addopts = "-ra -q --strict-markers"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["src/sos"]
+omit = ["*/tests/*", "*/test_*.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

@@ -10,18 +10,17 @@ import pytest
 from sos.converter import extract_workflow
 
 
-
 def test_script_to_html(temp_factory, clear_now_and_after):
-    '''Test sos show script --html'''
-    clear_now_and_after('temp1.sos.html', 'temp2.sos.html')
-    script1 = textwrap.dedent('''
+    """Test sos show script --html"""
+    clear_now_and_after("temp1.sos.html", "temp2.sos.html")
+    script1 = textwrap.dedent("""
     [0]
     seq = range(3)
     input: for_each='seq'
     output: "test${_seq}.txt"
     print(output)
-    ''')
-    script2 = textwrap.dedent('''
+    """)
+    script2 = textwrap.dedent("""
     [0]
     seq = range(3)
     input: for_each='seq'
@@ -31,26 +30,22 @@ def test_script_to_html(temp_factory, clear_now_and_after):
 
     [10]
     report('this is action report')
-    ''')
-    temp_factory('temp1.sos', content=script1)
-    temp_factory('temp2.sos', content=script2)
+    """)
+    temp_factory("temp1.sos", content=script1)
+    temp_factory("temp2.sos", content=script2)
 
-    scripts = ['temp1.sos', 'temp2.sos']
+    scripts = ["temp1.sos", "temp2.sos"]
     for script_file in scripts:
-        assert subprocess.call(
-            f'sos convert {script_file} {script_file}.html', shell=True) == 0
-        assert subprocess.call(
-            f'sos convert {script_file} {script_file}.html --linenos',
-            shell=True) == 0
+        assert subprocess.call(f"sos convert {script_file} {script_file}.html", shell=True) == 0
+        assert subprocess.call(f"sos convert {script_file} {script_file}.html --linenos", shell=True) == 0
         #
-        assert subprocess.call(['sos', 'convert', script_file, '--to',
-                                'html']) == 0
+        assert subprocess.call(["sos", "convert", script_file, "--to", "html"]) == 0
 
 
 def test_extract_workflow(sample_workflow):
-    '''Test extract workflow from ipynb file'''
+    """Test extract workflow from ipynb file"""
     content = extract_workflow(sample_workflow)
-    assert content == textwrap.dedent('''\
+    assert content == textwrap.dedent("""\
     #!/usr/bin/env sos-runner
     #fileformat=SOS1.0
 
@@ -68,4 +63,4 @@ def test_extract_workflow(sample_workflow):
     [default]
     print(f'Hello {a}')
 
-    ''')
+    """)

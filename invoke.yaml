@@ -1,0 +1,41 @@
+# Invoke configuration file
+# See: http://docs.pyinvoke.org/en/stable/concepts/configuration.html
+
+# Run settings
+run:
+  echo: true
+  pty: true
+  warn: false
+
+# Task-specific configuration
+tasks:
+  # Test configuration
+  test:
+    coverage_threshold: 80
+    default_markers: "not slow"
+  
+  # Format configuration
+  format:
+    line_length: 120
+    
+  # Lint configuration  
+  lint:
+    ignore_errors:
+      - "E501"  # line too long (handled by formatter)
+      - "C901"  # too complex
+  
+  # Build configuration
+  build:
+    clean_first: true
+    
+  # Documentation configuration
+  docs:
+    source_dir: "docs"
+    build_dir: "docs/_build"
+    default_port: 8000
+
+# Project paths
+paths:
+  source: "src"
+  tests: "test"
+  docs: "docs"

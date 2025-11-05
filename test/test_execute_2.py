@@ -7,6 +7,7 @@ from sos import execute_workflow
 from sos._version import __version__
 from sos.parser import SoS_Script
 from sos.utils import env
+
 # if the test is imported under sos/test, test interacive executor
 from sos.workflow_executor import Base_Executor
 
@@ -49,14 +50,13 @@ depends: 'failed.csv'
 path('result.csv').touch()
 """
     with pytest.raises(Exception):
-        execute_workflow(script, workflow='step')
+        execute_workflow(script, workflow="step")
     # rerun should still raise
     with pytest.raises(Exception):
-        execute_workflow(script, workflow='step')
+        execute_workflow(script, workflow="step")
 
     assert not os.path.isfile("failed.csv")
     assert not os.path.isfile("result.csv")
-
 
 
 def test_error_handling_of_substeps(clear_now_and_after):
@@ -145,8 +145,8 @@ _output.touch()
 
 def test_parallel_nestedworkflow(clear_now_and_after):
     # 1375
-    clear_now_and_after([f'{i+1}.txt' for i in range(5)])
-    clear_now_and_after([f'{i+1}.out' for i in range(5)])
+    clear_now_and_after([f"{i + 1}.txt" for i in range(5)])
+    clear_now_and_after([f"{i + 1}.out" for i in range(5)])
     execute_workflow(r"""
         [global]
         parameter: num = [x+1 for x in range(5)]
@@ -194,12 +194,11 @@ def test_for_each_as_target_property_nested_list(temp_factory):
     ]
 
 
-
 def test_rerun_with_zap(clear_now_and_after):
     clear_now_and_after([f"zapped_example_{i}.txt.zapped" for i in range(3)])
     clear_now_and_after([f"zapped_example_{i}.bak" for i in range(3)])
 
-    script = '''
+    script = """
         [step_10]
         input: for_each={'i': range(3)}
         output: f'zapped_example_{i}.txt'
@@ -213,7 +212,7 @@ def test_rerun_with_zap(clear_now_and_after):
             cp {_input} {_output}
 
         _input.zap()
-    '''
+    """
     execute_workflow(script)
     execute_workflow(script)
 

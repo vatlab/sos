@@ -23,8 +23,7 @@ from .syntax import SOS_LOGLINE
 from .targets import path, sos_targets
 from .task_engines import BackgroundProcess_TaskEngine
 from .tasks import TaskFile
-from .utils import (env, expand_size, expand_time, format_HHMMSS, short_repr,
-                    textMD5)
+from .utils import env, expand_size, expand_time, format_HHMMSS, short_repr, textMD5
 from .workflow_engines import BackgroundProcess_WorkflowEngine
 
 #
@@ -60,7 +59,6 @@ from .workflow_engines import BackgroundProcess_WorkflowEngine
 
 
 class DaemonizedProcess(mp.Process):
-
     def __init__(self, cmd, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cmd = cmd
@@ -164,43 +162,54 @@ class LocalHost:
         task_vars = params.sos_dict
         runtime = {
             "_runtime": {
-                x: task_vars["_runtime"][x] for x in (
+                x: task_vars["_runtime"][x]
+                for x in (
                     "verbosity",
                     "sig_mode",
                     "run_mode",
                     "walltime",
                     "cores",
                     "mem",
-                ) if x in task_vars["_runtime"]
+                )
+                if x in task_vars["_runtime"]
             }
         }
         runtime["_runtime"]["workdir"] = (
-            task_vars["_runtime"]["workdir"] if "workdir" in task_vars["_runtime"] else os.getcwd())
+            task_vars["_runtime"]["workdir"] if "workdir" in task_vars["_runtime"] else os.getcwd()
+        )
 
-        if ("max_mem" in self.config or "max_cores" in self.config or "max_walltime" in self.config):
+        if "max_mem" in self.config or "max_cores" in self.config or "max_walltime" in self.config:
             for key in ("max_mem", "max_cores", "max_walltime"):
                 if key in self.config:
                     runtime["_runtime"][key] = (
-                        format_HHMMSS(self.config[key]) if key == "max_walltime" else self.config[key])
+                        format_HHMMSS(self.config[key]) if key == "max_walltime" else self.config[key]
+                    )
 
-            if (self.config.get("max_mem", None) is not None and task_vars["_runtime"].get("mem", None) is not None and
-                    self.config["max_mem"] < task_vars["_runtime"]["mem"]):
+            if (
+                self.config.get("max_mem", None) is not None
+                and task_vars["_runtime"].get("mem", None) is not None
+                and self.config["max_mem"] < task_vars["_runtime"]["mem"]
+            ):
                 env.logger.error(
-                    f'Task {task_id} requested more mem ({task_vars["_runtime"]["mem"]}) than allowed max_mem ({self.config["max_mem"]})'
+                    f"Task {task_id} requested more mem ({task_vars['_runtime']['mem']}) than allowed max_mem ({self.config['max_mem']})"
                 )
                 return False
-            if (self.config.get("max_cores", None) is not None and
-                    task_vars["_runtime"].get("cores", None) is not None and
-                    self.config["max_cores"] < task_vars["_runtime"]["cores"]):
+            if (
+                self.config.get("max_cores", None) is not None
+                and task_vars["_runtime"].get("cores", None) is not None
+                and self.config["max_cores"] < task_vars["_runtime"]["cores"]
+            ):
                 env.logger.error(
-                    f'Task {task_id} requested more cores ({task_vars["_runtime"]["cores"]}) than allowed max_cores ({self.config["max_cores"]})'
+                    f"Task {task_id} requested more cores ({task_vars['_runtime']['cores']}) than allowed max_cores ({self.config['max_cores']})"
                 )
                 return False
-            if (self.config.get("max_walltime", None) is not None and
-                    task_vars["_runtime"].get("walltime", None) is not None and
-                    expand_time(self.config["max_walltime"]) < expand_time(task_vars["_runtime"]["walltime"])):
+            if (
+                self.config.get("max_walltime", None) is not None
+                and task_vars["_runtime"].get("walltime", None) is not None
+                and expand_time(self.config["max_walltime"]) < expand_time(task_vars["_runtime"]["walltime"])
+            ):
                 env.logger.error(
-                    f'Task {task_id} requested more walltime ({task_vars["_runtime"]["walltime"]}) than allowed max_walltime ({self.config["max_walltime"]})'
+                    f"Task {task_id} requested more walltime ({task_vars['_runtime']['walltime']}) than allowed max_walltime ({self.config['max_walltime']})"
                 )
                 return False
 
@@ -357,47 +366,86 @@ class RemoteHost:
         return f"-o 'ControlMaster=auto' -o 'ControlPath={master_dir}/%r@%h:%p' -o 'ControlPersist=10m'"
 
     def _get_identify_file_options(self):
-        if ("pem_file" in self.config and isinstance(self.config["pem_file"], str) and
-                self.config["pem_file"].strip() != ""):
+        if (
+            "pem_file" in self.config
+            and isinstance(self.config["pem_file"], str)
+            and self.config["pem_file"].strip() != ""
+        ):
             return f""" -i '{self.config["pem_file"]}' """
         return ""
 
     def _get_send_cmd(self, rename=False):
         if rename:
-            return ("ssh " + self.cm_opts + self.pem_opts + """ -q {host} -p {port} "mkdir -p {dest:dpq}" && """ +
-                    """rsync -a --no-g -e 'ssh """ + self.cm_opts + self.pem_opts +
-                    """ -p {port}' {source:aep} "{host}:{dest:dep}" && """ + """ssh """ + self.cm_opts + self.pem_opts +
-                    """ -q {host} -p {port} "mv {dest:dep}/{source:b} {dest:ep}" """)
-        return ("ssh " + self.cm_opts + self.pem_opts + """ -q {host} -p {port} "mkdir -p {dest:dpq}" """ +
-                """ && rsync -a --no-g -e "ssh -p {port} """ + self.cm_opts + self.pem_opts +
-                ''' " {source:aep} "{host}:{dest:dep}"''')
+            return (
+                "ssh "
+                + self.cm_opts
+                + self.pem_opts
+                + """ -q {host} -p {port} "mkdir -p {dest:dpq}" && """
+                + """rsync -a --no-g -e 'ssh """
+                + self.cm_opts
+                + self.pem_opts
+                + """ -p {port}' {source:aep} "{host}:{dest:dep}" && """
+                + """ssh """
+                + self.cm_opts
+                + self.pem_opts
+                + """ -q {host} -p {port} "mv {dest:dep}/{source:b} {dest:ep}" """
+            )
+        return (
+            "ssh "
+            + self.cm_opts
+            + self.pem_opts
+            + """ -q {host} -p {port} "mkdir -p {dest:dpq}" """
+            + """ && rsync -a --no-g -e "ssh -p {port} """
+            + self.cm_opts
+            + self.pem_opts
+            + ''' " {source:aep} "{host}:{dest:dep}"'''
+        )
 
     def _get_receive_cmd(self, rename=False):
         if rename:
-            return ("""rsync -a --no-g -e 'ssh """ + self.cm_opts + self.pem_opts +
-                    """ -p {port}' {host}:{source:e} "{dest:adep}" && """ +
-                    '''mv "{dest:adep}/{source:b}" "{dest:aep}"''')
-        return ("""rsync -a --no-g -e 'ssh """ + self.cm_opts + self.pem_opts +
-                ''' -p {port}' {host}:{source:e} "{dest:adep}"''')
+            return (
+                """rsync -a --no-g -e 'ssh """
+                + self.cm_opts
+                + self.pem_opts
+                + """ -p {port}' {host}:{source:e} "{dest:adep}" && """
+                + '''mv "{dest:adep}/{source:b}" "{dest:aep}"'''
+            )
+        return (
+            """rsync -a --no-g -e 'ssh """
+            + self.cm_opts
+            + self.pem_opts
+            + ''' -p {port}' {host}:{source:e} "{dest:adep}"'''
+        )
 
     def _get_execute_cmd(self, under_workdir=True, use_heredoc=True) -> str:
         # #1396
         if "execute_cmd" in self.config:
             return self.config["execute_cmd"]
         if use_heredoc:
-            return ("ssh " + self.cm_opts + self.pem_opts +
-                    """ -q {host} -p {port} <<'HEREDOC!!'\nbash --login -c '""" +
-                    (" [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && " if under_workdir else " ") +
-                    """ {cmd} '\nHEREDOC!!\n""")
-        return ("ssh " + self.cm_opts + self.pem_opts + """ -q {host} -p {port} "bash --login -c '""" +
-                (" [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && " if under_workdir else " ") +
-                """ {cmd}'" """)
+            return (
+                "ssh "
+                + self.cm_opts
+                + self.pem_opts
+                + """ -q {host} -p {port} <<'HEREDOC!!'\nbash --login -c '"""
+                + (" [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && " if under_workdir else " ")
+                + """ {cmd} '\nHEREDOC!!\n"""
+            )
+        return (
+            "ssh "
+            + self.cm_opts
+            + self.pem_opts
+            + """ -q {host} -p {port} "bash --login -c '"""
+            + (" [ -d {workdir} ] || mkdir -p {workdir}; cd {workdir} && " if under_workdir else " ")
+            + """ {cmd}'" """
+        )
 
     def _get_query_cmd(self):
         return self.config.get(
             "query_cmd",
-            """ssh """ + self.cm_opts + self.pem_opts +
-            """ -q {host} -p {port} "bash --login -c '{self.config.get("sos", "sos")} status {task} -v 0'" """,
+            """ssh """
+            + self.cm_opts
+            + self.pem_opts
+            + """ -q {host} -p {port} "bash --login -c '{self.config.get("sos", "sos")} status {task} -v 0'" """,
         )
 
     def is_shared(self, path):
@@ -465,56 +513,68 @@ class RemoteHost:
         task_vars = params.sos_dict
         runtime = {
             "_runtime": {
-                x: task_vars["_runtime"][x] for x in (
+                x: task_vars["_runtime"][x]
+                for x in (
                     "verbosity",
                     "sig_mode",
                     "run_mode",
                     "walltime",
                     "cores",
                     "mem",
-                ) if x in task_vars["_runtime"]
+                )
+                if x in task_vars["_runtime"]
             },
             task_id: {},
         }
 
-        if (self.config.get("max_mem", None) is not None and task_vars["_runtime"].get("mem", None) is not None and
-                self.config["max_mem"] < task_vars["_runtime"]["mem"]):
+        if (
+            self.config.get("max_mem", None) is not None
+            and task_vars["_runtime"].get("mem", None) is not None
+            and self.config["max_mem"] < task_vars["_runtime"]["mem"]
+        ):
             raise ValueError(
-                f'Task {task_id} requested more mem ({task_vars["_runtime"]["mem"]}) than allowed max_mem ({self.config["max_mem"]})'
+                f"Task {task_id} requested more mem ({task_vars['_runtime']['mem']}) than allowed max_mem ({self.config['max_mem']})"
             )
-        if (self.config.get("max_cores", None) is not None and task_vars["_runtime"].get("cores", None) is not None and
-                self.config["max_cores"] < task_vars["_runtime"]["cores"]):
+        if (
+            self.config.get("max_cores", None) is not None
+            and task_vars["_runtime"].get("cores", None) is not None
+            and self.config["max_cores"] < task_vars["_runtime"]["cores"]
+        ):
             raise ValueError(
                 f"Task {task_id} requested more cores ({task_vars['_runtime']['cores']}) than allowed max_cores ({self.config['max_cores']})"
             )
-        if (self.config.get("max_walltime", None) is not None and
-                task_vars["_runtime"].get("walltime", None) is not None and
-                expand_time(self.config["max_walltime"]) < expand_time(task_vars["_runtime"]["walltime"])):
+        if (
+            self.config.get("max_walltime", None) is not None
+            and task_vars["_runtime"].get("walltime", None) is not None
+            and expand_time(self.config["max_walltime"]) < expand_time(task_vars["_runtime"]["walltime"])
+        ):
             raise ValueError(
-                f'Task {task_id} requested more walltime ({task_vars["_runtime"]["walltime"]}) than allowed max_walltime ({self.config["max_walltime"]})'
+                f"Task {task_id} requested more walltime ({task_vars['_runtime']['walltime']}) than allowed max_walltime ({self.config['max_walltime']})"
             )
 
         # map variables
         runtime["_runtime"]["workdir"] = (
-            task_vars["_runtime"]["workdir"] if "workdir" in task_vars["_runtime"] else str(path.cwd()))
+            task_vars["_runtime"]["workdir"] if "workdir" in task_vars["_runtime"] else str(path.cwd())
+        )
 
         if runtime["_runtime"]["workdir"].startswith("#"):
             try:
                 path(runtime["_runtime"]["workdir"], host=self.alias)
             except Exception as e:
                 raise ValueError(
-                    f'Working directory {runtime["_runtime"]["workdir"]} does not exist on remote host {self.alias}: {e}'
+                    f"Working directory {runtime['_runtime']['workdir']} does not exist on remote host {self.alias}: {e}"
                 ) from e
         elif path(runtime["_runtime"]["workdir"]).is_absolute():
-            env.logger.debug(f'Absolute path {path(runtime["_runtime"]["workdir"])} used as workdir.')
+            env.logger.debug(f"Absolute path {path(runtime['_runtime']['workdir'])} used as workdir.")
 
-        env.log_to_file("TASK", f'Set workdir to {runtime["_runtime"]["workdir"]}')
+        env.log_to_file("TASK", f"Set workdir to {runtime['_runtime']['workdir']}")
 
         # server restrictions #488
         for key in ("max_mem", "max_cores", "max_walltime"):
             if key in self.config:
                 runtime["_runtime"][key] = (
-                    format_HHMMSS(self.config[key]) if key == "max_walltime" else self.config[key])
+                    format_HHMMSS(self.config[key]) if key == "max_walltime" else self.config[key]
+                )
         runtime["_runtime"]["localhost"] = get_config(["hosts", self.alias], allowed_keys=["shared", "paths"])
         # only update task file if there are runtime information
         if len(runtime) > 1 or runtime["_runtime"] or runtime != old_runtime:
@@ -556,7 +616,7 @@ class RemoteHost:
                 },
             )
         except Exception as e:
-            raise ValueError(f'Failed to run command {cmd}: {e} ({env.sos_dict["CONFIG"]})') from e
+            raise ValueError(f"Failed to run command {cmd}: {e} ({env.sos_dict['CONFIG']})") from e
         if "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
             env.log_to_file("TASK", f"Executing command ``{cmd}``")
         try:
@@ -652,7 +712,8 @@ class RemoteHost:
             ret = subprocess.call(receive_cmd, shell=True)
             if ret != 0:
                 raise RuntimeError(
-                    f"Failed to retrieve result of job {task_id} from {self.alias} with cmd\n{receive_cmd}")
+                    f"Failed to retrieve result of job {task_id} from {self.alias} with cmd\n{receive_cmd}"
+                )
 
         tf = TaskFile(task_id)
         params = tf.params
@@ -677,9 +738,13 @@ class RemoteHost:
         # do we need to copy files? We need to consult original task file
         # not the converted one
         job_dict = params.sos_dict
-        if ("_output" in job_dict and job_dict["_output"] and not isinstance(job_dict["_output"], Undetermined) and
-                env.config["run_mode"] != "dryrun"):
-            received = {x:x for x in job_dict["_output"] if isinstance(x, (str, path))}
+        if (
+            "_output" in job_dict
+            and job_dict["_output"]
+            and not isinstance(job_dict["_output"], Undetermined)
+            and env.config["run_mode"] != "dryrun"
+        ):
+            received = {x: x for x in job_dict["_output"] if isinstance(x, (str, path))}
             if received:
                 env.logger.info(f"{task_id} ``received`` {short_repr(received.keys())} from {self.alias}")
         # we need to translate result from remote path to local
@@ -756,8 +821,7 @@ class Host:
             # find by address
             if "address" in host_info:
                 addr = get_config("hosts", host, "address", expected_type=str)
-                if (addr.split("@")[-1].lower() == hostname or
-                        addr.split(".", 1)[0].split("@")[-1].lower() == hostname):
+                if addr.split("@")[-1].lower() == hostname or addr.split(".", 1)[0].split("@")[-1].lower() == hostname:
                     return host
                 if any(ip == addr.split("@")[-1] for ip in ips):
                     return host
@@ -766,6 +830,7 @@ class Host:
     def _get_local_host(self) -> str:
         if "CONFIG" not in env.sos_dict or "hosts" not in env.sos_dict["CONFIG"]:
             from .utils import load_config_files
+
             load_config_files()
         # look for an entry with gethost
         if "hosts" not in env.sos_dict["CONFIG"]:
@@ -834,21 +899,30 @@ class Host:
             )
 
             same_host = LOCAL == REMOTE
-            if same_host and LOCAL != "localhost" and LOCAL != DETECTED and DETECTED not in env.sos_dict['CONFIG'][
-                    'hosts']:
+            if (
+                same_host
+                and LOCAL != "localhost"
+                and LOCAL != DETECTED
+                and DETECTED not in env.sos_dict["CONFIG"]["hosts"]
+            ):
                 # if "localhost" is defined, but does not match by ip address etc,
                 # we assume that the matched_host is a separate host with the same
                 # configuration (see #1407 for details)
-                env.logger.debug(f'Specified host {LOCAL} does not match detected host {DETECTED}.')
+                env.logger.debug(f"Specified host {LOCAL} does not match detected host {DETECTED}.")
                 local_cfg = copy.deepcopy(env.sos_dict["CONFIG"]["hosts"][LOCAL])
                 env.sos_dict["CONFIG"]["hosts"][DETECTED] = local_cfg
                 LOCAL = DETECTED
 
             cfg = env.sos_dict["CONFIG"]["hosts"]
             # if local and remote hosts are the same
-            if (same_host or "address" not in env.sos_dict["CONFIG"]["hosts"][REMOTE] or
-                ("address" in env.sos_dict["CONFIG"]["hosts"][REMOTE] and
-                 env.sos_dict["CONFIG"]["hosts"][REMOTE]["address"] == "localhost")):
+            if (
+                same_host
+                or "address" not in env.sos_dict["CONFIG"]["hosts"][REMOTE]
+                or (
+                    "address" in env.sos_dict["CONFIG"]["hosts"][REMOTE]
+                    and env.sos_dict["CONFIG"]["hosts"][REMOTE]["address"] == "localhost"
+                )
+            ):
                 # there would be no path map
                 self.config["shared"] = ["/"]
                 # do not override address setting to use localhost
@@ -873,7 +947,8 @@ class Host:
                         self.config["pem_file"] = get_config("hosts", LOCAL, "pem_file", expected_type=str)
                     else:
                         raise ValueError(
-                            f"Option pem_file should be a string or dictionary, {cfg[LOCAL]['pem_file']} provided.")
+                            f"Option pem_file should be a string or dictionary, {cfg[LOCAL]['pem_file']} provided."
+                        )
         elif LOCAL == REMOTE:
             # now we have checked local and remote are not defined, but they are the same, so
             # it is safe to assume that they are both local hosts
@@ -932,8 +1007,10 @@ class Host:
         else:
             self._engine_type = self.config["queue_type"].strip()
         # if there is no engine, or if the engine was stopped
-        if self.alias not in self.host_instances or (hasattr(self.host_instances[self.alias], "_task_engine") and
-                                                     self.host_instances[self.alias]._task_engine._is_stopped):
+        if self.alias not in self.host_instances or (
+            hasattr(self.host_instances[self.alias], "_task_engine")
+            and self.host_instances[self.alias]._task_engine._is_stopped
+        ):
             if self.config["address"] == "localhost":
                 self.host_instances[self.alias] = LocalHost(self.config, test_connection=test_connection)
             else:
@@ -955,7 +1032,7 @@ class Host:
             self._workflow_engine = self._host_agent._workflow_engine
         # it is possible that Host() is initialized before with start_engine=False
         # and called again to start engine
-        if (start_engine and self._task_engine is not None and not self._task_engine.is_alive()):
+        if start_engine and self._task_engine is not None and not self._task_engine.is_alive():
             self._task_engine.start()
 
     # public interface

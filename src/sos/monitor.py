@@ -14,7 +14,6 @@ from .utils import env, expand_time, format_HHMMSS
 
 
 class TaskMonitor(threading.Thread):
-
     def __init__(
         self,
         task_id,
@@ -29,8 +28,7 @@ class TaskMonitor(threading.Thread):
         self.task_id = task_id
         self.pid = os.getpid()
         self.monitor_interval = monitor_interval
-        self.resource_monitor_interval = max(
-            resource_monitor_interval // monitor_interval, 1)
+        self.resource_monitor_interval = max(resource_monitor_interval // monitor_interval, 1)
         self.daemon = True
         if max_walltime is None:
             self.max_walltime = None
@@ -62,8 +60,7 @@ class TaskMonitor(threading.Thread):
         else:
             self.max_procs = max_procs[1]
 
-        self.pulse_file = os.path.join(
-            os.path.expanduser("~"), ".sos", "tasks", task_id + ".pulse")
+        self.pulse_file = os.path.join(os.path.expanduser("~"), ".sos", "tasks", task_id + ".pulse")
         # remove previous status file, which could be readonly if the job is killed
         if os.path.isfile(self.pulse_file):
             if not os.access(self.pulse_file, os.W_OK):
@@ -71,9 +68,7 @@ class TaskMonitor(threading.Thread):
             os.remove(self.pulse_file)
         self.sos_dict = sos_dict
         with open(self.pulse_file, "a") as pd:
-            pd.write(
-                "#time\tproc_cpu\tproc_mem\tchildren\tchildren_cpu\tchildren_mem\n"
-            )
+            pd.write("#time\tproc_cpu\tproc_mem\tchildren\tchildren_cpu\tchildren_mem\n")
 
     def _check(self):
         current_process = psutil.Process(self.pid)
@@ -89,8 +84,7 @@ class TaskMonitor(threading.Thread):
         return par_cpu, par_mem, n_children, ch_cpu, ch_mem
 
     def _exceed_resource(self, msg):
-        err_file = os.path.join(
-            os.path.expanduser("~"), ".sos", "tasks", self.task_id + ".soserr")
+        err_file = os.path.join(os.path.expanduser("~"), ".sos", "tasks", self.task_id + ".soserr")
         with open(err_file, "a") as err:
             err.write(msg + "\n")
         # tf = TaskFile(self.task_id)
@@ -128,17 +122,13 @@ class TaskMonitor(threading.Thread):
                     os.utime(self.pulse_file, None)
                 else:
                     cpu, mem, nch, ch_cpu, ch_mem = self._check()
-                    if ("peak_cpu" not in self.sos_dict or
-                            self.sos_dict["peak_cpu"] < cpu + ch_cpu):
+                    if "peak_cpu" not in self.sos_dict or self.sos_dict["peak_cpu"] < cpu + ch_cpu:
                         self.sos_dict["peak_cpu"] = cpu + ch_cpu
-                    if ("peak_mem" not in self.sos_dict or
-                            self.sos_dict["peak_mem"] < mem + ch_mem):
+                    if "peak_mem" not in self.sos_dict or self.sos_dict["peak_mem"] < mem + ch_mem:
                         self.sos_dict["peak_mem"] = mem + ch_mem
 
                     with open(self.pulse_file, "a") as pd:
-                        pd.write(
-                            f"{time.time()}\t{cpu:.2f}\t{mem}\t{nch}\t{ch_cpu}\t{ch_mem}\n"
-                        )
+                        pd.write(f"{time.time()}\t{cpu:.2f}\t{mem}\t{nch}\t{ch_cpu}\t{ch_mem}\n")
                     if self.max_procs is not None and cpu + ch_cpu > self.max_procs:
                         self._exceed_resource(
                             f"Task {self.task_id} may be killed because of excessive use of procs (used {cpu + ch_cpu}, limit {self.max_procs})"
@@ -160,13 +150,11 @@ class TaskMonitor(threading.Thread):
                 # the warning message is usually:
                 # WARNING: psutil.NoSuchProcess no process found with pid XXXXX
                 # env.logger.warning(str(e))
-                env.logger.debug(
-                    f"Monitor of {self.task_id} failed with message {e}")
+                env.logger.debug(f"Monitor of {self.task_id} failed with message {e}")
                 break
 
 
 class WorkflowMonitor(threading.Thread):
-
     def __init__(
         self,
         workflow_id,
@@ -181,17 +169,14 @@ class WorkflowMonitor(threading.Thread):
         self.workflow_id = workflow_id
         self.pid = os.getpid()
         self.monitor_interval = monitor_interval
-        self.resource_monitor_interval = max(
-            resource_monitor_interval // monitor_interval, 1)
+        self.resource_monitor_interval = max(resource_monitor_interval // monitor_interval, 1)
         self.daemon = True
         self.max_walltime = max_walltime
         if self.max_walltime is not None:
             self.max_walltime = expand_time(self.max_walltime)
         self.max_mem = max_mem
         self.max_procs = max_procs
-        self.pulse_file = os.path.join(
-            os.path.expanduser("~"), ".sos", "workflows",
-            workflow_id + ".pulse")
+        self.pulse_file = os.path.join(os.path.expanduser("~"), ".sos", "workflows", workflow_id + ".pulse")
         # remove previous status file, which could be readonly if the job is killed
         if os.path.isfile(self.pulse_file):
             if not os.stat(self.pulse_file).st_mode & stat.S_IWUSR:
@@ -199,9 +184,7 @@ class WorkflowMonitor(threading.Thread):
             os.remove(self.pulse_file)
         self.sos_dict = sos_dict
         with open(self.pulse_file, "a") as pd:
-            pd.write(
-                "#time\tproc_cpu\tproc_mem\tchildren\tchildren_cpu\tchildren_mem\n"
-            )
+            pd.write("#time\tproc_cpu\tproc_mem\tchildren\tchildren_cpu\tchildren_mem\n")
 
     def _check(self):
         current_process = psutil.Process(self.pid)
@@ -217,9 +200,7 @@ class WorkflowMonitor(threading.Thread):
         return par_cpu, par_mem, n_children, ch_cpu, ch_mem
 
     def _exceed_resource(self, msg):
-        err_file = os.path.join(
-            os.path.expanduser("~"), ".sos", "workflows",
-            self.workflow_id + ".soserr")
+        err_file = os.path.join(os.path.expanduser("~"), ".sos", "workflows", self.workflow_id + ".soserr")
         with open(err_file, "a") as err:
             err.write(msg + "\n")
         env.logger.warning(f"{self.workflow_id} may be ``aborted``: {msg}")
@@ -236,10 +217,8 @@ class WorkflowMonitor(threading.Thread):
         start_time = time.time()
         while True:
             try:
-                if not os.path.isfile(self.pulse_file) or not os.stat(
-                        self.pulse_file).st_mode & stat.S_IWUSR:
-                    env.logger.warning(
-                        f"Workflow {self.workflow_id} ``aborted``")
+                if not os.path.isfile(self.pulse_file) or not os.stat(self.pulse_file).st_mode & stat.S_IWUSR:
+                    env.logger.warning(f"Workflow {self.workflow_id} ``aborted``")
                     # the job should be killed
                     p = psutil.Process(self.pid)
                     p.kill()
@@ -248,17 +227,13 @@ class WorkflowMonitor(threading.Thread):
                     os.utime(self.pulse_file, None)
                 else:
                     cpu, mem, nch, ch_cpu, ch_mem = self._check()
-                    if ("peak_cpu" not in self.sos_dict or
-                            self.sos_dict["peak_cpu"] < cpu + ch_cpu):
+                    if "peak_cpu" not in self.sos_dict or self.sos_dict["peak_cpu"] < cpu + ch_cpu:
                         self.sos_dict["peak_cpu"] = cpu + ch_cpu
-                    if ("peak_mem" not in self.sos_dict or
-                            self.sos_dict["peak_mem"] < mem + ch_mem):
+                    if "peak_mem" not in self.sos_dict or self.sos_dict["peak_mem"] < mem + ch_mem:
                         self.sos_dict["peak_mem"] = mem + ch_mem
 
                     with open(self.pulse_file, "a") as pd:
-                        pd.write(
-                            f"{time.time()}\t{cpu:.2f}\t{mem}\t{nch}\t{ch_cpu}\t{ch_mem}\n"
-                        )
+                        pd.write(f"{time.time()}\t{cpu:.2f}\t{mem}\t{nch}\t{ch_cpu}\t{ch_mem}\n")
                     if self.max_procs is not None and cpu + ch_cpu > self.max_procs:
                         self._exceed_resource(
                             f"Workflow {self.workflow_id} may be killed because of excessive use of procs (used {cpu + ch_cpu}, limit {self.max_procs})"
@@ -280,8 +255,7 @@ class WorkflowMonitor(threading.Thread):
                 # the warning message is usually:
                 # WARNING: psutil.NoSuchProcess no process found with pid XXXXX
                 # env.logger.warning(str(e))
-                env.logger.debug(
-                    f"Monitor of {self.workflow_id} failed with message {e}")
+                env.logger.debug(f"Monitor of {self.workflow_id} failed with message {e}")
                 break
 
 
@@ -300,8 +274,7 @@ def summarizeExecution(task_id, pulses, status="Unknown"):
         try:
             t, c, m, nch, cc, cm = line.split()
         except Exception as e:
-            env.logger.warning(
-                f'Unrecognized resource line "{line.strip()}": {e}')
+            env.logger.warning(f'Unrecognized resource line "{line.strip()}": {e}')
         if start_time is None:
             start_time = float(t)
             end_time = float(t)
@@ -322,18 +295,20 @@ def summarizeExecution(task_id, pulses, status="Unknown"):
         ("status", status),
         ("task", task_id),
         ("nproc", str(peak_nch)),
-        ("start", time.strftime("%Y-%m-%d %H:%M:%S",
-                                time.localtime(start_time))),
+        ("start", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(start_time))),
         ("end", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(end_time))),
         (
             "duration",
-            ("" if second_elapsed < 86400 else
-             f'{int(second_elapsed/86400)} day{"s" if second_elapsed > 172800 else ""} '
-            ) + time.strftime("%H:%M:%S", time.gmtime(second_elapsed)),
+            (
+                ""
+                if second_elapsed < 86400
+                else f"{int(second_elapsed / 86400)} day{'s' if second_elapsed > 172800 else ''} "
+            )
+            + time.strftime("%H:%M:%S", time.gmtime(second_elapsed)),
         ),
         ("cpu_peak", f"{peak_cpu:.1f}"),
-        ("cpu_avg", f"{0 if count == 0 else accu_cpu/count:.1f}"),
-        ("mem_peak", f"{peak_mem/1024/1024:.1f}Mb"),
-        ("mem_avg", f"{0 if count == 0 else accu_mem/1024/1024/count:.1f}Mb"),
+        ("cpu_avg", f"{0 if count == 0 else accu_cpu / count:.1f}"),
+        ("mem_peak", f"{peak_mem / 1024 / 1024:.1f}Mb"),
+        ("mem_avg", f"{0 if count == 0 else accu_mem / 1024 / 1024 / count:.1f}Mb"),
     ]
     return "\n".join(f"{x:20s} {y}" for x, y in result)

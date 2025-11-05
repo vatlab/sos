@@ -19,7 +19,7 @@ from sos.utils import env
 
 
 def internet_on(host="8.8.8.8", port=80, timeout=3):
-    """Test if internet is connected """
+    """Test if internet is connected"""
     try:
         socket.setdefaulttimeout(timeout)
         socket.create_connection(("www.google.com", 80))
@@ -81,8 +81,7 @@ def test_get_output():
             """)
 
 
-@pytest.mark.skipif(
-    not shutil.which("bash") or sys.platform == "win32", reason="Needs bash.")
+@pytest.mark.skipif(not shutil.which("bash") or sys.platform == "win32", reason="Needs bash.")
 def test_get_output_extra_kwargs():
     execute_workflow(r"""
         [0]
@@ -129,8 +128,7 @@ def test_delayed_fail_if():
             config={"worker_procs": ["3"]},
         )
 
-    assert (time.time() - st >=
-            8), "Test test should fail only after step 10 is completed"
+    assert time.time() - st >= 8, "Test test should fail only after step 10 is completed"
 
 
 def test_delayed_fail_if_from_nested_workflow():
@@ -156,8 +154,7 @@ def test_delayed_fail_if_from_nested_workflow():
             config={"worker_procs": ["3"]},
         )
 
-    assert (time.time() - st >=
-            8), "Test test should fail only after step 10 is completed"
+    assert time.time() - st >= 8, "Test test should fail only after step 10 is completed"
 
 
 def test_warn_if(temp_factory):
@@ -310,10 +307,8 @@ def test_run():
         """)
 
 
-@pytest.mark.skipif(
-    sys.platform == "win32", reason="Under windows, echo 'Echo is perfectly OK")
+@pytest.mark.skipif(sys.platform == "win32", reason="Under windows, echo 'Echo is perfectly OK")
 def test_run_1():
-
     with pytest.raises(Exception):
         execute_workflow(r"""
             [0]
@@ -405,7 +400,6 @@ def test_download(temp_factory, clear_now_and_after):
     reason="Skip test because of no internet connection or in travis test",
 )
 def test_download_missing_file(temp_factory, clear_now_and_after):
-
     clear_now_and_after("tmp")
     temp_factory(dir="tmp")
 
@@ -750,23 +744,20 @@ touch temp/{ff}
         ("(1,2)", ["temp/1.txt", "temp/2.txt"]),
         ("[2,3]", ["temp/2.txt", "temp/3.txt"]),
         ("(0,2,4)", ["temp/0.txt", "temp/2.txt", "temp/4.txt"]),
-        ("slice(1,None)",
-         ["temp/1.txt", "temp/2.txt", "temp/3.txt", "temp/4.txt"]),
+        ("slice(1,None)", ["temp/1.txt", "temp/2.txt", "temp/3.txt", "temp/4.txt"]),
         ("slice(1,-2)", ["temp/1.txt", "temp/2.txt"]),
         ("slice(None,None,2)", ["temp/0.txt", "temp/2.txt", "temp/4.txt"]),
         (
             "True",
-            [
-                "temp/0.txt", "temp/1.txt", "temp/2.txt", "temp/3.txt",
-                "temp/4.txt"
-            ],
+            ["temp/0.txt", "temp/1.txt", "temp/2.txt", "temp/3.txt", "temp/4.txt"],
         ),
         ("False", []),
     ]:
         temp_factory(dir="temp")
         # test first iteration
         execute_workflow(
-            ("""
+            (
+                """
             [1]
             rep = range(5)
             input: for_each = 'rep'
@@ -775,7 +766,9 @@ touch temp/{ff}
             run:  expand=True, active=%s
             echo {ff}
             touch temp/{ff}
-            """ % active).replace("/", os.sep),
+            """
+                % active
+            ).replace("/", os.sep),
             options={"sig_mode": "force"},
         )
 

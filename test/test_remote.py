@@ -33,10 +33,7 @@ def test_worker_procs():
         bash: expand=True
         echo {i}
         """,
-        options={
-            "sig_mode": "force",
-            "worker_proces": ["1", "localhost:2"]
-        },
+        options={"sig_mode": "force", "worker_proces": ["1", "localhost:2"]},
     )
 
 
@@ -64,7 +61,8 @@ def test_worker_procs_with_task():
 def test_remote_execute(clear_now_and_after, script_factory):
     clear_now_and_after("result_remote.txt", "result_remote1.txt", "local.txt", "remote_exec.sos")
 
-    test_remote_sos = script_factory("""
+    test_remote_sos = script_factory(
+        """
         [10]
         input: 'local.txt'
         output: 'result_remote.txt'
@@ -73,7 +71,9 @@ def test_remote_execute(clear_now_and_after, script_factory):
         run:
             cp local.txt result_remote.txt
             echo 'adf' >> 'result_remote.txt'
-        """, filename='remote_exec.sos')
+        """,
+        filename="remote_exec.sos",
+    )
     with open("local.txt", "w") as w:
         w.write("something")
 
@@ -92,7 +92,7 @@ def test_remote_execute(clear_now_and_after, script_factory):
 
 @pytest.mark.skipif(not has_docker, reason="Docker container not usable")
 def test_remote_workflow_remote_queue(script_factory):
-    test_r_q = script_factory('''
+    test_r_q = script_factory("""
         input: for_each=dict(i=range(2))
         output: f'test_r_q_{i}.txt'
 
@@ -100,7 +100,7 @@ def test_remote_workflow_remote_queue(script_factory):
         sh: expand=True
             echo `pwd` > {_output}
             echo I am {i} >> {_output}
-        ''')
+        """)
     assert 0 == subprocess.call(f"sos run {test_r_q} -c ~/docker.yml -r ts -q ts", shell=True)
 
 

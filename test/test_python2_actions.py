@@ -10,13 +10,11 @@ import pytest
 from sos import execute_workflow
 
 
-@pytest.mark.skipif(
-    not shutil.which('python2.7'),
-    reason='Skip test because of no python2.7 installation')
+@pytest.mark.skipif(not shutil.which("python2.7"), reason="Skip test because of no python2.7 installation")
 def test_python2():
-    execute_workflow(r'''
+    execute_workflow(r"""
         [0]
         python2: expand='${ }'
         a = {'1', '2'}
         print a
-        ''')
+        """)

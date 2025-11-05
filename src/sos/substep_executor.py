@@ -13,14 +13,20 @@ import zmq
 
 from .controller import close_socket, create_socket, send_message_to_controller
 from .eval import SoS_exec
-from .executor_utils import (clear_output, create_task, get_traceback_msg,
-                             kill_all_subprocesses, prepare_env,
-                             reevaluate_output, statementMD5,
-                             validate_step_sig, verify_input)
+from .executor_utils import (
+    clear_output,
+    create_task,
+    get_traceback_msg,
+    kill_all_subprocesses,
+    prepare_env,
+    reevaluate_output,
+    statementMD5,
+    validate_step_sig,
+    verify_input,
+)
 from .messages import encode_msg
 from .targets import RemovedTarget, RuntimeInfo, UnavailableLock, sos_targets
-from .utils import (ArgumentError, ProcessKilled, StopInputGroup,
-                    TerminateExecution, env)
+from .utils import ArgumentError, ProcessKilled, StopInputGroup, TerminateExecution, env
 
 
 @contextlib.contextmanager
@@ -100,8 +106,7 @@ def execute_substep(
     assert "result_push_socket" in config["sockets"]
 
     # this should not happen but check nevertheless
-    if (env.result_socket_port is not None and
-            env.result_socket_port != config["sockets"]["result_push_socket"]):
+    if env.result_socket_port is not None and env.result_socket_port != config["sockets"]["result_push_socket"]:
         close_socket(env.result_socket)
         env.result_socket = None
 
@@ -125,8 +130,7 @@ def execute_substep(
     env.result_socket.send(encode_msg(res))
 
 
-def _execute_substep(stmt, global_def, global_vars, task, task_params,
-                     proc_vars, shared_vars, config, cwd):
+def _execute_substep(stmt, global_def, global_vars, task, task_params, proc_vars, shared_vars, config, cwd):
     # vatlab/sos-notebook#272
     # if config contains exec_mode, we remove it to avoid it manifest the worker exec_mode
     config.pop("exec_mode", None)
@@ -136,8 +140,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
     prepare_env(global_def, global_vars)
     # update it with variables passed from master process
     env.sos_dict.quick_update(proc_vars)
-    if env.config["sig_mode"] == "ignore" or env.sos_dict[
-            "_output"].unspecified():
+    if env.config["sig_mode"] == "ignore" or env.sos_dict["_output"].unspecified():
         sig = None
     else:
         sig = RuntimeInfo(
@@ -167,9 +170,7 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
                     # avoid sig being released in the final statement
                     sig = None
                     # complete case: concurrent ignore without task
-                    send_message_to_controller([
-                        "progress", "substep_ignored", env.sos_dict["step_id"]
-                    ])
+                    send_message_to_controller(["progress", "substep_ignored", env.sos_dict["step_id"]])
                     res = {
                         "index": idx,
                         "ret_code": 0,
@@ -201,12 +202,9 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
             else:
                 SoS_exec(stmt, return_result=False)
             if not task and env.config["run_mode"] != "interactive":
-                env.logger.info(
-                    f'``{env.sos_dict["step_name"]}`` (index={idx}) is ``completed``.'
-                )
+                env.logger.info(f"``{env.sos_dict['step_name']}`` (index={idx}) is ``completed``.")
         if task:
-            task_id, taskdef, task_vars = create_task(global_def, global_vars,
-                                                      task, task_params)
+            task_id, taskdef, task_vars = create_task(global_def, global_vars, task, task_params)
             res = {
                 "index": idx,
                 "task_id": task_id,
@@ -229,11 +227,9 @@ def _execute_substep(stmt, global_def, global_vars, task, task_params,
             if capture_output:
                 res.update({"stdout": outmsg, "stderr": errmsg})
             # complete case: concurrent execution without task
-            send_message_to_controller(
-                ["progress", "substep_completed", env.sos_dict["step_id"]])
+            send_message_to_controller(["progress", "substep_completed", env.sos_dict["step_id"]])
         return res
-    except (StopInputGroup, TerminateExecution, RemovedTarget,
-            UnavailableLock) as e:
+    except (StopInputGroup, TerminateExecution, RemovedTarget, UnavailableLock) as e:
         # stop_if is not considered as an error
         if isinstance(e, StopInputGroup):
             if e.message:

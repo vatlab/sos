@@ -15,13 +15,8 @@ from .workflow_executor import Base_Executor
 assert __version__
 
 
-def execute_workflow(script: str,
-                     workflow=None,
-                     targets=None,
-                     args=None,
-                     options=None,
-                     config=None):
-    '''
+def execute_workflow(script: str, workflow=None, targets=None, args=None, options=None, config=None):
+    """
     Execute a SoS workflow with the following parameters:
 
     script:
@@ -63,7 +58,7 @@ def execute_workflow(script: str,
         config as if loaded from "options['config_file']"
 
     Note: executing on specified host (option "-r") is not supported by this function.
-    '''
+    """
     if args is None:
         args = []
     if options is None:
@@ -71,61 +66,59 @@ def execute_workflow(script: str,
     if config is None:
         config = {}
     from .utils import env
+
     env.reset()
     try:
         script = SoS_Script(textwrap.dedent(script))
     except Exception as e:
         # show script with error
-        raise ValueError(f'Failed to parse script {script}: {e}') from e
+        raise ValueError(f"Failed to parse script {script}: {e}") from e
     #
     if workflow and targets:
-        raise ValueError(
-            "Only one of parameters workflow and targets should be specified.")
+        raise ValueError("Only one of parameters workflow and targets should be specified.")
     wf = script.workflow(workflow, use_default=not targets)
 
     if not isinstance(config, dict):
-        raise ValueError('Option config should be a dictionary.')
+        raise ValueError("Option config should be a dictionary.")
     run_options = {
-        'config_file': None,
-        'extra_config': config,
-        'output_dag': None,
-        'output_report': None,
-        'default_queue': None,
-        'worker_procs': None,
-        'max_running_jobs': None,
-        'sig_mode': 'default',
-        'run_mode': 'run',
-        'verbosity': 2,
-        'workdir': os.getcwd(),
-        'script': script,
-        'workflow': workflow,
-        'targets': targets,
-        'workflow_args': args,
-        'trace_existing': False,
-        'error_mode': 'default',
-        'exec_mode': None
+        "config_file": None,
+        "extra_config": config,
+        "output_dag": None,
+        "output_report": None,
+        "default_queue": None,
+        "worker_procs": None,
+        "max_running_jobs": None,
+        "sig_mode": "default",
+        "run_mode": "run",
+        "verbosity": 2,
+        "workdir": os.getcwd(),
+        "script": script,
+        "workflow": workflow,
+        "targets": targets,
+        "workflow_args": args,
+        "trace_existing": False,
+        "error_mode": "default",
+        "exec_mode": None,
     }
     # a convenience feature
     if isinstance(args, dict):
-        run_options['workflow_vars'] = args
+        run_options["workflow_vars"] = args
         workflow_args = []
     elif args:
         # for convenience,
         parser = get_run_parser(interactive=True, with_workflow=False)
         for arg in args:
-            if arg.startswith(
-                    '-') and not arg.startswith('--') and not arg in ['-c']:
-                raise ValueError(
-                    'SoS options should be specified with parameter "option"')
+            if arg.startswith("-") and not arg.startswith("--") and not arg in ["-c"]:
+                raise ValueError('SoS options should be specified with parameter "option"')
         # check args
         sos_args, workflow_args = parser.parse_known_args(args)
-        if sos_args.__config__ and not 'config_file' in options:
-            options['config_file'] = sos_args.__config__
+        if sos_args.__config__ and not "config_file" in options:
+            options["config_file"] = sos_args.__config__
     else:
         workflow_args = []
 
     run_options.update(options)
-    env.verbosity = run_options['verbosity']
+    env.verbosity = run_options["verbosity"]
 
     executor = Base_Executor(wf, args=workflow_args, config=run_options)
     if isinstance(targets, str):

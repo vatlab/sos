@@ -11,11 +11,11 @@ import pytest
 from sos import execute_workflow
 
 
-@pytest.mark.skipif(not shutil.which('ruby'), reason='ruby not installed')
+@pytest.mark.skipif(not shutil.which("ruby"), reason="ruby not installed")
 def test_ruby(clear_now_and_after):
-    '''Test action ruby'''
-    clear_now_and_after('sample.txt')
-    execute_workflow(r'''
+    """Test action ruby"""
+    clear_now_and_after("sample.txt")
+    execute_workflow(r"""
         [10]
 
         ruby:
@@ -23,5 +23,5 @@ def test_ruby(clear_now_and_after):
         somefile = File.open(fname, "w")
         somefile.puts "Hello file!"
         somefile.close
-        ''')
-    assert os.path.isfile('sample.txt')
+        """)
+    assert os.path.isfile("sample.txt")

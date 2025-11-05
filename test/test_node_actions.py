@@ -10,12 +10,12 @@ import pytest
 from sos import execute_workflow
 
 
-@pytest.mark.skipif(not shutil.which('node'), reason='node not installed')
+@pytest.mark.skipif(not shutil.which("node"), reason="node not installed")
 def test_node():
-    '''Test action node'''
-    execute_workflow(r'''
+    """Test action node"""
+    execute_workflow(r"""
         [0]
         node:
         var args = process.argv.slice(2);
         console.log('Hello ' + args.join(' ') + '!');
-        ''')
+        """)

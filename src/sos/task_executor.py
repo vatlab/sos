@@ -15,22 +15,23 @@ from threading import Event
 
 import zmq
 
-from .controller import (Controller, close_socket, connect_controllers,
-                         create_socket, disconnect_controllers,
-                         request_answer_from_controller,
-                         send_message_to_controller)
+from .controller import (
+    Controller,
+    close_socket,
+    connect_controllers,
+    create_socket,
+    disconnect_controllers,
+    request_answer_from_controller,
+    send_message_to_controller,
+)
 from .eval import SoS_eval, SoS_exec
-from .executor_utils import (__null_func__, clear_output, get_traceback_msg,
-                             prepare_env)
+from .executor_utils import __null_func__, clear_output, get_traceback_msg, prepare_env
 from .messages import decode_msg
 from .monitor import TaskMonitor
 from .step_executor import parse_shared_vars
-from .targets import (InMemorySignature, dynamic, file_target, path, sos_step,
-                      sos_targets)
-from .tasks import (TaskFile, combine_results, monitor_interval,
-                    remove_task_files, resource_monitor_interval)
-from .utils import (ProcessKilled, StopInputGroup, env, get_localhost_ip,
-                    pickleable)
+from .targets import InMemorySignature, dynamic, file_target, path, sos_step, sos_targets
+from .tasks import TaskFile, combine_results, monitor_interval, remove_task_files, resource_monitor_interval
+from .utils import ProcessKilled, StopInputGroup, env, get_localhost_ip, pickleable
 
 
 def signal_handler(*args, **kwargs):
@@ -104,10 +105,10 @@ class BaseTaskExecutor:
 
         if res["ret_code"] != 0 and "exception" in res:
             with open(
-                    os.path.join(os.path.expanduser("~"), ".sos", "tasks", task_id + ".soserr"),
-                    "a",
+                os.path.join(os.path.expanduser("~"), ".sos", "tasks", task_id + ".soserr"),
+                "a",
             ) as err:
-                err.write(f'Task {task_id} exits with code {res["ret_code"]}')
+                err.write(f"Task {task_id} exits with code {res['ret_code']}")
 
         if res.get("skipped", False):
             # a special mode for skipped to set running time to zero
@@ -138,7 +139,7 @@ class BaseTaskExecutor:
         if task_id in runtime:
             params.sos_dict.update(runtime[task_id])
 
-        if (quiet and "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]):
+        if quiet and "TASK" in env.config["SOS_DEBUG"] or "ALL" in env.config["SOS_DEBUG"]:
             env.log_to_file("TASK", f"Executing task {task_id}")
 
         global_def, task, sos_dict = params.global_def, params.task, params.sos_dict
@@ -148,25 +149,29 @@ class BaseTaskExecutor:
         env.sos_dict.quick_update(sos_dict)
 
         for key in [
-                "step_input",
-                "_input",
-                "step_output",
-                "_output",
-                "step_depends",
-                "_depends",
+            "step_input",
+            "_input",
+            "step_output",
+            "_output",
+            "step_depends",
+            "_depends",
         ]:
             if key in sos_dict and isinstance(sos_dict[key], sos_targets):
                 env.sos_dict.set(key, sos_dict[key].remove_targets(type=sos_step))
 
         # when no output is specified, we just treat the task as having no output (determined)
         env.sos_dict["_output"]._undetermined = False
-        sig = (None if env.config["sig_mode"] == "ignore" else InMemorySignature(
-            env.sos_dict["_input"],
-            env.sos_dict["_output"],
-            env.sos_dict["_depends"],
-            env.sos_dict["__signature_vars__"],
-            shared_vars=parse_shared_vars(env.sos_dict["_runtime"].get("shared", None)),
-        ))
+        sig = (
+            None
+            if env.config["sig_mode"] == "ignore"
+            else InMemorySignature(
+                env.sos_dict["_input"],
+                env.sos_dict["_output"],
+                env.sos_dict["_depends"],
+                env.sos_dict["__signature_vars__"],
+                shared_vars=parse_shared_vars(env.sos_dict["_runtime"].get("shared", None)),
+            )
+        )
 
         if sig and self._validate_task_signature(sig, sig_content.get(task_id, {}), task_id, quiet):
             # env.logger.info(f'{task_id} ``skipped``')
@@ -206,14 +211,15 @@ class BaseTaskExecutor:
                         # sometimes it is not possible to go to a "workdir" because of
                         # file system differences, but this should be ok if a work_dir
                         # has been specified.
-                        env.logger.debug(f'Failed to create workdir {sos_dict["_runtime"]["workdir"]}: {e}')
+                        env.logger.debug(f"Failed to create workdir {sos_dict['_runtime']['workdir']}: {e}")
                 else:
                     os.chdir(workdir)
 
             # we will need to check existence of targets because the task might
             # be executed on a remote host where the targets are not available.
-            for target in (sos_dict["_input"] if isinstance(sos_dict["_input"], list) else
-                           []) + (sos_dict["_depends"] if isinstance(sos_dict["_depends"], list) else []):
+            for target in (sos_dict["_input"] if isinstance(sos_dict["_input"], list) else []) + (
+                sos_dict["_depends"] if isinstance(sos_dict["_depends"], list) else []
+            ):
                 # if the file does not exist (although the signature exists)
                 # request generation of files
                 if isinstance(target, str):
@@ -251,14 +257,18 @@ class BaseTaskExecutor:
                 if isinstance(sos_dict["_runtime"]["prepend_path"], str):
                     os.environ["PATH"] = sos_dict["_runtime"]["prepend_path"] + os.pathsep + os.environ["PATH"]
                 elif isinstance(env.sos_dict["_runtime"]["prepend_path"], Sequence):
-                    os.environ["PATH"] = os.pathsep.join(
-                        sos_dict["_runtime"]["prepend_path"]) + os.pathsep + os.environ["PATH"]
+                    os.environ["PATH"] = (
+                        os.pathsep.join(sos_dict["_runtime"]["prepend_path"]) + os.pathsep + os.environ["PATH"]
+                    )
                 else:
                     raise ValueError(
-                        f'Unacceptable input for option prepend_path: {sos_dict["_runtime"]["prepend_path"]}')
+                        f"Unacceptable input for option prepend_path: {sos_dict['_runtime']['prepend_path']}"
+                    )
 
-            with open(env.sos_dict["__std_out__"], "a") as my_stdout, open(env.sos_dict["__std_err__"],
-                                                                           "a") as my_stderr:
+            with (
+                open(env.sos_dict["__std_out__"], "a") as my_stdout,
+                open(env.sos_dict["__std_err__"], "a") as my_stderr,
+            ):
                 with redirect_stdout(my_stdout), redirect_stderr(my_stderr):
                     # step process
                     SoS_exec(task)
@@ -273,7 +283,8 @@ class BaseTaskExecutor:
                             my_stdout.write(log.read())
                     except Exception as e:
                         raise ValueError(
-                            f"Failed to collect logfile {logfile} after the completion of task: {e}") from e
+                            f"Failed to collect logfile {logfile} after the completion of task: {e}"
+                        ) from e
 
             if quiet or env.config["run_mode"] != "run":
                 env.logger.debug(f"{task_id} ``completed``")
@@ -314,8 +325,8 @@ class BaseTaskExecutor:
             msg = get_traceback_msg(e)
             # env.logger.error(f'{task_id} ``failed``: {msg}')
             with open(
-                    os.path.join(os.path.expanduser("~"), ".sos", "tasks", task_id + ".soserr"),
-                    "a",
+                os.path.join(os.path.expanduser("~"), ".sos", "tasks", task_id + ".soserr"),
+                "a",
             ) as err:
                 err.write(msg + "\n")
             return {
@@ -363,7 +374,8 @@ class BaseTaskExecutor:
         # regular trunk_workers = ?? (0 was used as default)
         # a previous version of master task file has params.num_workers
         n_workers = (
-            params.num_workers if hasattr(params, "num_workers") else params.sos_dict["_runtime"].get("num_workers", 1))
+            params.num_workers if hasattr(params, "num_workers") else params.sos_dict["_runtime"].get("num_workers", 1)
+        )
 
         if isinstance(n_workers, int):
             if n_workers > 1:
@@ -390,7 +402,7 @@ class BaseTaskExecutor:
                 n_workers = env.config["worker_procs"]
             elif len(n_workers) != n_nodes:
                 env.logger.warning(
-                    f'task options trunk_workers={n_workers} is inconsistent with command line option -j {env.config["worker_procs"]}'
+                    f"task options trunk_workers={n_workers} is inconsistent with command line option -j {env.config['worker_procs']}"
                 )
             results = self.execute_master_task_distributedly(params, master_runtime, sig_content, n_workers)
 
@@ -468,17 +480,19 @@ class BaseTaskExecutor:
                 sub_sig = {sub_id: sig_content.get(sub_id, {})}
 
                 # submit tasks
-                send_message_to_controller([
-                    "task",
-                    {
-                        'task_id': sub_id,
-                        'params': sub_params,
-                        'runtime': sub_runtime,
-                        'sig_content': sub_sig,
-                        'config': env.config,
-                        'quiet': True,
-                    },
-                ])
+                send_message_to_controller(
+                    [
+                        "task",
+                        {
+                            "task_id": sub_id,
+                            "params": sub_params,
+                            "runtime": sub_runtime,
+                            "sig_content": sub_sig,
+                            "config": env.config,
+                            "quiet": True,
+                        },
+                    ]
+                )
 
             for _ in range(len(params.task_stack)):
                 res = decode_msg(self.result_pull_socket.recv())
@@ -535,9 +549,9 @@ class BaseTaskExecutor:
         tags = " ".join(result.get("tags", []))
         with open(self.master_stdout, "ab") as out, open(self.master_stderr, "ab") as err:
             dest = out if result["ret_code"] == 0 else err
-            dest.write(f'> {tid}\t{tags}\t{"completed" if result["ret_code"] == 0 else "failed"}\n'.encode())
+            dest.write(f"> {tid}\t{tags}\t{'completed' if result['ret_code'] == 0 else 'failed'}\n".encode())
             if "output" in result and result["output"]:
-                dest.write(f'output files:\n{result["output"]}\n'.encode())
+                dest.write(f"output files:\n{result['output']}\n".encode())
             sub_out = os.path.join(os.path.expanduser("~"), ".sos", "tasks", tid + ".sosout")
             if os.path.isfile(sub_out):
                 with open(sub_out, "rb") as sout:
@@ -601,7 +615,8 @@ class BaseTaskExecutor:
                     if isinstance(item, str):
                         if item not in env.sos_dict:
                             raise ValueError(
-                                f"Unavailable shared variable {item} after the completion of task {task_id}")
+                                f"Unavailable shared variable {item} after the completion of task {task_id}"
+                            )
                         if not pickleable(env.sos_dict[item], item):
                             env.logger.warning(f"{item} of type {type(env.sos_dict[item])} is not sharable")
                         else:
@@ -612,7 +627,8 @@ class BaseTaskExecutor:
                                 env.sos_dict.set(var, SoS_eval(val))
                             if var not in env.sos_dict:
                                 raise ValueError(
-                                    f"Unavailable shared variable {var} after the completion of task {task_id}")
+                                    f"Unavailable shared variable {var} after the completion of task {task_id}"
+                                )
                             if not pickleable(env.sos_dict[var], var):
                                 env.logger.warning(f"{var} of type {type(env.sos_dict[var])} is not sharable")
                             else:
@@ -627,7 +643,7 @@ class BaseTaskExecutor:
                 )
             env.log_to_file(
                 "TASK",
-                f'task {task_id} (index={env.sos_dict["_index"]}) return shared variable {shared}',
+                f"task {task_id} (index={env.sos_dict['_index']}) return shared variable {shared}",
             )
 
         # the difference between sos_dict and env.sos_dict is that sos_dict (the original version) can have remote() targets
@@ -635,7 +651,7 @@ class BaseTaskExecutor:
         if env.sos_dict["_output"].undetermined():
             # re-process the output statement to determine output files
             args, _ = SoS_eval(
-                f'__null_func__({env.sos_dict["_output"]._undetermined})',
+                f"__null_func__({env.sos_dict['_output']._undetermined})",
                 extra_dict={"__null_func__": __null_func__},
             )
             # handle dynamic args
@@ -657,9 +673,7 @@ class BaseTaskExecutor:
             "peak_cpu": sos_dict.get("peak_cpu", 0),
             "peak_mem": sos_dict.get("peak_mem", 0),
             "end_time": time.time(),
-            "signature": {
-                task_id: signature.write()
-            } if signature and sos_dict["_output"] else {},
+            "signature": {task_id: signature.write()} if signature and sos_dict["_output"] else {},
         }
 
     def _validate_task_signature(self, sig, saved_sig, task_id, is_subtask):
@@ -675,11 +689,11 @@ class BaseTaskExecutor:
                 env.sos_dict.update(matched["vars"])
                 if is_subtask or env.config["run_mode"] != "run":
                     env.logger.debug(
-                        f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` due to saved signature'
+                        f"Task ``{task_id}`` for substep ``{env.sos_dict['step_name']}`` (index={idx}) is ``ignored`` due to saved signature"
                     )
                 else:
                     env.logger.info(
-                        f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` due to saved signature'
+                        f"Task ``{task_id}`` for substep ``{env.sos_dict['step_name']}`` (index={idx}) is ``ignored`` due to saved signature"
                     )
                 return True
         elif env.config["sig_mode"] == "assert":
@@ -693,11 +707,11 @@ class BaseTaskExecutor:
 
             if is_subtask or env.config["run_mode"] != "run":
                 env.logger.debug(
-                    f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with matching signature'
+                    f"Task ``{task_id}`` for substep ``{env.sos_dict['step_name']}`` (index={idx}) is ``ignored`` with matching signature"
                 )
             else:
                 env.logger.info(
-                    f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with matching signature'
+                    f"Task ``{task_id}`` for substep ``{env.sos_dict['step_name']}`` (index={idx}) is ``ignored`` with matching signature"
                 )
             sig.content = saved_sig
             return True
@@ -706,15 +720,15 @@ class BaseTaskExecutor:
             if sig.write():
                 if is_subtask or env.config["run_mode"] != "run":
                     env.logger.debug(
-                        f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with signature constructed'
+                        f"Task ``{task_id}`` for substep ``{env.sos_dict['step_name']}`` (index={idx}) is ``ignored`` with signature constructed"
                     )
                 else:
                     env.logger.info(
-                        f'Task ``{task_id}`` for substep ``{env.sos_dict["step_name"]}`` (index={idx}) is ``ignored`` with signature constructed'
+                        f"Task ``{task_id}`` for substep ``{env.sos_dict['step_name']}`` (index={idx}) is ``ignored`` with signature constructed"
                     )
                 return True
             return False
         elif env.config["sig_mode"] == "force":
             return False
         else:
-            raise RuntimeError(f'Unrecognized signature mode {env.config["sig_mode"]}')
+            raise RuntimeError(f"Unrecognized signature mode {env.config['sig_mode']}")

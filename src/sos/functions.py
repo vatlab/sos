@@ -1,4 +1,4 @@
-from .utils import (StopInputGroup, TerminateExecution, env)
+from .utils import StopInputGroup, TerminateExecution, env
 
 # g_action_map = {}
 
@@ -59,7 +59,7 @@ def fail_if(expr, msg=""):
 
 
 def warn_if(expr, msg=""):
-    """Yield an warning message `msg` if `expr` is False """
+    """Yield an warning message `msg` if `expr` is False"""
     if expr:
         env.logger.warning(msg)
     return 0
