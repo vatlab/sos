@@ -34,6 +34,7 @@ def _load_group(group: str) -> None:
         try:
             _plugin = _entrypoint.load()  # type: ignore[attr-defined]
             globals()[_name] = _plugin
+            __all__.append(_name)
         except Exception as e:
             # look for sos version requirement
             from .utils import get_logger

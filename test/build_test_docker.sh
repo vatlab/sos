@@ -29,7 +29,7 @@ echo "FROM python:3.${python_version}" > Dockerfile
 cat >> Dockerfile << 'HERE'
 
 RUN apt-get update && apt-get install -y openssh-server rsync task-spooler
-RUN mkdir /var/run/sshd
+
 RUN echo 'root:screencast' | chpasswd
 RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
