@@ -69,7 +69,7 @@ cd SoS
 # Set up development environment with uv
 uv venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-uv sync --all-extras
+uv sync
 
 # Use invoke tasks for development
 invoke --list      # Show available tasks
@@ -85,7 +85,7 @@ invoke check       # Run all checks
 # Clone and install in development mode
 git clone https://github.com/vatlab/SoS.git
 cd SoS
-pip install -e ".[dev]"
+pip install -e . --group dev   # needs pip >= 25.1
 ```
 
 ## Building from Source

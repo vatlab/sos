@@ -42,7 +42,7 @@ def _load_group(group: str) -> None:
             if "Requirement.parse" in str(e):
                 import re
 
-                from metadata import parse_version
+                from packaging.version import parse as parse_version
 
                 from ._version import __version__
 

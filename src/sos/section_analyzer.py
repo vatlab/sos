@@ -96,9 +96,8 @@ def get_names_of_param(name, param_list, extra_dict=None):
 
     values = []
     for kwarg in kwargs:
-        # Python 3.8 class name is named Constant, not Str
         values.extend(
-            [x.s for x in ast.walk(kwarg.value) if x.__class__.__name__ in ("Str", "Constant") and isinstance(x.s, str)]
+            [x.value for x in ast.walk(kwarg.value) if isinstance(x, ast.Constant) and isinstance(x.value, str)]
         )
     return values
 
