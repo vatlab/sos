@@ -16,7 +16,7 @@ Thank you for your interest in contributing to SoS! This document provides guide
 
 ### Prerequisites
 
-- Python 3.9 or higher
+- Python 3.10 or higher
 - Git
 - uv (recommended) or pip
 
@@ -52,19 +52,19 @@ git remote add upstream https://github.com/vatlab/SoS.git
 2. **Set up Python environment with uv** (recommended)
 
 ```bash
-# uv will automatically create a virtual environment and use Python 3.9
-# (specified in .python-version file)
+# uv will create a virtual environment using a supported Python (>=3.10)
 uv venv
 
 # Activate the virtual environment
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Sync all dependencies including dev dependencies
-uv sync --all-extras
+# Sync runtime dependencies plus the dev tooling group, which uv installs
+# by default
+uv sync
 
-# Or sync with specific extras
-uv sync --extra dev --extra unix  # On Linux/macOS
-uv sync --extra dev --extra win   # On Windows
+# Add platform-specific feature extras as needed
+uv sync --extra unix  # On Linux/macOS
+uv sync --extra win   # On Windows
 ```
 
 3. **Alternative: Traditional pip setup**
@@ -74,12 +74,14 @@ uv sync --extra dev --extra win   # On Windows
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install in development mode
-pip install -e ".[dev]"
+# Install in development mode. Development tooling is a PEP 735 dependency
+# group, so it is requested with --group rather than as an extra. Needs pip
+# 25.1 or newer.
+pip install -e . --group dev
 
 # For platform-specific dependencies
-pip install -e ".[dev,unix]"  # On Linux/macOS
-pip install -e ".[dev,win]"   # On Windows
+pip install -e ".[unix]" --group dev  # On Linux/macOS
+pip install -e ".[win]" --group dev   # On Windows
 ```
 
 4. **Install pre-commit hooks**
@@ -102,10 +104,13 @@ pre-commit install
 # Add a runtime dependency
 uv add requests
 
-# Add a development dependency
+# Add a dependency to the dev tooling group
 uv add --dev pytest-mock
 
-# Add an optional dependency to an extra group
+# Add a dependency to another group, such as test or lint
+uv add --group test pytest-mock
+
+# Add an optional user-facing feature to an extra
 uv add --optional dot graphviz
 
 # Update all dependencies to latest compatible versions
@@ -115,14 +120,20 @@ uv lock --upgrade
 ### Installing Dependencies
 
 ```bash
-# Install all dependencies (including dev)
-uv sync --all-extras
-
-# Install only runtime dependencies
+# Install runtime dependencies plus the dev group (uv's default)
 uv sync
 
-# Install with specific extras
-uv sync --extra dot --extra dev
+# Install everything, including all optional feature extras
+uv sync --all-extras
+
+# Runtime dependencies only, no tooling
+uv sync --no-default-groups
+
+# Install a single tooling group
+uv sync --only-group test
+
+# Install with a specific feature extra
+uv sync --extra dot
 ```
 
 ### Updating Dependencies

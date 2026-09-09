@@ -155,30 +155,34 @@ def build(c):
 
 
 @task
-def install(c, dev=False, extras=""):
+def install(c, dev=False, extras="", group="dev"):
     """
     Install the package.
 
     Args:
-        dev: Install in development mode with dev dependencies
-        extras: Additional extras to install (comma-separated)
+        dev: Install in development mode with the development dependency group
+        extras: Optional feature extras to install (comma-separated), e.g. "dot,unix"
+        group: Dependency group to install in development mode (default "dev")
     """
     print("Installing package...")
 
+    extras_str = f"[{extras}]" if extras else ""
+
     if dev:
-        # Development installation
+        # Development installation. Tooling lives in PEP 735 dependency groups,
+        # not extras, so it is requested separately from any feature extras.
         try:
             c.run("which uv", hide=True, warn=True)
             print("Using uv for development installation...")
-            extras_cmd = "--all-extras" if not extras else f"--extra {extras.replace(',', ' --extra ')}"
-            c.run(f"uv sync {extras_cmd}", pty=True)
+            # uv installs the dev group by default; other groups are explicit
+            group_cmd = "" if group == "dev" else f" --group {group}"
+            extras_cmd = "" if not extras else "".join(f" --extra {e}" for e in extras.split(","))
+            c.run(f"uv sync{group_cmd}{extras_cmd}", pty=True)
         except Exception:
             print("Using pip for development installation...")
-            extras_str = "[dev]" if not extras else f"[dev,{extras}]"
-            c.run(f"pip install -e '.{extras_str}'", pty=True)
+            c.run(f"pip install -e '.{extras_str}' --group {group}", pty=True)
     else:
         # Regular installation
-        extras_str = f"[{extras}]" if extras else ""
         c.run(f"pip install -e '.{extras_str}'", pty=True)
 
 
