@@ -1089,11 +1089,13 @@ class Host:
             self._engine_type = "process"
         else:
             self._engine_type = self.config["queue_type"].strip()
-        # if there is no engine, or if the engine was stopped
-        if self.alias not in self.host_instances or (
-            hasattr(self.host_instances[self.alias], "_task_engine")
-            and self.host_instances[self.alias]._task_engine._is_stopped
-        ):
+        # if there is no engine, or if the engine was stopped. Thread._is_stopped was
+        # removed in Python 3.13, and is_alive() alone cannot tell a thread that has not
+        # been started yet from one that has already finished, but ident is None until
+        # the thread is started and keeps its value afterwards.
+        cached_engine = getattr(self.host_instances.get(self.alias), "_task_engine", None)
+        engine_stopped = cached_engine is not None and cached_engine.ident is not None and not cached_engine.is_alive()
+        if self.alias not in self.host_instances or engine_stopped:
             if self.config["address"] == "localhost":
                 self.host_instances[self.alias] = LocalHost(
                     self.config, test_connection=test_connection

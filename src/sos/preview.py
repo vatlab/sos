@@ -48,6 +48,38 @@ def get_previewers():
     )
 
 
+def image_type(filename):
+    """Return the type of an image file ('png', 'jpeg', ...), or None if the file
+    is not a recognized image. Replaces imghdr.what(), removed in Python 3.13."""
+    from PIL import Image
+
+    try:
+        with Image.open(filename) as img:
+            return img.format.lower()
+    except Exception:
+        return None
+
+
+def _to_png(filename):
+    """Return a base64-encoded PNG rendition of an image file, or None if the file
+    cannot be converted."""
+    from PIL import Image
+
+    try:
+        with Image.open(filename) as img:
+            buf = io.BytesIO()
+            try:
+                img.save(buf, format="PNG")
+            except (OSError, ValueError):
+                # PNG cannot store modes such as CMYK or YCbCr
+                buf = io.BytesIO()
+                img.convert("RGB").save(buf, format="PNG")
+        return base64.b64encode(buf.getvalue()).decode("ascii")
+    except Exception as e:
+        env.logger.debug(f"Failed to convert {filename} to png: {e}")
+        return None
+
+
 def _preview_img_parser():
     parser = argparse.ArgumentParser(prog="%preview *.pdf")
     parser.add_argument(
@@ -65,9 +97,7 @@ def _preview_img_parser():
 def preview_img(filename, kernel=None, style=None):
     with open(filename, "rb") as f:
         image = f.read()
-    import imghdr
-
-    image_type = imghdr.what(None, image)
+    img_type = image_type(filename)
     image_data = base64.b64encode(image).decode("ascii")
 
     args = None
@@ -87,21 +117,17 @@ def preview_img(filename, kernel=None, style=None):
         except SystemExit:
             return
 
-    if image_type != "png":
-        try:
-            if image_type == "gif":
-                return {"image/png": image_data}, meta
-            from wand.image import Image
-
-            img = Image(filename=filename)
-            return {
-                "image/" + image_type: image_data,
-                "image/png": base64.b64encode(img._repr_png_()).decode("ascii"),
-            }, meta
-        except Exception:
-            return {"image/" + image_type: image_data}, meta
-    else:
-        return {"image/" + image_type: image_data}, meta
+    if img_type in ("png", "gif"):
+        return {"image/png": image_data}, meta
+    # frontends only render a few image types, so send a PNG rendition along with
+    # the original data whenever the two differ
+    png_data = _to_png(filename)
+    if png_data is None:
+        return {"image/" + img_type: image_data}, meta
+    return {
+        "image/" + img_type: image_data,
+        "image/png": png_data,
+    }, meta
 
 
 def preview_svg(filename, kernel=None, style=None):

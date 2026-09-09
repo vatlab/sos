@@ -467,7 +467,7 @@ class path(type(Path())):
         return super(path, self.expanduser()).__str__()
 
     def __repr__(self):
-        raw_str = super().__str__().replace(self._flavour.sep, "/")
+        raw_str = super().__str__().replace(os.sep, "/")
         return f"{self.__class__.__name__}({raw_str})"
 
     def fullname(self):
